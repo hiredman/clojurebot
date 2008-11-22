@@ -90,6 +90,9 @@
 
 (defmulti responder dispatch)
 
+(defmethod responder :math [pojo]
+  (prn :math))
+
 (defmethod responder :doc-lookup [pojo]
   (sendMsg (:this pojo)
            (who pojo)
