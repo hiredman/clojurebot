@@ -147,14 +147,14 @@
            [["is" dict-is] ["are" dict-are]]))
       
 
-;;(.start (Thread. (fn []
-;;             (loop []
-;;               (dumpdicts)
-;;               (.sleep Thread 600000)
-;;               (recur)))))
-;; 
-;; (.connect bot "chat.freenode.org")
-;; (.changeNick bot "clojurebot")
+(.start (Thread. (fn []
+             (loop []
+               (dumpdicts)
+               (.sleep Thread 600000)
+               (recur)))))
+ 
+ (.connect bot "chat.freenode.org")
+ (.changeNick bot "clojurebot")
 
 (dosync 
   (ref-set dict-is
