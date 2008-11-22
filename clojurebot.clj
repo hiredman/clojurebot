@@ -183,5 +183,5 @@
 
 (def bot (pircbot))
 (.connect bot "chat.freenode.org")
-(.changeNick "clojurebot")
+(.changeNick bot "clojurebot")
 (.joinChannel "#clojure")
