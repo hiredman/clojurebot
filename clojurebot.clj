@@ -10,7 +10,7 @@
 
 ;; responses that can be randomly selected from
 (def response
-     {:input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack."]
+     {:input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"]
       :befuddled ["Titim gan éirí ort." "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."]})
 
 (defn random-response
