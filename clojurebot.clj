@@ -150,7 +150,8 @@
                (binding [*out* (-> (str "clojurebot." rel)
                                    java.io.File.
                                    java.io.FileWriter.)]
-                        (prn @rels)))
+                        (prn @rels)
+                        (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
       
 
@@ -169,7 +170,9 @@
                    java.io.File.
                    java.io.FileReader.
                    java.io.PushbackReader.)]
-         (read))))
+         (let [a (read)]
+           (.close *in*)
+           a))))
 )
 
 (def bot (pircbot))
