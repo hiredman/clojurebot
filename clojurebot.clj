@@ -11,7 +11,7 @@
 ;; responses that can be randomly selected from
 (def response
      {:input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack."]
-      :befuddled ["Titim gan éirí ort." "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."]})
+      :befuddled ["Titim gan éirí ort." "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."]})
 
 (defn random-response
       "select a random response of the correct type"
