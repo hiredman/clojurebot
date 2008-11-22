@@ -83,6 +83,7 @@
         (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message pojo))
           :math
         (re-find url-regex (:message pojo))
+          :url
         (addressed? pojo) 
           :lookup
         :else
@@ -130,6 +131,9 @@
 
 (defmethod responder :know [pojo]
   (sendMsg (:this pojo) (who pojo) (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
+
+(defmethod responder :url [pojo]
+  (prn (:sender pojo)))
 
 (defstruct junks :this :channel :sender :login :hostname :message)
 
