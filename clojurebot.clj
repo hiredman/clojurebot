@@ -79,6 +79,8 @@
           :svn
         (and (addressed? pojo) (re-find #" is " (:message pojo)))
           :define-is
+        (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message projo))
+          :math
         (addressed? pojo) 
           :lookup
         :else
