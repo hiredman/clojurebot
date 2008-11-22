@@ -1,5 +1,3 @@
-;;test auto bzr to git
-;;
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)))
 
@@ -10,7 +8,7 @@
 
 ;; responses that can be randomly selected from
 (def response
-     {:input-accepted ["Ok." "Roger." "You don't have to tell me twice."]
+     {:input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack."]
       :befuddled ["Excuse me?" "Huh?" "I don't understand."]})
 
 (defn random-response
@@ -161,9 +159,6 @@
                (.sleep Thread 600000)
                (recur)))))
  
- (.connect bot "chat.freenode.org")
- (.changeNick bot "clojurebot")
-
 (dosync 
   (ref-set dict-is
 (eval (binding [*in* (-> "clojurebot.is"
