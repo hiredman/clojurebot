@@ -180,4 +180,4 @@
 (.changeNick "clojurebot")
 (.joinChannel "#clojure")
 
-(re-find #"" "http://www.thelastcitadel.com")
+(def url-regex #"(([a-zA-Z][0-9a-zA-Z+\\-\\.]*:)?/{0,2}[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?(#[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?")
