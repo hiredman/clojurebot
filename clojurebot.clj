@@ -181,3 +181,5 @@
 (.joinChannel "#clojure")
 
 (def url-regex #"(([a-zA-Z][0-9a-zA-Z+\\-\\.]*:)?/{0,2}[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?(#[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?")
+
+(re-find url-regex "http://thelastcitadel.com foo bar")
