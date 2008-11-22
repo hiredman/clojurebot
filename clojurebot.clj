@@ -72,14 +72,14 @@
       [pojo]
       (cond
         (doc-lookup? (:message pojo))
-          (do (prn :foo) :doc-lookup)
+          :doc-lookup
         (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
           :know
         (and (addressed? pojo) (re-find #"svn" (:message pojo)))
           :svn
         (and (addressed? pojo) (re-find #" is " (:message pojo)))
           :define-is
-        (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message projo))
+        (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message pojo))
           :math
         (addressed? pojo) 
           :lookup
@@ -89,6 +89,7 @@
 (defmulti responder dispatch)
 
 (defmethod responder :math [pojo]
+  ;(re-seq #"[\+\/\*\-0-9]+" "(- 1 2 3 4)")
   (prn :math))
 
 (defmethod responder :doc-lookup [pojo]
@@ -131,11 +132,9 @@
 (defstruct junks :this :channel :sender :login :hostname :message)
 
 (defn handleMessage [this channel sender login hostname message]
-      (prn :hdlmsg)
       (responder {:this this :channel channel :sender sender :login login :hostname hostname :message message}))
 
 (defn handlePrivateMessage [this sender login hostname message]
-      (prn :privmsg)
       (handleMessage this nil sender login hostname message))
 
 (defn pircbot []
