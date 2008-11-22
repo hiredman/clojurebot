@@ -106,6 +106,7 @@
                    r))))))
 
 (defmethod responder :lookup [pojo]
+  ; looks up message in dict
   (let [msg (d?op (.trim (.replaceFirst (:message pojo) "^clojurebot:" "")))]
   (cond
     ((deref dict-is) msg)
