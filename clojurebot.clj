@@ -122,7 +122,8 @@
     :else
        (sendMsg (:this pojo) (who pojo) (befuddled)))))
 
-(defmethod responder :know [pojo])
+(defmethod responder :know [pojo]
+  (sendMsg (:this pojo) (who pojo) (+ (count (deref @dict-is)) (count (deref @dict-are)))))
 
 (defstruct junks :this :channel :sender :login :hostname :message)
 
