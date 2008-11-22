@@ -84,6 +84,8 @@
         :else
           nil))
 
+;(re-find #"[\+ / - \*] [ 0-9]+" "* 3 4 5 6 (7)")
+
 (defmulti responder dispatch)
 
 (defmethod responder :doc-lookup [pojo]
