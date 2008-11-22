@@ -180,4 +180,4 @@
 (.changeNick "clojurebot")
 (.joinChannel "#clojure")
 
-(re-find #"[A-Za-Z]+" "http://www.thelastcitadel.com")
+(re-find #"" "http://www.thelastcitadel.com")
