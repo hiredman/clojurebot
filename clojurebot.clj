@@ -6,6 +6,7 @@
 (def dict-is (ref {}))
 (def dict-are (ref {}))
 (def url-regex #"(([a-zA-Z][0-9a-zA-Z+\\-\\.]*:)?/{0,2}[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?(#[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?")
+(defstruct junks :this :channel :sender :login :hostname :message)
 
 ;; responses that can be randomly selected from
 (def response
@@ -133,9 +134,8 @@
   (sendMsg (:this pojo) (who pojo) (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defmethod responder :url [pojo]
-  (prn (:sender pojo)))
+  (prn (:sender pojo) "> " (:message pojo)))
 
-(defstruct junks :this :channel :sender :login :hostname :message)
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
