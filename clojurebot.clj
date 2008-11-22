@@ -75,6 +75,8 @@
       (cond
         (doc-lookup? (:message pojo))
           (do (prn :foo) :doc-lookup)
+        (and (addressed? pojo) (= "clojurebot: how much do you know?" (:message pojo)))
+          :know
         (and (addressed? pojo) (re-find #"svn" (:message pojo)))
           :svn
         (and (addressed? pojo) (re-find #" is " (:message pojo)))
@@ -119,6 +121,8 @@
                  (str msg " is " ((deref dict-is) msg))))
     :else
        (sendMsg (:this pojo) (who pojo) (befuddled)))))
+
+(defmethod responder :know [pojo])
 
 (defstruct junks :this :channel :sender :login :hostname :message)
 
