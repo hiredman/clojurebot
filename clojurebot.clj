@@ -132,7 +132,8 @@
 (defstruct junks :this :channel :sender :login :hostname :message)
 
 (defn handleMessage [this channel sender login hostname message]
-      (responder {:this this :channel channel :sender sender :login login :hostname hostname :message message}))
+      (responder (struct junks this channel sender login
+                         hostname message))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
