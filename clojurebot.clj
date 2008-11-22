@@ -179,3 +179,5 @@
 (.connect bot "chat.freenode.org")
 (.changeNick "clojurebot")
 (.joinChannel "#clojure")
+
+(re-find #"(([a-zA-Z][0-9a-zA-Z+\\-\\.]*:)?/{0,2}[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?(#[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)" "http://www.thelastcitadel.com")
