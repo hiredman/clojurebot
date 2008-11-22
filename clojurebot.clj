@@ -113,7 +113,7 @@
       (sendMsg (:this pojo)
                (who pojo)
                (if (re-find #"^<reply>" ((deref dict-is) msg))
-                 (.replaceFirst (str ((deref dict-is) msg)) "^<reply>" "")
+                 (.trim (.replaceFirst (str ((deref dict-is) msg)) "^<reply>" ""))
                  (str msg " is " ((deref dict-is) msg))))
     :else
        (sendMsg (:this pojo) (who pojo) (befuddled)))))
