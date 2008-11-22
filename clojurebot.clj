@@ -1,3 +1,4 @@
+;;test auto bzr to git
 ;;
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)))
