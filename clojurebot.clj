@@ -5,7 +5,9 @@
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
 (def dict-are (ref {}))
-(def url-regex #"(([a-zA-Z][0-9a-zA-Z+\\-\\.]*:)?/{0,2}[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?(#[0-9a-zA-Z;/?:@&=+$\\.\\-_!~*'()%]+)?")
+
+(def url-regex #"[A-Za-z]+://[^ ]+")
+
 (defstruct junks :this :channel :sender :login :hostname :message)
 
 ;; responses that can be randomly selected from
@@ -83,10 +85,10 @@
           :define-is
         (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message pojo))
           :math
-        (re-find url-regex (:message pojo))
-          :url
         (addressed? pojo) 
           :lookup
+        (re-find url-regex (:message pojo))
+          :url
         :else
           nil))
 
