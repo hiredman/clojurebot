@@ -1,3 +1,4 @@
+;;
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)))
 
