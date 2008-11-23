@@ -10,7 +10,7 @@
 (def dict-is (ref {}))
 (def dict-are (ref {}))
 
-(def url-regex #"[A-Za-z]+://[^ ]+")
+(def url-regex #"[A-Za-z]+://[^  ^/].[^  ^/][^ ]+")
 
 (defstruct junks :this :channel :sender :login :hostname :message)
 
