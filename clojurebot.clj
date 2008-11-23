@@ -1,6 +1,10 @@
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)))
 
+(def nick "clojurebot")
+(def channel "#clojure")
+(def net "chat.feenode.org")
+
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
@@ -153,9 +157,6 @@
              (onPrivateMessage [sender login hostname message]
                         (handlePrivateMessage this  sender login hostname message))))
 
-(update-proxy bot {'onMessage handleMessage
-                   'onPrivateMessage handlePrivateMessage})
-
 (defn dumpdicts []
       (map (fn [[rel rels]]
                (binding [*out* (-> (str "clojurebot." rel)
@@ -165,25 +166,26 @@
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
       
+;; (.start (Thread. (fn []
+;;              (loop []
+;;                (dumpdicts)
+;;                (.sleep Thread 600000)
+;;                (recur)))))
+;;  
+;; (dosync 
+;;   (ref-set dict-is
+;; (eval (binding [*in* (-> "clojurebot.is"
+;;                    java.io.File.
+;;                    java.io.FileReader.
+;;                    java.io.PushbackReader.)]
+;;          (let [a (read)]
+;;            (.close *in*)
+;;            a))))
+;; )
+;; (update-proxy bot {'onMessage handleMessage
+;;                    'onPrivateMessage handlePrivateMessage})
 
-(.start (Thread. (fn []
-             (loop []
-               (dumpdicts)
-               (.sleep Thread 600000)
-               (recur)))))
- 
-(dosync 
-  (ref-set dict-is
-(eval (binding [*in* (-> "clojurebot.is"
-                   java.io.File.
-                   java.io.FileReader.
-                   java.io.PushbackReader.)]
-         (let [a (read)]
-           (.close *in*)
-           a))))
-)
-
-(def bot (pircbot))
-(.connect bot "chat.freenode.org")
-(.changeNick bot "clojurebot")
-(.joinChannel "#clojure")
+(def *bot* (pircbot))
+(.connect *bot* net)
+(.changeNick *bot* nick)
+(.joinChannel *bot* channel)
