@@ -105,8 +105,9 @@
 (defmulti responder dispatch)
 
 (defmethod responder :math [pojo]
-  ;(re-seq #"[\+\/\*\-0-9]+" "(- 1 2 3 4)")
-  (prn :math))
+  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" "(- 1 2 3 4)")
+        nums (map #(.parseInt java.lang.String %) num-strings)]
+    (prn nums)))
 
 (defmethod responder :doc-lookup [pojo]
   (sendMsg (:this pojo)
