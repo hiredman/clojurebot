@@ -10,7 +10,7 @@
 (def dict-is (ref {}))
 (def dict-are (ref {}))
 
-(def url-regex #"[A-Za-z]+://[^  ^/].[^  ^/][^ ]+")
+(def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 (defstruct junks :this :channel :sender :login :hostname :message)
 
@@ -126,15 +126,18 @@
 (defmethod responder :lookup [pojo]
   ; looks up message in dict
   (let [msg (d?op (.trim (.replaceFirst (:message pojo) "^clojurebot:" "")))]
-  (cond
-    ((deref dict-is) msg)
-      (sendMsg (:this pojo)
-               (who pojo)
-               (if (re-find #"^<reply>" ((deref dict-is) msg))
-                 (.trim (.replaceFirst (str ((deref dict-is) msg)) "^<reply>" ""))
-                 (str msg " is " ((deref dict-is) msg))))
-    :else
-       (sendMsg (:this pojo) (who pojo) (befuddled)))))
+    (cond
+      ((deref dict-is) msg)
+        (sendMsg (:this pojo)
+                 (who pojo)
+                 (.replaceAll (if (re-find #"^<reply>" ((deref dict-is) msg))
+                                (.trim
+                                  (.replaceFirst (str ((deref dict-is) msg)) "^<reply>" ""))
+                                (str msg " is " ((deref dict-is) msg)))
+                              "#who"
+                              (:sender pojo)))
+      :else
+         (sendMsg (:this pojo) (who pojo) (befuddled)))))
 
 (defmethod responder :know [pojo]
   (sendMsg (:this pojo) (who pojo) (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
