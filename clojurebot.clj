@@ -1,3 +1,9 @@
+;;
+;; Thus spake the master programmer:
+;;   "Though a program be but three lines long, someday it will have to be
+;;   maintained."
+;; 
+
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)))
 
