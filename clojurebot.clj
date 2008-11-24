@@ -35,6 +35,11 @@
 (defn befuddled []
       (random-response :befuddled))
 
+(defn strip-is [string]
+      (.trim (.substring string (inc (inc (.indexOf string "is"))))))
+
+(defn term [string]
+      (first (.split string " is ")))
 
 (defn doc-lookup?
       "is this a well formed doc-string lookup?"
@@ -66,7 +71,7 @@
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
-      (async (.sendMessage this recv (.replace msg \newline \ ))))
+      (async (.sendMessage this recv (.replace (str msg) \newline \ ))))
 
 (defn who
       "am I talking to someonein a privmsg, or in a channel?"
@@ -105,9 +110,9 @@
 (defmulti responder dispatch)
 
 (defmethod responder :math [pojo]
-  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" "(- 1 2 3 4)")
-        nums (map #(.parseInt java.lang.String %) num-strings)]
-    (prn nums)))
+  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
+        nums (map #(.parseInt java.lang.Integer %) num-strings)]
+    (sendMsg (:this pojo) (who pojo) (apply  (find-var (symbol "clojure.core" op)) nums))))
 
 (defmethod responder :doc-lookup [pojo]
   (sendMsg (:this pojo)
@@ -121,7 +126,8 @@
 
 (defmethod responder :define-is [pojo]
   (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
-        [term defi] (.split a " is ")]
+        term (term a)
+        defi (strip-is a)]
     (dosync
       (alter dict-is
              (fn [dict]
