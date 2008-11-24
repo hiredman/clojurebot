@@ -9,12 +9,13 @@
 
 (def nick "clojurebot")
 (def channel "#clojure")
-(def net "chat.feenode.org")
+(def net "chat.us.freenode.net")
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
 (def dict-are (ref {}))
+(def url (ref {}))
 
 (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
@@ -25,8 +26,8 @@
         (first (drop (rand-int (count se)) se))))
 
 ;; responses that can be randomly selected from
-(def input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
-(def befuddl ["Titim gan éirí ort." "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
+(def input-accepted ["In Ordnung" "Ik begrijp" "Alles klar" "Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
+(def befuddl ["Titim gan éirí ort." "No entiendo" "Извините?" "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
 
 (defn ok []
       (randth input-accepted))
@@ -57,9 +58,11 @@
       "this returns the doc metadata from a var in the
       clojure ns or a befuddled response"
       [symb]
-      (let [x (:doc (meta (find-var (symbol "clojure.core" symb))))]
+      (let [a (meta (find-var (symbol "clojure.core" symb)))
+            x (:doc a)
+            y (:arglists a)]
         (if x
-          x
+          (str x "; arglists " y)
           (befuddled))))
 
 (defmacro async
@@ -84,6 +87,25 @@
       [pojo]
       (when (or (re-find #"^clojurebot:" (:message pojo)) (nil? (:channel pojo)))
         pojo))
+
+(defmulti define (fn [pojo term defi]
+                     (if (and (@dict-is term) (re-find #"also" (:message pojo)))
+                       :add
+                       :new)))
+
+(defmethod define :new [pojo term defi]
+  (dosync (alter dict-is (fn [dict] (let [r (assoc dict (.trim term) (.trim defi))]
+                                       (when r (sendMsg (:this pojo) (who pojo) (ok)))
+                                       r)))))
+
+(defmethod define :add [pojo term defi]
+  (let [old (@dict-is term)
+        ne (if (vector? old)
+             (conj old defi)
+             [old defi])]
+    (dosync (alter dict-is (fn [dict] (let [r (assoc dict term ne)]
+                                        (when r (sendMsg (:this pojo) (who pojo) (ok)))
+                                        r))))))
  
 (defn dispatch
       "this function does dispatch for responder"
@@ -111,7 +133,11 @@
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(.parseInt java.lang.Integer %) num-strings)]
-    (sendMsg (:this pojo) (who pojo) (apply  (find-var (symbol "clojure.core" op)) nums))))
+    (sendMsg (:this pojo) (who pojo)
+             (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
+               (if (> out 4)
+                 "*suffusion of yellow*"
+                 out)))))
 
 (defmethod responder :doc-lookup [pojo]
   (sendMsg (:this pojo)
@@ -126,41 +152,38 @@
 (defmethod responder :define-is [pojo]
   (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
         term (term a)
-        defi (strip-is a)]
-    (dosync
-      (alter dict-is
-             (fn [dict]
-                 (let [r (assoc dict (.trim term) (.trim defi))]
-                   (when r
-                     (sendMsg (:this pojo) (who pojo) (ok)))
-                   r))))))
+        defi (.replaceFirst (strip-is a) "^also " "")]
+    (define pojo term defi)))
 
 (defmethod responder :lookup [pojo]
-  ; looks up message in dict
-  (let [msg (d?op (.trim (.replaceFirst (:message pojo) "^clojurebot:" "")))]
+  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
+        result ((deref dict-is) msg)
+        result (if (vector? result)
+                 (randth result)
+                 result)]
     (cond
-      ((deref dict-is) msg)
-        (sendMsg (:this pojo)
-                 (who pojo)
-                 (.replaceAll (if (re-find #"^<reply>" ((deref dict-is) msg))
-                                (.trim
-                                  (.replaceFirst (str ((deref dict-is) msg)) "^<reply>" ""))
-                                (str msg " is " ((deref dict-is) msg)))
+      result
+        (sendMsg (:this pojo) (who pojo)
+                 (.replaceAll (if (re-find #"^<reply>" result)
+                                (.trim (.replaceFirst (str result) "^<reply>" ""))
+                                (str msg " is " result))
                               "#who"
                               (:sender pojo)))
       :else
-         (sendMsg (:this pojo) (who pojo) (befuddled)))))
+        (sendMsg (:this pojo) (who pojo) (befuddled)))))
 
 (defmethod responder :know [pojo]
   (sendMsg (:this pojo) (who pojo) (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defmethod responder :url [pojo]
+  (dosync (alter url (fn [url] 
+                 (assoc url (re-find url-regex (:message pojo)) (java.util.Date.)))))
   (prn (:sender pojo) "> " (:message pojo)))
 
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
-                         hostname message))
+                         hostname message)))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
@@ -181,12 +204,14 @@
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
 
-(defn write-thread []
-      (send-off (anget nil)
-                (fn this [& _]
+(defn dump-thread []
+      (.start (Thread.
+                (fn []
+                    (prn (str (java.util.Date.) " " :dump))
                     (dumpdicts)
-                    (.sleep Thread 600000)
-                    (send-off *agent* this))))
+                    (Thread/sleep 60000)
+                    (recur)))))
+
       
 (defn load-dicts []
       (dosync
@@ -194,14 +219,12 @@
                  (eval
                    (binding [*in* (-> "clojurebot.is"
                                           java.io.File.
-                                          java.io.FileWriter.
+                                          java.io.FileReader.
                                           java.io.PushbackReader.)]
                                 (let [a (read)]
                                   (.close *in*)
                                   a))))))
 
-;; (update-proxy bot {'onMessage handleMessage
-;;                    'onPrivateMessage handlePrivateMessage})
 (def *bot* (pircbot))
 (.connect *bot* net)
 (.changeNick *bot* nick)
