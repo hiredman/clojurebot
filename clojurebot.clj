@@ -205,3 +205,6 @@
 (.connect *bot* net)
 (.changeNick *bot* nick)
 (.joinChannel *bot* channel)
+
+(defn randth [se]
+      (let [s (seq se)])
