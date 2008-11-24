@@ -20,20 +20,19 @@
 
 (defstruct junks :this :channel :sender :login :hostname :message)
 
-;; responses that can be randomly selected from
-(def response
-     {:input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"]
-      :befuddled ["Titim gan éirí ort." "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."]})
+(defn randth [se]
+      (let [s (seq se)]
+        (first (drop (rand-int (count se)) se))))
 
-(defn random-response
-      "select a random response of the correct type"
-      [type]
-      ((response type) (rand-int (count (response type)))))
+;; responses that can be randomly selected from
+(def input-accepted ["Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
+(def befuddl ["Titim gan éirí ort." "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
 
 (defn ok []
-      (random-response :input-accepted))
+      (randth input-accepted))
+
 (defn befuddled []
-      (random-response :befuddled))
+      (randth befuddl))
 
 (defn strip-is [string]
       (.trim (.substring string (inc (inc (.indexOf string "is"))))))
@@ -91,7 +90,7 @@
       [pojo]
       (cond
         (doc-lookup? (:message pojo))
-          :doc-lookup
+          :doc-lookup 
         (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
           :know
         (and (addressed? pojo) (re-find #"svn" (:message pojo)))
@@ -181,30 +180,29 @@
                         (prn @rels)
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
+
+(defn write-thread []
+      (send-off (anget nil)
+                (fn this [& _]
+                    (dumpdicts)
+                    (.sleep Thread 600000)
+                    (send-off *agent* this))))
       
-;; (.start (Thread. (fn []
-;;              (loop []
-;;                (dumpdicts)
-;;                (.sleep Thread 600000)
-;;                (recur)))))
-;;  
-;; (dosync 
-;;   (ref-set dict-is
-;; (eval (binding [*in* (-> "clojurebot.is"
-;;                    java.io.File.
-;;                    java.io.FileReader.
-;;                    java.io.PushbackReader.)]
-;;          (let [a (read)]
-;;            (.close *in*)
-;;            a))))
-;; )
+(defn load-dicts []
+      (dosync
+        (ref-set dict-is
+                 (eval
+                   (binding [*in* (-> "clojurebot.is"
+                                          java.io.File.
+                                          java.io.FileWriter.
+                                          java.io.PushbackReader.)]
+                                (let [a (read)]
+                                  (.close *in*)
+                                  a))))))
+
 ;; (update-proxy bot {'onMessage handleMessage
 ;;                    'onPrivateMessage handlePrivateMessage})
-
 (def *bot* (pircbot))
 (.connect *bot* net)
 (.changeNick *bot* nick)
 (.joinChannel *bot* channel)
-
-(defn randth [se]
-      (let [s (seq se)])
