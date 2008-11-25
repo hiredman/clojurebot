@@ -36,7 +36,7 @@
       (randth befuddl))
 
 (defn strip-is [string]
-      (.trim (.substring string (inc (inc (.indexOf string "is"))))))
+      (.trim (.substring string (+ 3 (.indexOf string " is ")))))
 
 (defn term [string]
       (first (.split string " is ")))
@@ -94,9 +94,12 @@
                        :new)))
 
 (defmethod define :new [pojo term defi]
-  (dosync (alter dict-is (fn [dict] (let [r (assoc dict (.trim term) (.trim defi))]
-                                       (when r (sendMsg (:this pojo) (who pojo) (ok)))
-                                       r)))))
+  (dosync
+    (alter dict-is
+           (fn [dict]
+               (let [r (assoc dict (.trim term) (.trim defi))]
+                 (when r (sendMsg (:this pojo) (who pojo) (ok)))
+                 r)))))
 
 (defmethod define :add [pojo term defi]
   (let [old (@dict-is term)
@@ -119,6 +122,8 @@
           :svn
         (and (addressed? pojo) (re-find #" is " (:message pojo)))
           :define-is
+        (and (addressed? pojo) (re-find #" literal " (:message pojo)))
+          :literal
         (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message pojo))
           :math
         (addressed? pojo) 
@@ -128,7 +133,7 @@
         :else
           nil))
 
-(defmulti responder dispatch)
+(defmulti #^{:docs "currently all messages are routed though this function"} responder dispatch)
 
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
@@ -180,6 +185,9 @@
                  (assoc url (re-find url-regex (:message pojo)) (java.util.Date.)))))
   (prn (:sender pojo) "> " (:message pojo)))
 
+(defmethod responder :literal [pojo]
+  (let [q (.replaceFirst (:message pojo) (str "^" nick ": literal ") "")]
+    (prn q)))
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
