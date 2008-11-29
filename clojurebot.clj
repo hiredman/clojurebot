@@ -27,7 +27,7 @@
 
 ;; responses that can be randomly selected from
 (def input-accepted ["In Ordnung" "Ik begrijp" "Alles klar" "Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
-(def befuddl ["Titim gan éirí ort." "No entiendo" "Извините?" "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
+(def befuddl ["Titim gan éirí ort." "Gabh mo leithscéal?" "No entiendo" "Извините?" "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
 
 (defn ok []
       (randth input-accepted))
