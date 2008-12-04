@@ -11,10 +11,13 @@
 (def channel "#clojure")
 (def net "chat.us.freenode.net")
 
+
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
 (def dict-are (ref {}))
+
+;url is for storing urls, must figure out something to do with this
 (def url (ref {}))
 
 (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
@@ -68,12 +71,15 @@
 (defmacro async
   "just do this, I don't care"
   [& x]
-  `(send-off (agent nil) (fn [& _#] ~@x )))
+  `(send-off (agent nil) (f))[& _#] ~@x )))
 
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
       (async (.sendMessage this recv (.replace (str msg) \newline \ ))))
+
+(defmacro sendMsg-who [pojo msg]
+  `(sendMsg (:this ~pojo) (who ~pojo) ~msg))
 
 (defn who
       "am I talking to someonein a privmsg, or in a channel?"
@@ -120,11 +126,11 @@
           :know
         (and (addressed? pojo) (re-find #"svn" (:message pojo)))
           :svn
-        (and (addressed? pojo) (re-find #" is " (:message pojo)))
+        (and (addressed? pojo) (re-find #" is " (:message pojo))  (not= \? (last (:message pojo))))
           :define-is
         (and (addressed? pojo) (re-find #" literal " (:message pojo)))
           :literal
-        (re-find #"^\([\+ / - \*] [ 0-9]+\)" (:message pojo))
+        (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message pojo))
           :math
         (addressed? pojo) 
           :lookup
@@ -133,7 +139,7 @@
         :else
           nil))
 
-(defmulti #^{:docs "currently all messages are routed though this function"} responder dispatch)
+(defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
@@ -177,6 +183,16 @@
       :else
         (sendMsg (:this pojo) (who pojo) (befuddled)))))
 
+(defn fuzzy-lookup [message]
+  (let [msg (d?op (.trim (.replaceFirst message (str "^" nick ":") "")))
+        words (re-seq #"\w+" msg)
+        filtered-words (filter #(not (contains? #{"what" "is" "who" "are"} %)) words)]
+    (loop [w filtered-words]
+          (if w
+            (if (@dict-is (first w))
+              (first w)
+              (recur (rest w)))))))
+
 (defmethod responder :know [pojo]
   (sendMsg (:this pojo) (who pojo) (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
@@ -212,7 +228,57 @@
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
 
-      
+(def svn-command "svn -v --xml --limit 5 log  https://clojure.svn.sourceforge.net/svnroot/clojure")
+
+(defn svn-summaries
+      "takes output of clojure.xml/parse on svn's xml log, returns
+      a vector of [rev-number commit-message]"
+      [tag-map]
+      (map (fn [x]
+               [(.parseInt Integer (:revision (:attrs x)))
+                (first
+                  (:content
+                    (first
+                      (filter #(= (:tag %) :msg)
+                              (:content x)))))])
+           (:content tag-map)))
+
+(defn svn-message
+      "takes a seq of vectors containing [rev msg]
+      sends out messages about new revs. updates \"latest\" 
+      to latest rev"
+      [summaries]
+      (dosync
+        (let [newrevs (filter #(> (first %)
+                                  (.parseInt Integer (@dict-is "latest")))
+                              (reverse summaries))]
+          (when newrevs
+            (do
+              (dorun
+                (map #(sendMsg *bot*
+                               "hiredman"
+                               (str "svn rev " (first %) "; " (last %)))
+                     newrevs))
+              (alter dict-is
+                     assoc "latest" (str (first (first summaries)))))))))
+
+
+(defn svn-xml-stream
+      "get the xml stream from svn"
+      []
+      (.getInputStream (.. Runtime getRuntime (exec svn-command))))
+
+(defn svn-notifier-thread []
+      (send-off (agent nil)
+                (fn this [& _]
+                    (svn-message
+                      (svn-summaries
+                        (clojure.xml/parse (svn-xml-stream))))
+                    (Thread/sleep (* 5 60000))
+                    (send-off *agent* this))))
+
+;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream))))
+    
 (defn load-dicts []
       (dosync
         (ref-set dict-is
@@ -228,13 +294,12 @@
 (defn dump-thread []
       (send-off (agent nil)
                 (fn this [& _]
-                    (prn (java.util.Date.))
                     (binding [*out* (-> "clojurebot.is"
                                         java.io.File.
                                         java.io.FileWriter.)]
                              (prn @dict-is)
                              (.close *out*))
-                    (Thread/sleep 60000)
+                    (Thread/sleep (* 10 60000))
                     (send-off *agent* this))))
 
 
