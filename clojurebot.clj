@@ -11,6 +11,7 @@
 (def channel "#clojure")
 (def net "chat.us.freenode.net")
 
+(def *bot*)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -37,6 +38,16 @@
 
 (defn befuddled []
       (randth befuddl))
+
+(defn inits
+      "this is Chouser's fault"
+      [s]
+      (map first
+           (take-while second
+                       (map split-at
+                            (iterate inc 0)
+                            (repeat (lazy-cat s [nil]))))))
+
 
 (defn strip-is [string]
       (.trim (.substring string (+ 3 (.indexOf string " is ")))))
@@ -71,15 +82,38 @@
 (defmacro async
   "just do this, I don't care"
   [& x]
-  `(send-off (agent nil) (f))[& _#] ~@x )))
+  `(send-off (agent nil) (fn [& _#] ~@x )))
 
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
-      (async (.sendMessage this recv (.replace (str msg) \newline \ ))))
+      (.sendMessage this recv (.replace (str msg) \newline \ )))
 
 (defmacro sendMsg-who [pojo msg]
   `(sendMsg (:this ~pojo) (who ~pojo) ~msg))
+
+
+(defn term-lists [msg]
+      (let [x (re-seq #"\w+" msg)
+            ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str nick ": ")} %))]
+        (filter ignore
+        (apply concat
+               (map (fn [x]
+                        (map (fn [y]
+                                 (reduce #(str % " " %2) y)) x))
+                    (map #(reverse (filter identity (inits (drop % x))))
+                         (take (count x) (iterate inc 0))))))))
+
+(defn rlookup [terms]
+      (loop [t terms]
+            (if t
+              (if (@dict-is (first t))
+                (first t)
+                (recur (rest t))))))
+
+(defn fuzzy-lookup [message]
+      (rlookup (term-lists message)))
+
 
 (defn who
       "am I talking to someonein a privmsg, or in a channel?"
@@ -95,26 +129,23 @@
         pojo))
 
 (defmulti define (fn [pojo term defi]
-                     (if (and (@dict-is term) (re-find #"also" (:message pojo)))
+                     (if (and (@dict-is term) (re-find #" also " (:message pojo)))
                        :add
                        :new)))
 
 (defmethod define :new [pojo term defi]
   (dosync
-    (alter dict-is
-           (fn [dict]
-               (let [r (assoc dict (.trim term) (.trim defi))]
-                 (when r (sendMsg (:this pojo) (who pojo) (ok)))
-                 r)))))
+    (commute dict-is assoc (.trim term) (.trim defi)))
+  (sendMsg-who pojo (ok)))
 
 (defmethod define :add [pojo term defi]
   (let [old (@dict-is term)
         ne (if (vector? old)
              (conj old defi)
              [old defi])]
-    (dosync (alter dict-is (fn [dict] (let [r (assoc dict term ne)]
-                                        (when r (sendMsg (:this pojo) (who pojo) (ok)))
-                                        r))))))
+    (dosync
+      (commute dict-is assoc term ne))
+    (sendMsg-who pojo (ok))))
  
 (defn dispatch
       "this function does dispatch for responder"
@@ -124,8 +155,6 @@
           :doc-lookup 
         (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
           :know
-        (and (addressed? pojo) (re-find #"svn" (:message pojo)))
-          :svn
         (and (addressed? pojo) (re-find #" is " (:message pojo))  (not= \? (last (:message pojo))))
           :define-is
         (and (addressed? pojo) (re-find #" literal " (:message pojo)))
@@ -144,21 +173,17 @@
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(.parseInt java.lang.Integer %) num-strings)]
-    (sendMsg (:this pojo) (who pojo)
-             (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
-               (if (> out 4)
-                 "*suffusion of yellow*"
-                 out)))))
+    (sendMsg-who pojo
+                 (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
+                   (if (> out 4)
+                     "*suffusion of yellow*"
+                     out)))))
 
 (defmethod responder :doc-lookup [pojo]
-  (sendMsg (:this pojo)
-           (who pojo)
-           (symbol-to-var-doc (subs (:message pojo) 5 (dec (count (:message pojo)))))))
-
-(defmethod responder :svn [pojo]
-  (sendMsg (:this pojo)
-           (who pojo)
-           "svn co https://clojure.svn.sourceforge.net/svnroot/clojure clojure"))
+  (sendMsg-who pojo
+               (symbol-to-var-doc (subs (:message pojo)
+                                        5
+                                        (dec (count (:message pojo)))))))
 
 (defmethod responder :define-is [pojo]
   (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
@@ -174,31 +199,32 @@
                  result)]
     (cond
       result
-        (sendMsg (:this pojo) (who pojo)
-                 (.replaceAll (if (re-find #"^<reply>" result)
-                                (.trim (.replaceFirst (str result) "^<reply>" ""))
-                                (str msg " is " result))
-                              "#who"
-                              (:sender pojo)))
+        (sendMsg-who pojo
+                     (.replaceAll (if (re-find #"^<reply>" result)
+                                    (.trim (.replaceFirst (str result) "^<reply>" ""))
+                                    (str msg " is " result))
+                                  "#who"
+                                  (:sender pojo)))
+      (fuzzy-lookup msg)
+        (let [x (fuzzy-lookup msg)
+              r (@dict-is x)
+              r (if (vector? r) (randth r) r)]
+          (sendMsg-who pojo
+                       (.replaceAll (if (re-find #"^<reply>" r)
+                                      (.trim (.replaceFirst (str r) "^<reply>" ""))
+                                      (str x " is " r))
+                       "#who"
+                       (:sender pojo))))
       :else
-        (sendMsg (:this pojo) (who pojo) (befuddled)))))
-
-(defn fuzzy-lookup [message]
-  (let [msg (d?op (.trim (.replaceFirst message (str "^" nick ":") "")))
-        words (re-seq #"\w+" msg)
-        filtered-words (filter #(not (contains? #{"what" "is" "who" "are"} %)) words)]
-    (loop [w filtered-words]
-          (if w
-            (if (@dict-is (first w))
-              (first w)
-              (recur (rest w)))))))
+        (sendMsg-who pojo (befuddled)))))
 
 (defmethod responder :know [pojo]
-  (sendMsg (:this pojo) (who pojo) (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
+  (sendMsg-who pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defmethod responder :url [pojo]
-  (dosync (alter url (fn [url] 
-                 (assoc url (re-find url-regex (:message pojo)) (java.util.Date.)))))
+  (dosync (commute url
+                   assoc
+                   (re-find url-regex (:message pojo)) (java.util.Date.)))
   (prn (:sender pojo) "> " (:message pojo)))
 
 (defmethod responder :literal [pojo]
@@ -243,24 +269,37 @@
                               (:content x)))))])
            (:content tag-map)))
 
+(defn get-last-svn-rev []
+      (.parseInt Integer (@dict-is "latest")))
+
+(defn filter-newer-svn-revs [revs]
+      (filter #(> (first %) (get-last-svn-rev))
+              revs))
+
+(defn send-svn-revs [revs]
+      (dorun
+        (map #(sendMsg *bot*
+                        channel
+                        (str "svn rev " (first %) "; " (last %)))
+             revs)))
+
+
 (defn svn-message
       "takes a seq of vectors containing [rev msg]
       sends out messages about new revs. updates \"latest\" 
       to latest rev"
       [summaries]
-      (dosync
-        (let [newrevs (filter #(> (first %)
-                                  (.parseInt Integer (@dict-is "latest")))
-                              (reverse summaries))]
-          (when newrevs
-            (do
-              (dorun
-                (map #(sendMsg *bot*
-                               "hiredman"
-                               (str "svn rev " (first %) "; " (last %)))
-                     newrevs))
-              (alter dict-is
-                     assoc "latest" (str (first (first summaries)))))))))
+      (let [newrevs (filter-newer-svn-revs (reverse summaries))]
+        (when newrevs
+          (do
+            (send-svn-revs newrevs)
+            (dosync
+              (commute dict-is
+                       assoc
+                       "latest"
+                       (str (first (first summaries)))))
+            ;don't want to see the whole hash in the repl
+            nil))))
 
 
 (defn svn-xml-stream
@@ -301,9 +340,6 @@
                              (.close *out*))
                     (Thread/sleep (* 10 60000))
                     (send-off *agent* this))))
-
-
-
 
 (def *bot* (pircbot))
 (.connect *bot* net)
