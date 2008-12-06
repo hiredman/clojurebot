@@ -23,9 +23,12 @@
 
 (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
+;; this struct is used to pass around messages
 (defstruct junks :this :channel :sender :login :hostname :message)
 
-(defn randth [se]
+(defn randth
+      "random item from sequence"
+      [se]
       (let [s (seq se)]
         (first (drop (rand-int (count se)) se))))
 
@@ -49,10 +52,16 @@
                             (repeat (lazy-cat s [nil]))))))
 
 
-(defn strip-is [string]
+(defn strip-is
+      "return a string with everything up to the end of the
+      first \"is\" removed"
+      [string]
       (.trim (.substring string (+ 3 (.indexOf string " is ")))))
 
-(defn term [string]
+(defn term
+      "returns the part of a string before the first occurence
+      of \"is"""
+      [string]
       (first (.split string " is ")))
 
 (defn doc-lookup?
