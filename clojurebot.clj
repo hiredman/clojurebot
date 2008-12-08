@@ -137,6 +137,59 @@
       (when (or (re-find #"^clojurebot:" (:message pojo)) (nil? (:channel pojo)))
         pojo))
 
+
+(def svn-command "svn -v --xml --limit 5 log  https://clojure.svn.sourceforge.net/svnroot/clojure")
+
+(defn svn-summaries
+      "takes output of clojure.xml/parse on svn's xml log, returns
+      a vector of [rev-number commit-message]"
+      [tag-map]
+      (map (fn [x]
+               [(.parseInt Integer (:revision (:attrs x)))
+                (first
+                  (:content
+                    (first
+                      (filter #(= (:tag %) :msg)
+                              (:content x)))))])
+           (:content tag-map)))
+
+(defn get-last-svn-rev []
+      (.parseInt Integer (@dict-is "latest")))
+
+(defn filter-newer-svn-revs [revs]
+      (filter #(> (first %) (get-last-svn-rev))
+              revs))
+
+(defn send-svn-revs [revs]
+      (dorun
+        (map #(sendMsg *bot*
+                        channel
+                        (str "svn rev " (first %) "; " (last %)))
+             revs)))
+
+
+(defn svn-message
+      "takes a seq of vectors containing [rev msg]
+      sends out messages about new revs. updates \"latest\" 
+      to latest rev"
+      [summaries]
+      (let [newrevs (filter-newer-svn-revs (reverse summaries))]
+        (when newrevs
+          (do
+            (send-svn-revs newrevs)
+            (dosync
+              (commute dict-is
+                       assoc
+                       "latest"
+                       (str (first (first summaries)))))
+            ;don't want to see the whole hash in the repl
+            nil))))
+
+(defn svn-xml-stream
+      "get the xml stream from svn"
+      [cmd]
+      (.getInputStream (.. Runtime getRuntime (exec cmd))))
+
 (defmulti define (fn [pojo term defi]
                      (if (and (@dict-is term) (re-find #" also " (:message pojo)))
                        :add
@@ -243,7 +296,9 @@
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
-  (prn (re-find #"[0-9]+" (:message pojo))))
+  (let [r (re-find #"[0-9]+" (:message pojo))
+        cmd (.replace svn-command "--limit 5" (str "-r " r))]
+    (prn (svn-summaries (clojure.xml/parse (svn-xml-stream cmd))))))
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
@@ -268,65 +323,12 @@
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
 
-(def svn-command "svn -v --xml --limit 5 log  https://clojure.svn.sourceforge.net/svnroot/clojure")
-
-(defn svn-summaries
-      "takes output of clojure.xml/parse on svn's xml log, returns
-      a vector of [rev-number commit-message]"
-      [tag-map]
-      (map (fn [x]
-               [(.parseInt Integer (:revision (:attrs x)))
-                (first
-                  (:content
-                    (first
-                      (filter #(= (:tag %) :msg)
-                              (:content x)))))])
-           (:content tag-map)))
-
-(defn get-last-svn-rev []
-      (.parseInt Integer (@dict-is "latest")))
-
-(defn filter-newer-svn-revs [revs]
-      (filter #(> (first %) (get-last-svn-rev))
-              revs))
-
-(defn send-svn-revs [revs]
-      (dorun
-        (map #(sendMsg *bot*
-                        channel
-                        (str "svn rev " (first %) "; " (last %)))
-             revs)))
-
-
-(defn svn-message
-      "takes a seq of vectors containing [rev msg]
-      sends out messages about new revs. updates \"latest\" 
-      to latest rev"
-      [summaries]
-      (let [newrevs (filter-newer-svn-revs (reverse summaries))]
-        (when newrevs
-          (do
-            (send-svn-revs newrevs)
-            (dosync
-              (commute dict-is
-                       assoc
-                       "latest"
-                       (str (first (first summaries)))))
-            ;don't want to see the whole hash in the repl
-            nil))))
-
-
-(defn svn-xml-stream
-      "get the xml stream from svn"
-      []
-      (.getInputStream (.. Runtime getRuntime (exec svn-command))))
-
 (defn svn-notifier-thread []
       (send-off (agent nil)
                 (fn this [& _]
                     (svn-message
                       (svn-summaries
-                        (clojure.xml/parse (svn-xml-stream))))
+                        (clojure.xml/parse (svn-xml-stream svn-command))))
                     (Thread/sleep (* 5 60000))
                     (send-off *agent* this))))
 
