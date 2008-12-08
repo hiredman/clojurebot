@@ -60,7 +60,7 @@
 
 (defn term
       "returns the part of a string before the first occurence
-      of \"is"""
+      of \"is\""
       [string]
       (first (.split string " is ")))
 
@@ -298,7 +298,7 @@
 (defmethod responder :svn-rev-lookup [pojo]
   (let [r (re-find #"[0-9]+" (:message pojo))
         cmd (.replace svn-command "--limit 5" (str "-r " r))]
-    (prn (svn-summaries (clojure.xml/parse (svn-xml-stream cmd))))))
+    (send-svn-revs (svn-summaries (clojure.xml/parse (svn-xml-stream cmd))))))
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
