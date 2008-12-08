@@ -170,6 +170,8 @@
           :literal
         (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message pojo))
           :math
+        (re-find #"^svn rev [0-9]+$" (:message pojo))
+          :svn-rev-lookup
         (addressed? pojo) 
           :lookup
         (re-find url-regex (:message pojo))
@@ -239,6 +241,9 @@
 (defmethod responder :literal [pojo]
   (let [q (.replaceFirst (:message pojo) (str "^" nick ": literal ") "")]
     (prn q)))
+
+(defmethod responder :svn-rev-lookup [pojo]
+  (prn (re-find #"[0-9]+" (:message pojo))))
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
