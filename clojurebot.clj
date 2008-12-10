@@ -21,6 +21,8 @@
 ;url is for storing urls, must figure out something to do with this
 (def url (ref {}))
 
+(def svn-rev-cache (ref []))
+
 (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 ;; this struct is used to pass around messages
@@ -100,6 +102,9 @@
 
 (defmacro sendMsg-who [pojo msg]
   `(sendMsg (:this ~pojo) (who ~pojo) ~msg))
+
+(defn cache-svn-rev [rev]
+      (dosync (commute svn-rev-cache conj rev)))
 
 
 (defn term-lists [msg]
@@ -208,6 +213,26 @@
     (dosync
       (commute dict-is assoc term ne))
     (sendMsg-who pojo (ok))))
+
+(defn is [term defi]
+      (if (@dict-is term)
+        (let [old (@dict-is term)
+              v (if (vector? old)
+                  (conj old defi)
+                  [old defi])]
+          (dosync (commute dict-is assoc term v)))
+        (dosync (commute dict-is assoc term defi))))
+
+(defn is! [term defi]
+      (dosync (commute dict-is assoc term defi)))
+
+
+(defn what-is [term]
+      (when-let [f (@dict-is term)]
+                (if (vector? f)
+                  (randth f)
+                  f)))
+
  
 (defn dispatch
       "this function does dispatch for responder"
@@ -249,18 +274,52 @@
                                         5
                                         (dec (count (:message pojo)))))))
 
+;;(defmethod responder :define-is [pojo]
+;;  (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
+;;        term (term a)
+;;        defi (.replaceFirst (strip-is a) "^also " "")]
+;;    (define pojo term defi)))
+
 (defmethod responder :define-is [pojo]
   (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
         term (term a)
-        defi (.replaceFirst (strip-is a) "^also " "")]
-    (define pojo term defi)))
+        x (strip-is a)
+        defi (.replaceFirst x "^also " "")]
+    (if (re-find #"^also " x)
+      (is term defi)
+      (is! term defi))))
+
+
+;;(defmethod responder :lookup [pojo]
+;;  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
+;;        result ((deref dict-is) msg)
+;;        result (if (vector? result)
+;;                 (randth result)
+;;                 result)]
+;;    (cond
+;;      result
+;;        (sendMsg-who pojo
+;;                     (.replaceAll (if (re-find #"^<reply>" result)
+;;                                    (.trim (.replaceFirst (str result) "^<reply>" ""))
+;;                                    (str msg " is " result))
+;;                                  "#who"
+;;                                  (:sender pojo)))
+;;      (fuzzy-lookup msg)
+;;        (let [x (fuzzy-lookup msg)
+;;              r (@dict-is x)
+;;              r (if (vector? r) (randth r) r)]
+;;          (sendMsg-who pojo
+;;                       (.replaceAll (if (re-find #"^<reply>" r)
+;;                                      (.trim (.replaceFirst (str r) "^<reply>" ""))
+;;                                      (str x " is " r))
+;;                       "#who"
+;;                       (:sender pojo))))
+;;      :else
+;;        (sendMsg-who pojo (befuddled)))))
 
 (defmethod responder :lookup [pojo]
   (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
-        result ((deref dict-is) msg)
-        result (if (vector? result)
-                 (randth result)
-                 result)]
+        result (what-is msg)]
     (cond
       result
         (sendMsg-who pojo
@@ -271,8 +330,7 @@
                                   (:sender pojo)))
       (fuzzy-lookup msg)
         (let [x (fuzzy-lookup msg)
-              r (@dict-is x)
-              r (if (vector? r) (randth r) r)]
+              r (what-is x)]
           (sendMsg-who pojo
                        (.replaceAll (if (re-find #"^<reply>" r)
                                       (.trim (.replaceFirst (str r) "^<reply>" ""))
@@ -281,6 +339,7 @@
                        (:sender pojo))))
       :else
         (sendMsg-who pojo (befuddled)))))
+
 
 (defmethod responder :know [pojo]
   (sendMsg-who pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
@@ -296,9 +355,15 @@
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
-  (let [r (re-find #"[0-9]+" (:message pojo))
-        cmd (.replace svn-command "--limit 5" (str "-r " r))]
-    (send-svn-revs (svn-summaries (clojure.xml/parse (svn-xml-stream cmd))))))
+  (let [r (.parseInt Integer (re-find #"[0-9]+" (:message pojo)))
+        t (filter #(= (first %) r)  @svn-rev-cache)]
+    (if (not= 0 (count t))
+      (send-svn-revs t)
+      (let [cmd (.replace svn-command "--limit 5" (str "-r " r))
+            b (svn-summaries (clojure.xml/parse (svn-xml-stream cmd)))]
+        (do
+          (send-svn-revs b)
+          (dorun (map cache-svn-rev b)))))))
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
@@ -326,9 +391,9 @@
 (defn svn-notifier-thread []
       (send-off (agent nil)
                 (fn this [& _]
-                    (svn-message
-                      (svn-summaries
-                        (clojure.xml/parse (svn-xml-stream svn-command))))
+                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command)))]
+                      (svn-message m)
+                      (map cache-svn-rev m))
                     (Thread/sleep (* 5 60000))
                     (send-off *agent* this))))
 
