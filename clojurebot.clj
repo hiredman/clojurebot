@@ -195,26 +195,9 @@
       [cmd]
       (.getInputStream (.. Runtime getRuntime (exec cmd))))
 
-(defmulti define (fn [pojo term defi]
-                     (if (and (@dict-is term) (re-find #" also " (:message pojo)))
-                       :add
-                       :new)))
-
-(defmethod define :new [pojo term defi]
-  (dosync
-    (commute dict-is assoc (.trim term) (.trim defi)))
-  (sendMsg-who pojo (ok)))
-
-(defmethod define :add [pojo term defi]
-  (let [old (@dict-is term)
-        ne (if (vector? old)
-             (conj old defi)
-             [old defi])]
-    (dosync
-      (commute dict-is assoc term ne))
-    (sendMsg-who pojo (ok))))
-
-(defn is [term defi]
+(defn is
+      "add a new definition to a term in dict-is"
+      [term defi]
       (if (@dict-is term)
         (let [old (@dict-is term)
               v (if (vector? old)
@@ -223,15 +206,17 @@
           (dosync (commute dict-is assoc term v)))
         (dosync (commute dict-is assoc term defi))))
 
-(defn is! [term defi]
+(defn is!
+      "define a term in dict-is, overwriting anything that was there"
+      [term defi]
       (dosync (commute dict-is assoc term defi)))
 
 
-(defn what-is [term]
+(defn what-is
+      "looks up a term in @dict-is"
+      [term]
       (when-let [f (@dict-is term)]
-                (if (vector? f)
-                  (randth f)
-                  f)))
+        (if (vector? f) (randth f) f)))
 
  
 (defn dispatch
@@ -274,12 +259,6 @@
                                         5
                                         (dec (count (:message pojo)))))))
 
-;;(defmethod responder :define-is [pojo]
-;;  (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
-;;        term (term a)
-;;        defi (.replaceFirst (strip-is a) "^also " "")]
-;;    (define pojo term defi)))
-
 (defmethod responder :define-is [pojo]
   (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
         term (term a)
@@ -287,35 +266,8 @@
         defi (.replaceFirst x "^also " "")]
     (if (re-find #"^also " x)
       (is term defi)
-      (is! term defi))))
-
-
-;;(defmethod responder :lookup [pojo]
-;;  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
-;;        result ((deref dict-is) msg)
-;;        result (if (vector? result)
-;;                 (randth result)
-;;                 result)]
-;;    (cond
-;;      result
-;;        (sendMsg-who pojo
-;;                     (.replaceAll (if (re-find #"^<reply>" result)
-;;                                    (.trim (.replaceFirst (str result) "^<reply>" ""))
-;;                                    (str msg " is " result))
-;;                                  "#who"
-;;                                  (:sender pojo)))
-;;      (fuzzy-lookup msg)
-;;        (let [x (fuzzy-lookup msg)
-;;              r (@dict-is x)
-;;              r (if (vector? r) (randth r) r)]
-;;          (sendMsg-who pojo
-;;                       (.replaceAll (if (re-find #"^<reply>" r)
-;;                                      (.trim (.replaceFirst (str r) "^<reply>" ""))
-;;                                      (str x " is " r))
-;;                       "#who"
-;;                       (:sender pojo))))
-;;      :else
-;;        (sendMsg-who pojo (befuddled)))))
+      (is! term defi))
+    (sendMsg-who pojo (ok))))
 
 (defmethod responder :lookup [pojo]
   (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
@@ -426,3 +378,5 @@
 (.connect *bot* net)
 (.changeNick *bot* nick)
 (.joinChannel *bot* channel)
+(load-dicts)
+(svn-notifier-thread)
