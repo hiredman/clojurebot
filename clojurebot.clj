@@ -150,7 +150,7 @@
       a vector of [rev-number commit-message]"
       [tag-map]
       (map (fn [x]
-               [(.parseInt Integer (:revision (:attrs x)))
+               [(Integer/parseInt (:revision (:attrs x)))
                 (first
                   (:content
                     (first
@@ -159,7 +159,7 @@
            (:content tag-map)))
 
 (defn get-last-svn-rev []
-      (.parseInt Integer (@dict-is "latest")))
+      (Integer/parseInt (@dict-is "latest")))
 
 (defn filter-newer-svn-revs [revs]
       (filter #(> (first %) (get-last-svn-rev))
@@ -225,6 +225,8 @@
       (cond
         (doc-lookup? (:message pojo))
           :doc-lookup 
+        (re-find #"^,\(" (:message pojo))
+          :code-sandbox
         (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
           :know
         (and (addressed? pojo) (re-find #" is " (:message pojo))  (not= \? (last (:message pojo))))
@@ -246,7 +248,7 @@
 
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
-        nums (map #(.parseInt java.lang.Integer %) num-strings)]
+        nums (map #(Integer/parseInt %) num-strings)]
     (sendMsg-who pojo
                  (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
                    (if (> out 4)
@@ -307,7 +309,7 @@
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
-  (let [r (.parseInt Integer (re-find #"[0-9]+" (:message pojo)))
+  (let [r (Integer/parseInt (re-find #"[0-9]+" (:message pojo)))
         t (filter #(= (first %) r)  @svn-rev-cache)]
     (if (not= 0 (count t))
       (send-svn-revs t)
@@ -316,6 +318,13 @@
         (do
           (send-svn-revs b)
           (dorun (map cache-svn-rev b)))))))
+
+(defn user-watch []
+      (let [cur (count (.getUsers *bot* "#clojure"))
+            pre (Integer/parseInt (what-is "max people"))]
+        (when (> cur pre)
+          (is! "max people" (str cur)))))
+
 
 (defn handleMessage [this channel sender login hostname message]
       (responder (struct junks this channel sender login
@@ -326,6 +335,9 @@
 
 (defn pircbot []
       (proxy [PircBot] []
+             (onJoin [channel sender login hostname]
+                     (prn :foo)
+                     (user-watch))
              (onMessage [channel sender login hostname message]
                         (handleMessage this channel sender login hostname message))
              (onPrivateMessage [sender login hostname message]
