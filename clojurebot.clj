@@ -3,9 +3,21 @@
 ;;   "Though a program be but three lines long, someday it will have to be
 ;;   maintained."
 ;; 
+;;
+;; [01:30] <uhelp> lexxan: Since Mon May  2 17:22:46 2005,
+;;                 there have been 0 modifications and 0 questions.
+;;                 I have been awake for 7 minutes and 36 seconds
+;;                 this session, and currently reference 19
+;;                 factoids. Addressing is in optional mode.
+
+
+;java -ms32m -mx200m
 
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)))
+
+(binding [*ns* (create-ns 'foo)]
+         (clojure.core/refer 'clojure.core))
 
 (def nick "clojurebot")
 (def channel "#clojure")
@@ -143,7 +155,7 @@
         pojo))
 
 
-(def svn-command "svn -v --xml --limit 5 log  https://clojure.svn.sourceforge.net/svnroot/clojure")
+(def svn-command "svn -v --xml --limit 5 log  http://clojure.googlecode.com/svn/")
 
 (defn svn-summaries
       "takes output of clojure.xml/parse on svn's xml log, returns
@@ -218,6 +230,20 @@
       (when-let [f (@dict-is term)]
         (if (vector? f) (randth f) f)))
 
+(defn enable-security-manager []
+      (System/setSecurityManager (SecurityManager.)))
+ 
+(defn sandbox [func]
+      (let [perms (java.security.Permissions.)
+            domain (java.security.ProtectionDomain.
+                     (java.security.CodeSource. nil
+                                                (cast java.security.cert.Certificate nil))
+                     perms)
+            context (java.security.AccessControlContext. (into-array [domain]))
+            pA (proxy [java.security.PrivilegedAction] [] (run [] (func)))]
+        (java.security.AccessController/doPrivileged
+          pA context)))
+
  
 (defn dispatch
       "this function does dispatch for responder"
@@ -245,6 +271,27 @@
           nil))
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
+
+(defn naughty-forms [string])
+
+(defn sb-in-ns [form n]
+      (binding [*ns* (if-let [n (find-ns n)]
+                             n
+                             (create-ns n))]
+               (sandbox form)))
+
+(defmethod responder :code-sandbox [pojo]
+  (println (:message pojo))
+  (let [form (-> (.replaceAll (:message pojo) "^," "")
+                 java.io.StringReader.
+                 java.io.PushbackReader.
+                 read)]
+    (binding [*out* (java.io.StringWriter.)]
+             (let [o (sb-in-ns #(eval form) 'foo)
+                   osw (str *out*)]
+               (when-not (= osw "")
+                 (sendMsg-who pojo osw))
+               (sendMsg-who pojo (str o))))))
 
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
@@ -336,7 +383,6 @@
 (defn pircbot []
       (proxy [PircBot] []
              (onJoin [channel sender login hostname]
-                     (prn :foo)
                      (user-watch))
              (onMessage [channel sender login hostname message]
                         (handleMessage this channel sender login hostname message))
@@ -387,8 +433,10 @@
                     (send-off *agent* this))))
 
 (def *bot* (pircbot))
+(enable-security-manager)
 (.connect *bot* net)
 (.changeNick *bot* nick)
 (.joinChannel *bot* channel)
 (load-dicts)
 (svn-notifier-thread)
+(dump-thread)
