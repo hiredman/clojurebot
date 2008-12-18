@@ -11,19 +11,25 @@
 ;;                 factoids. Addressing is in optional mode.
 
 
-;java -ms32m -mx200m
+;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot
-    (:import (org.jibble.pircbot PircBot)))
+    (:import (org.jibble.pircbot PircBot)
+             (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
 (binding [*ns* (create-ns 'foo)]
-         (clojure.core/refer 'clojure.core))
+         (clojure.core/refer 'clojure.core)
+         (import '(java.util Date)))
 
 (def nick "clojurebot")
 (def channel "#clojure")
 (def net "chat.us.freenode.net")
 
 (def *bot*)
+
+(def *execution-timeout* 10)
+
+(def start-date (java.util.Date.))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -232,7 +238,28 @@
 
 (defn enable-security-manager []
       (System/setSecurityManager (SecurityManager.)))
+
+;;;;;;;; Chousuke
+(defn thunk-timeout [thunk seconds]
+      (let [task (FutureTask. thunk)
+            thr (Thread. task)]
+        (try
+          (.start thr)
+          (.get task seconds TimeUnit/SECONDS)
+          (catch TimeoutException e
+                 (.cancel task true)
+                 (.stop thr (Exception. "Thread stopped!")) "Execution timed out"))))
  
+(defn wrap-exceptions [f]
+        (try (f) (catch Exception e (str :EXCEPTION (.getMessage e)))))
+;;;;;;;;;;;
+
+(defmacro thk-bind [binds & forms]
+  `(fn []
+       (binding ~binds
+                ~@forms)))
+
+
 (defn sandbox [func]
       (let [perms (java.security.Permissions.)
             domain (java.security.ProtectionDomain.
@@ -274,24 +301,26 @@
 
 (defn naughty-forms [string])
 
-(defn sb-in-ns [form n]
-      (binding [*ns* (if-let [n (find-ns n)]
-                             n
-                             (create-ns n))]
-               (sandbox form)))
-
 (defmethod responder :code-sandbox [pojo]
   (println (:message pojo))
   (let [form (-> (.replaceAll (:message pojo) "^," "")
                  java.io.StringReader.
                  java.io.PushbackReader.
-                 read)]
-    (binding [*out* (java.io.StringWriter.)]
-             (let [o (sb-in-ns #(eval form) 'foo)
-                   osw (str *out*)]
-               (when-not (= osw "")
-                 (sendMsg-who pojo osw))
-               (sendMsg-who pojo (str o))))))
+                 read)
+        thunk1 #(eval form)
+        thunk2 (thk-bind [*ns* (if-let [n (find-ns 'foo)]
+                                       n
+                                       (create-ns 'foo))
+                          *out* (java.io.StringWriter.)]
+                         [(thunk1) (str *out*)])
+        thunk3 #(sandbox thunk2)]
+    (let [o (thunk-timeout thunk3 *execution-timeout*)]
+      (if (vector? o)
+        (let [[result out] o]
+          (sendMsg-who pojo out)
+          (sendMsg-who pojo result))
+        (sendMsg-who pojo o)))))
+
 
 (defmethod responder :math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
