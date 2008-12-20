@@ -398,7 +398,7 @@
   (dosync (commute url
                    assoc
                    (re-find url-regex (:message pojo)) (java.util.Date.)))
-  (prn (:sender pojo) "> " (:message pojo)))
+  (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder :literal [pojo]
   (let [q (.replaceFirst (:message pojo) (str "^" nick ": literal ") "")]
