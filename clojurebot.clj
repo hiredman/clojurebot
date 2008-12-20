@@ -17,6 +17,7 @@
     (:import (org.jibble.pircbot PircBot)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
+;; set up the namespace for the sandbox
 (binding [*ns* (create-ns 'foo)]
          (clojure.core/refer 'clojure.core)
          (import '(java.util Date)))
@@ -25,9 +26,9 @@
 (def channel "#clojure")
 (def net "chat.us.freenode.net")
 
-(def *bot*)
+(def *bot*) ;this will be the bot object
 
-(def *execution-timeout* 10)
+(def *execution-timeout* 10) ;time out for sandbox exec
 
 (def start-date (java.util.Date.))
 
@@ -121,11 +122,15 @@
 (defmacro sendMsg-who [pojo msg]
   `(sendMsg (:this ~pojo) (who ~pojo) ~msg))
 
-(defn cache-svn-rev [rev]
+(defn cache-svn-rev
+      "puts an svn rev into the cache"
+      [rev]
       (dosync (commute svn-rev-cache conj rev)))
 
 
-(defn term-lists [msg]
+(defn term-lists
+      "generates permutions of the words in string"
+      [msg]
       (let [x (re-seq #"\w+" msg)
             ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str nick ": ")} %))]
         (filter ignore
@@ -136,16 +141,24 @@
                     (map #(reverse (filter identity (inits (drop % x))))
                          (take (count x) (iterate inc 0))))))))
 
-(defn rlookup [terms]
+(defn rlookup
+      "look up terms from a seq until you find a defi"
+      [terms]
       (loop [t terms]
             (if t
               (if (@dict-is (first t))
                 (first t)
                 (recur (rest t))))))
 
-(defn fuzzy-lookup [message]
+(defn fuzzy-lookup
+      "look up based on permutation"
+      [message]
       (rlookup (term-lists message)))
 
+(defn fuzzy-key-lookup
+      "look up based on match part of a term"
+      [term]
+      (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
 
 (defn who
       "am I talking to someonein a privmsg, or in a channel?"
@@ -254,12 +267,6 @@
         (try (f) (catch Exception e (str :EXCEPTION (.getMessage e)))))
 ;;;;;;;;;;;
 
-(defmacro thk-bind [binds & forms]
-  `(fn []
-       (binding ~binds
-                ~@forms)))
-
-
 (defn sandbox [func]
       (let [perms (java.security.Permissions.)
             domain (java.security.ProtectionDomain.
@@ -299,27 +306,31 @@
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
-(defn naughty-forms [string])
+(defn naughty-forms? [strang]
+      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
+        (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
+
+(defn find-or-create-ns [n]
+      (if-let [s (find-ns n)] s (create-ns n)))
 
 (defmethod responder :code-sandbox [pojo]
-  (println (:message pojo))
-  (let [form (-> (.replaceAll (:message pojo) "^," "")
-                 java.io.StringReader.
-                 java.io.PushbackReader.
-                 read)
-        thunk1 #(eval form)
-        thunk2 (thk-bind [*ns* (if-let [n (find-ns 'foo)]
-                                       n
-                                       (create-ns 'foo))
-                          *out* (java.io.StringWriter.)]
-                         [(thunk1) (str *out*)])
-        thunk3 #(sandbox thunk2)]
-    (let [o (thunk-timeout thunk3 *execution-timeout*)]
-      (if (vector? o)
-        (let [[result out] o]
-          (sendMsg-who pojo out)
-          (sendMsg-who pojo result))
-        (sendMsg-who pojo o)))))
+  (println (str (:sender pojo) " " (:message pojo)))
+  (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
+    (let [_ (println "accepted")
+          form (-> (.replaceAll (:message pojo) "^," "")
+                   java.io.StringReader.
+                   java.io.PushbackReader.
+                   read)
+          thunk1 #(eval form)
+          thunk2 #(binding [*ns* (find-or-create-ns 'foo)
+                            *out* (java.io.StringWriter.)]
+                           [(wrap-exceptions thunk1) (str *out*)])
+          thunk3 #(sandbox thunk2)]
+      (let [o (thunk-timeout thunk3 *execution-timeout*)]
+        (if (vector? o)
+          (doseq [i (reverse o)] (sendMsg-who pojo i))
+          (sendMsg-who pojo o))))
+    (sendMsg-who pojo (befuddled))))
 
 
 (defmethod responder :math [pojo]
@@ -347,27 +358,36 @@
       (is! term defi))
     (sendMsg-who pojo (ok))))
 
+(defn prep-reply [sender term defi]
+      (.replaceAll (if (re-find #"^<reply>" defi)
+                     (.trim (.replaceFirst (str defi) "^<reply>" ""))
+                     (str term " is " defi))
+                   "#who"
+                   sender))
+
 (defmethod responder :lookup [pojo]
   (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
         result (what-is msg)]
     (cond
-      result
+      result,
         (sendMsg-who pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
                                     (.trim (.replaceFirst (str result) "^<reply>" ""))
                                     (str msg " is " result))
                                   "#who"
                                   (:sender pojo)))
-      (fuzzy-lookup msg)
+
+      (fuzzy-lookup msg),
         (let [x (fuzzy-lookup msg)
               r (what-is x)]
-          (sendMsg-who pojo
-                       (.replaceAll (if (re-find #"^<reply>" r)
-                                      (.trim (.replaceFirst (str r) "^<reply>" ""))
-                                      (str x " is " r))
-                       "#who"
-                       (:sender pojo))))
-      :else
+          (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
+
+      (fuzzy-key-lookup msg),
+        (let [term (fuzzy-key-lookup msg)
+              defi (what-is term)]
+          (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
+
+      :else,
         (sendMsg-who pojo (befuddled)))))
 
 
