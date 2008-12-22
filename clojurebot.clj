@@ -321,6 +321,7 @@
                    java.io.StringReader.
                    java.io.PushbackReader.
                    read)
+; http://malde.org/~ketil/Hazard_lambda.svg
           thunk1 #(eval form)
           thunk2 #(binding [*ns* (find-or-create-ns 'foo)
                             *out* (java.io.StringWriter.)]
