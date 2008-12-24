@@ -15,16 +15,17 @@
 
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)
-             (java.util.concurrent FutureTask TimeUnit TimeoutException)))
+             (java.util.concurrent FutureTask TimeUnit TimeoutException))
+    (:require [hiredman.sandbox :as s]))
 
 ;; set up the namespace for the sandbox
 (binding [*ns* (create-ns 'foo)]
          (clojure.core/refer 'clojure.core)
          (import '(java.util Date)))
 
-(def *nick* "clojurebot")
-(def *channel* "#clojure")
-(def *network* "chat.us.freenode.net")
+(def nick "clojurebot")
+(def channel "#clojure")
+(def net "chat.us.freenode.net")
 
 (def *bot*) ;this will be the bot object
 
@@ -36,6 +37,7 @@
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
 (def dict-are (ref {}))
+(def users (ref {}))
 
 ;url is for storing urls, must figure out something to do with this
 (def url (ref {}))
@@ -132,7 +134,7 @@
       "generates permutions of the words in string"
       [msg]
       (let [x (re-seq #"\w+" msg)
-            ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str *nick* ": ")} %))]
+            ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str nick ": ")} %))]
         (filter ignore
         (apply concat
                (map (fn [x]
@@ -167,12 +169,10 @@
         (:channel pojo)
         (:sender pojo)))
 
-
-
 (defn addressed?
       "is this message prefixed with clojurebot: "
       [pojo]
-      (when (or (re-find (re-pattern (str "^" *nick* ":")) (:message pojo)) (nil? (:channel pojo)))
+      (when (or (re-find #"^clojurebot:" (:message pojo)) (nil? (:channel pojo)))
         pojo))
 
 
@@ -201,7 +201,7 @@
 (defn send-svn-revs [revs]
       (dorun
         (map #(sendMsg *bot*
-                        *channel*
+                        channel
                         (str "svn rev " (first %) "; " (last %)))
              revs)))
 
@@ -251,35 +251,9 @@
       (when-let [f (@dict-is term)]
         (if (vector? f) (randth f) f)))
 
-(defn enable-security-manager []
-      (System/setSecurityManager (SecurityManager.)))
-
-;;;;;;;; Chousuke
-(defn thunk-timeout [thunk seconds]
-      (let [task (FutureTask. thunk)
-            thr (Thread. task)]
-        (try
-          (.start thr)
-          (.get task seconds TimeUnit/SECONDS)
-          (catch TimeoutException e
-                 (.cancel task true)
-                 (.stop thr (Exception. "Thread stopped!")) "Execution timed out"))))
- 
-(defn wrap-exceptions [f]
-        (try (f) (catch Exception e (str "Exception: " (.getMessage e)))))
-;;;;;;;;;;;
-
-(defn sandbox [func]
-      (let [perms (java.security.Permissions.)
-            domain (java.security.ProtectionDomain.
-                     (java.security.CodeSource. nil
-                                                (cast java.security.cert.Certificate nil))
-                     perms)
-            context (java.security.AccessControlContext. (into-array [domain]))
-            pA (proxy [java.security.PrivilegedAction] [] (run [] (func)))]
-        (java.security.AccessController/doPrivileged
-          pA context)))
-
+(defn seen [who doing what & stuff]
+      (dosync
+        (commute users assoc who [nil (str (name doing) what)])))
  
 (defn dispatch
       "this function does dispatch for responder"
@@ -308,32 +282,18 @@
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
-(defn naughty-forms? [strang]
-      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
-        (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
-
 (defn find-or-create-ns [n]
       (if-let [s (find-ns n)] s (create-ns n)))
 
 (defmethod responder :code-sandbox [pojo]
   (println (str (:sender pojo) " " (:message pojo)))
-  (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
-    (let [_ (println "accepted")
-          form (-> (.replaceAll (:message pojo) "^," "")
-                   java.io.StringReader.
-                   java.io.PushbackReader.
-                   read)
-; http://malde.org/~ketil/Hazard_lambda.svg
-          thunk1 #(eval form)
-          thunk2 #(binding [*ns* (find-or-create-ns 'foo)
-                            *out* (java.io.StringWriter.)]
-                           [(wrap-exceptions thunk1) (str *out*)])
-          thunk3 #(sandbox thunk2)]
-      (let [o (thunk-timeout thunk3 *execution-timeout*)]
-        (if (vector? o)
-          (doseq [i (reverse o)] (sendMsg-who pojo i))
-          (sendMsg-who pojo o))))
-    (sendMsg-who pojo (befuddled))))
+  (let [result (s/box (:message pojo))]
+    (if (vector? result)
+      (dorun (map #(sendMsg-who pojo (if (> (count %) 300)
+                                       (reduce str (concat (take 300%) '(" ...")))
+                                       %))
+                  result))
+      (sendMsg-who pojo result))))
 
 
 (defmethod responder :math [pojo]
@@ -350,17 +310,12 @@
                (symbol-to-var-doc (subs (:message pojo)
                                         5
                                         (dec (count (:message pojo)))))))
-(defn remove-from-beginning
-  "return a string with the concatenation of the given chunks removed if it is
-   found at the start of the string"
-  [string & chunks]
-  (.replaceFirst string (apply str "^" chunks) ""))
 
 (defmethod responder :define-is [pojo]
-  (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
+  (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
         term (term a)
         x (strip-is a)
-        defi (remove-from-beginning x "also ")]
+        defi (.replaceFirst x "^also " "")]
     (if (re-find #"^also " x)
       (is term defi)
       (is! term defi))
@@ -368,27 +323,27 @@
 
 (defn prep-reply [sender term defi]
       (.replaceAll (if (re-find #"^<reply>" defi)
-                     (.trim (remove-from-beginning (str defi) "<reply>"))
+                     (.trim (.replaceFirst (str defi) "^<reply>" ""))
                      (str term " is " defi))
                    "#who"
                    sender))
 
 (defmethod responder :lookup [pojo]
-  (let [msg (d?op (.trim (remove-from-beginning (:message pojo) *nick* ":")))
+  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
         result (what-is msg)]
     (cond
       result,
         (sendMsg-who pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
-                                    (.trim (remove-from-beginning (str result) "<reply>"))
+                                    (.trim (.replaceFirst (str result) "^<reply>" ""))
                                     (str msg " is " result))
                                   "#who"
                                   (:sender pojo)))
 
       (fuzzy-lookup msg),
-        (let [term (fuzzy-lookup msg)
-              defi (what-is term)]
-          (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
+        (let [x (fuzzy-lookup msg)
+              r (what-is x)]
+          (sendMsg-who pojo (prep-reply (:sender pojo) term r)))
 
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
@@ -409,7 +364,7 @@
   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder :literal [pojo]
-  (let [q (remove-from-beginning (:message pojo) *nick* ": literal ")]
+  (let [q (.replaceFirst (:message pojo) (str "^" nick ": literal ") "")]
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
@@ -431,6 +386,8 @@
 
 
 (defn handleMessage [this channel sender login hostname message]
+      (when channel
+        (seen sender :saying message))
       (responder (struct junks this channel sender login
                          hostname message)))
 
@@ -464,7 +421,7 @@
                     (Thread/sleep (* 5 60000))
                     (send-off *agent* this))))
 
-;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream))))
+;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command))))
     
 (defn load-dicts []
       (dosync
@@ -490,10 +447,10 @@
                     (send-off *agent* this))))
 
 (def *bot* (pircbot))
-(enable-security-manager)
-(.connect *bot* *network*)
-(.changeNick *bot* *nick*)
-(.joinChannel *bot* *channel*)
+(s/enable-security-manager)
+(.connect *bot* net)
+(.changeNick *bot* nick)
+(.joinChannel *bot* channel)
 (load-dicts)
 (svn-notifier-thread)
 (dump-thread)
