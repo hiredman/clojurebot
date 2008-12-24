@@ -13,18 +13,13 @@
 
 ;java -server -ms16m -mx64m -Xss128m
 
-(ns hiredman.clojurebot
+(ns hiredman.clojurebot-core
     (:import (org.jibble.pircbot PircBot)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
 ;; set up the namespace for the sandbox
-(binding [*ns* (create-ns 'foo)]
-         (clojure.core/refer 'clojure.core)
-         (import '(java.util Date)))
 
-(def *nick* "clojurebot")
-(def *channel* "#clojure")
-(def *network* "chat.us.freenode.net")
+(declare *nick* *channel* *network* *sandbox-ns*)
 
 (def *bot*) ;this will be the bot object
 
@@ -39,8 +34,6 @@
 
 ;url is for storing urls, must figure out something to do with this
 (def url (ref {}))
-
-(def svn-rev-cache (ref []))
 
 (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
@@ -122,12 +115,6 @@
 (defmacro sendMsg-who [pojo msg]
   `(sendMsg (:this ~pojo) (who ~pojo) ~msg))
 
-(defn cache-svn-rev
-      "puts an svn rev into the cache"
-      [rev]
-      (dosync (commute svn-rev-cache conj rev)))
-
-
 (defn term-lists
       "generates permutions of the words in string"
       [msg]
@@ -176,57 +163,6 @@
         pojo))
 
 
-(def svn-command "svn -v --xml --limit 5 log  http://clojure.googlecode.com/svn/")
-
-(defn svn-summaries
-      "takes output of clojure.xml/parse on svn's xml log, returns
-      a vector of [rev-number commit-message]"
-      [tag-map]
-      (map (fn [x]
-               [(Integer/parseInt (:revision (:attrs x)))
-                (first
-                  (:content
-                    (first
-                      (filter #(= (:tag %) :msg)
-                              (:content x)))))])
-           (:content tag-map)))
-
-(defn get-last-svn-rev []
-      (Integer/parseInt (@dict-is "latest")))
-
-(defn filter-newer-svn-revs [revs]
-      (filter #(> (first %) (get-last-svn-rev))
-              revs))
-
-(defn send-svn-revs [revs]
-      (dorun
-        (map #(sendMsg *bot*
-                        *channel*
-                        (str "svn rev " (first %) "; " (last %)))
-             revs)))
-
-
-(defn svn-message
-      "takes a seq of vectors containing [rev msg]
-      sends out messages about new revs. updates \"latest\" 
-      to latest rev"
-      [summaries]
-      (let [newrevs (filter-newer-svn-revs (reverse summaries))]
-        (when newrevs
-          (do
-            (send-svn-revs newrevs)
-            (dosync
-              (commute dict-is
-                       assoc
-                       "latest"
-                       (str (first (first summaries)))))
-            ;don't want to see the whole hash in the repl
-            nil))))
-
-(defn svn-xml-stream
-      "get the xml stream from svn"
-      [cmd]
-      (.getInputStream (.. Runtime getRuntime (exec cmd))))
 
 (defn is
       "add a new definition to a term in dict-is"
@@ -280,32 +216,42 @@
         (java.security.AccessController/doPrivileged
           pA context)))
 
- 
+(def *dispatchers* 
+     (ref 
+       [#(doc-lookup? (:message %)) 
+        ::doc-lookup,
+        #(re-find #"^,\(" (:message %)) 
+        ::code-sandbox,
+        #(and (addressed? %) 
+              (re-find #"how much do you know?" (:message %)))
+        ::know
+        #(and (addressed? %) (re-find #" is " (:message %))  
+               (not= \? (last (:message %))))
+        ::define-is
+        #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message %))
+        ::math
+        #(addressed? %) 
+        ::lookup
+        #(re-find url-regex (:message %))
+        ::url]))
+
 (defn dispatch
       "this function does dispatch for responder"
       [pojo]
-      (cond
-        (doc-lookup? (:message pojo))
-          :doc-lookup 
-        (re-find #"^,\(" (:message pojo))
-          :code-sandbox
-        (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
-          :know
-        (and (addressed? pojo) (re-find #" is " (:message pojo))  (not= \? (last (:message pojo))))
-          :define-is
-        (and (addressed? pojo) (re-find #" literal " (:message pojo)))
-          :literal
-        (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message pojo))
-          :math
-        (re-find #"^svn rev [0-9]+$" (:message pojo))
-          :svn-rev-lookup
-        (addressed? pojo) 
-          :lookup
-        (re-find url-regex (:message pojo))
-          :url
-        :else
-          nil))
+      (loop [d (partition 2 @*dispatchers*)]
+        (when d
+          (let [[[k v] & rest] d]
+            (if (k pojo)
+              v
+              (recur rest))))))
 
+(defn add-dispatch-hook
+  "Allows you to add your own hook to the message responder
+   You *must* define a 'responder multimethod corresponding to the
+   dispatch-value"
+  [dispatch-check dispatch-value]
+  (dosync (commute *dispatchers* conj dispatch-check dispatch-value)))
+  
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defn naughty-forms? [strang]
@@ -315,7 +261,7 @@
 (defn find-or-create-ns [n]
       (if-let [s (find-ns n)] s (create-ns n)))
 
-(defmethod responder :code-sandbox [pojo]
+(defmethod responder ::code-sandbox [pojo]
   (println (str (:sender pojo) " " (:message pojo)))
   (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
     (let [_ (println "accepted")
@@ -325,7 +271,7 @@
                    read)
 ; http://malde.org/~ketil/Hazard_lambda.svg
           thunk1 #(eval form)
-          thunk2 #(binding [*ns* (find-or-create-ns 'foo)
+          thunk2 #(binding [*ns* (find-or-create-ns *sandbox-ns*)
                             *out* (java.io.StringWriter.)]
                            [(wrap-exceptions thunk1) (str *out*)])
           thunk3 #(sandbox thunk2)]
@@ -336,7 +282,7 @@
     (sendMsg-who pojo (befuddled))))
 
 
-(defmethod responder :math [pojo]
+(defmethod responder ::math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(Integer/parseInt %) num-strings)]
     (sendMsg-who pojo
@@ -345,7 +291,7 @@
                      "*suffusion of yellow*"
                      out)))))
 
-(defmethod responder :doc-lookup [pojo]
+(defmethod responder ::doc-lookup [pojo]
   (sendMsg-who pojo
                (symbol-to-var-doc (subs (:message pojo)
                                         5
@@ -356,7 +302,7 @@
   [string & chunks]
   (.replaceFirst string (apply str "^" chunks) ""))
 
-(defmethod responder :define-is [pojo]
+(defmethod responder ::define-is [pojo]
   (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
         term (term a)
         x (strip-is a)
@@ -373,7 +319,7 @@
                    "#who"
                    sender))
 
-(defmethod responder :lookup [pojo]
+(defmethod responder ::lookup [pojo]
   (let [msg (d?op (.trim (remove-from-beginning (:message pojo) *nick* ":")))
         result (what-is msg)]
     (cond
@@ -399,29 +345,19 @@
         (sendMsg-who pojo (befuddled)))))
 
 
-(defmethod responder :know [pojo]
+(defmethod responder ::know [pojo]
   (sendMsg-who pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
-(defmethod responder :url [pojo]
+(defmethod responder ::url [pojo]
   (dosync (commute url
                    assoc
                    (re-find url-regex (:message pojo)) (java.util.Date.)))
   (prn (str (:sender pojo) ", " (:message pojo))))
 
-(defmethod responder :literal [pojo]
+(defmethod responder ::literal [pojo]
   (let [q (remove-from-beginning (:message pojo) *nick* ": literal ")]
     (prn q)))
 
-(defmethod responder :svn-rev-lookup [pojo]
-  (let [r (Integer/parseInt (re-find #"[0-9]+" (:message pojo)))
-        t (filter #(= (first %) r)  @svn-rev-cache)]
-    (if (not= 0 (count t))
-      (send-svn-revs t)
-      (let [cmd (.replace svn-command "--limit 5" (str "-r " r))
-            b (svn-summaries (clojure.xml/parse (svn-xml-stream cmd)))]
-        (do
-          (send-svn-revs b)
-          (dorun (map cache-svn-rev b)))))))
 
 (defn user-watch []
       (let [cur (count (.getUsers *bot* "#clojure"))
@@ -455,15 +391,6 @@
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
 
-(defn svn-notifier-thread []
-      (send-off (agent nil)
-                (fn this [& _]
-                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command)))]
-                      (svn-message m)
-                      (map cache-svn-rev m))
-                    (Thread/sleep (* 5 60000))
-                    (send-off *agent* this))))
-
 ;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream))))
     
 (defn load-dicts []
@@ -489,11 +416,18 @@
                     (Thread/sleep (* 10 60000))
                     (send-off *agent* this))))
 
-(def *bot* (pircbot))
-(enable-security-manager)
-(.connect *bot* *network*)
-(.changeNick *bot* *nick*)
-(.joinChannel *bot* *channel*)
-(load-dicts)
-(svn-notifier-thread)
-(dump-thread)
+(defn start-clojurebot [attrs additional-setup]
+  (binding [*bot* (pircbot) 
+            *nick* (:nick attrs)
+            *network* (:network attrs)
+            *channel* (:channel attrs)
+            *sandbox-ns* (:sandbox-ns attrs)]
+;    (enable-security-manager)
+    (doto *bot*
+      (.connect *network*)
+      (.changeNick *nick*)
+      (.joinChannel *channel*))
+    (additional-setup)))
+
+(defmacro run-clojurebot [botattrs & additional-setup]
+  `(start-clojurebot ~botattrs (fn [] (do ~@additional-setup))))
