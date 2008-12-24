@@ -264,7 +264,7 @@
                  (.stop thr (Exception. "Thread stopped!")) "Execution timed out"))))
  
 (defn wrap-exceptions [f]
-        (try (f) (catch Exception e (str :EXCEPTION (.getMessage e)))))
+        (try (f) (catch Exception e (str "Exception: " (.getMessage e)))))
 ;;;;;;;;;;;
 
 (defn sandbox [func]
