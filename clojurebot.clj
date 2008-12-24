@@ -353,7 +353,7 @@
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
    found at the start of the string"
-  [string chunks]
+  [string & chunks]
   (.replaceFirst string (apply str "^" chunks) ""))
 
 (defmethod responder :define-is [pojo]
@@ -386,8 +386,8 @@
                                   (:sender pojo)))
 
       (fuzzy-lookup msg),
-        (let [x (fuzzy-lookup msg)
-              r (what-is x)]
+        (let [term (fuzzy-lookup msg)
+              defi (what-is term)]
           (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
 
       (fuzzy-key-lookup msg),
