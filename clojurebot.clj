@@ -22,9 +22,9 @@
          (clojure.core/refer 'clojure.core)
          (import '(java.util Date)))
 
-(def nick "clojurebot")
-(def channel "#clojure")
-(def net "chat.us.freenode.net")
+(def *nick* "clojurebot")
+(def *channel* "#clojure")
+(def *network* "chat.us.freenode.net")
 
 (def *bot*) ;this will be the bot object
 
@@ -132,7 +132,7 @@
       "generates permutions of the words in string"
       [msg]
       (let [x (re-seq #"\w+" msg)
-            ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str nick ": ")} %))]
+            ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str *nick* ": ")} %))]
         (filter ignore
         (apply concat
                (map (fn [x]
@@ -167,10 +167,12 @@
         (:channel pojo)
         (:sender pojo)))
 
+
+
 (defn addressed?
       "is this message prefixed with clojurebot: "
       [pojo]
-      (when (or (re-find #"^clojurebot:" (:message pojo)) (nil? (:channel pojo)))
+      (when (or (re-find (re-pattern (str "^" *nick* ":")) (:message pojo)) (nil? (:channel pojo)))
         pojo))
 
 
@@ -199,7 +201,7 @@
 (defn send-svn-revs [revs]
       (dorun
         (map #(sendMsg *bot*
-                        channel
+                        *channel*
                         (str "svn rev " (first %) "; " (last %)))
              revs)))
 
@@ -355,7 +357,7 @@
   (.replaceFirst string (apply str "^" chunks) ""))
 
 (defmethod responder :define-is [pojo]
-  (let [a (.trim (remove-from-beginning (:message pojo) nick ":"))
+  (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
         term (term a)
         x (strip-is a)
         defi (remove-from-beginning x "also ")]
@@ -372,7 +374,7 @@
                    sender))
 
 (defmethod responder :lookup [pojo]
-  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" nick ":") "")))
+  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" *nick* ":") "")))
         result (what-is msg)]
     (cond
       result,
@@ -407,7 +409,7 @@
   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder :literal [pojo]
-  (let [q (.replaceFirst (:message pojo) (str "^" nick ": literal ") "")]
+  (let [q (.replaceFirst (:message pojo) (str "^" *nick* ": literal ") "")]
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
@@ -489,9 +491,9 @@
 
 (def *bot* (pircbot))
 (enable-security-manager)
-(.connect *bot* net)
-(.changeNick *bot* nick)
-(.joinChannel *bot* channel)
+(.connect *bot* *network*)
+(.changeNick *bot* *nick*)
+(.joinChannel *bot* *channel*)
 (load-dicts)
 (svn-notifier-thread)
 (dump-thread)
