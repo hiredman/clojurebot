@@ -348,12 +348,17 @@
                (symbol-to-var-doc (subs (:message pojo)
                                         5
                                         (dec (count (:message pojo)))))))
+(defn remove-from-beginning
+  "return a string with the concatenation of the given chunks removed if it is
+   found at the start of the string"
+  [string chunks]
+  (.replaceFirst string (apply str "^" chunks) ""))
 
 (defmethod responder :define-is [pojo]
-  (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
+  (let [a (.trim (remove-from-beginning (:message pojo) nick ":"))
         term (term a)
         x (strip-is a)
-        defi (.replaceFirst x "^also " "")]
+        defi (remove-from-beginning x "also ")]
     (if (re-find #"^also " x)
       (is term defi)
       (is! term defi))
