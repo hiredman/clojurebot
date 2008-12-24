@@ -368,19 +368,19 @@
 
 (defn prep-reply [sender term defi]
       (.replaceAll (if (re-find #"^<reply>" defi)
-                     (.trim (.replaceFirst (str defi) "^<reply>" ""))
+                     (.trim (remove-from-beginning (str defi) "<reply>"))
                      (str term " is " defi))
                    "#who"
                    sender))
 
 (defmethod responder :lookup [pojo]
-  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" *nick* ":") "")))
+  (let [msg (d?op (.trim (remove-from-beginning (:message pojo) *nick* ":")))
         result (what-is msg)]
     (cond
       result,
         (sendMsg-who pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
-                                    (.trim (.replaceFirst (str result) "^<reply>" ""))
+                                    (.trim (remove-from-beginning (str result) "<reply>"))
                                     (str msg " is " result))
                                   "#who"
                                   (:sender pojo)))
@@ -409,7 +409,7 @@
   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder :literal [pojo]
-  (let [q (.replaceFirst (:message pojo) (str "^" *nick* ": literal ") "")]
+  (let [q (remove-from-beginning (:message pojo) *nick* ": literal ")]
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
