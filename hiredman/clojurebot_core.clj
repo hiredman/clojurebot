@@ -14,17 +14,11 @@
 ;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot-core
+    (:use (hiredman sandbox))
     (:import (org.jibble.pircbot PircBot)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
-;; set up the namespace for the sandbox
-
-(declare *nick* *channel* *network* *sandbox-ns*)
-
-(def *bot*) ;this will be the bot object
-
-(def *execution-timeout* 10) ;time out for sandbox exec
-
+(def *bots* (ref {})) ; This will hold bot objects
 (def start-date (java.util.Date.))
 
 ;; dictionaries for storing relationships
@@ -38,7 +32,7 @@
 (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 ;; this struct is used to pass around messages
-(defstruct junks :this :channel :sender :login :hostname :message)
+(defstruct junks :channel :sender :login :hostname :message)
 
 (defn randth
       "random item from sequence"
@@ -107,19 +101,26 @@
   [& x]
   `(send-off (agent nil) (fn [& _#] ~@x )))
 
+(defn who
+      "am I talking to someonein a privmsg, or in a channel?"
+      [pojo]
+      (if (:channel pojo)
+        (:channel pojo)
+        (:sender pojo)))
+
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
-      (.sendMessage this recv (.replace (str msg) \newline \ )))
+      (.sendMessage this recv (.replace (str msg) \newline \space)))
 
-(defmacro sendMsg-who [pojo msg]
-  `(sendMsg (:this ~pojo) (who ~pojo) ~msg))
+(defn sendMsg-who [bot msg msg-to-send]
+  (sendMsg (:this bot) (who msg) msg-to-send))
 
 (defn term-lists
       "generates permutions of the words in string"
-      [msg]
+      [msg words-to-ignore]
       (let [x (re-seq #"\w+" msg)
-            ignore #(not (contains? #{"a" "where" "what" "is" "who" "are" (str *nick* ": ")} %))]
+            ignore #(not ((set words-to-ignore) %))]
         (filter ignore
         (apply concat
                (map (fn [x]
@@ -139,28 +140,20 @@
 
 (defn fuzzy-lookup
       "look up based on permutation"
-      [message]
-      (rlookup (term-lists message)))
+      [message words-to-ignore]
+      (rlookup (term-lists message words-to-ignore)))
 
 (defn fuzzy-key-lookup
       "look up based on match part of a term"
       [term]
       (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
 
-(defn who
-      "am I talking to someonein a privmsg, or in a channel?"
-      [pojo]
-      (if (:channel pojo)
-        (:channel pojo)
-        (:sender pojo)))
-
-
 
 (defn addressed?
       "is this message prefixed with clojurebot: "
-      [pojo]
-      (when (or (re-find (re-pattern (str "^" *nick* ":")) (:message pojo)) (nil? (:channel pojo)))
-        pojo))
+      [bot msg]
+      (when (or (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg)) (nil? (:channel msg)))
+        msg))
 
 
 
@@ -187,61 +180,39 @@
       (when-let [f (@dict-is term)]
         (if (vector? f) (randth f) f)))
 
-(defn enable-security-manager []
-      (System/setSecurityManager (SecurityManager.)))
-
-;;;;;;;; Chousuke
-(defn thunk-timeout [thunk seconds]
-      (let [task (FutureTask. thunk)
-            thr (Thread. task)]
-        (try
-          (.start thr)
-          (.get task seconds TimeUnit/SECONDS)
-          (catch TimeoutException e
-                 (.cancel task true)
-                 (.stop thr (Exception. "Thread stopped!")) "Execution timed out"))))
- 
-(defn wrap-exceptions [f]
-        (try (f) (catch Exception e (str "Exception: " (.getMessage e)))))
-;;;;;;;;;;;
-
-(defn sandbox [func]
-      (let [perms (java.security.Permissions.)
-            domain (java.security.ProtectionDomain.
-                     (java.security.CodeSource. nil
-                                                (cast java.security.cert.Certificate nil))
-                     perms)
-            context (java.security.AccessControlContext. (into-array [domain]))
-            pA (proxy [java.security.PrivilegedAction] [] (run [] (func)))]
-        (java.security.AccessController/doPrivileged
-          pA context)))
+(defmacro dfn 
+  "Creates a dispatch fn with 'bot bound to the bot object
+   and 'msg bound to a struct representing the message"
+  [& body]
+  `(fn [~'bot ~'msg]
+     ~@body))
 
 (def *dispatchers* 
      (ref 
-       [#(doc-lookup? (:message %)) 
+       [(dfn (doc-lookup? (:message msg))) 
         ::doc-lookup,
-        #(re-find #"^,\(" (:message %)) 
+        (dfn (re-find #"^,\(" (:message msg))) 
         ::code-sandbox,
-        #(and (addressed? %) 
-              (re-find #"how much do you know?" (:message %)))
+        (dfn (and (addressed? bot msg) 
+              (re-find #"how much do you know?" (:message msg))))
         ::know
-        #(and (addressed? %) (re-find #" is " (:message %))  
-               (not= \? (last (:message %))))
+        (dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
+                  (not= \? (last (:message msg)))))
         ::define-is
-        #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message %))
+        (dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg)))
         ::math
-        #(addressed? %) 
+        (dfn (addressed? bot msg))
         ::lookup
-        #(re-find url-regex (:message %))
+        (dfn (re-find url-regex (:message msg)))
         ::url]))
 
 (defn dispatch
       "this function does dispatch for responder"
-      [pojo]
+      [bot msg]
       (loop [d (partition 2 @*dispatchers*)]
         (when d
           (let [[[k v] & rest] d]
-            (if (k pojo)
+            (if (k bot msg)
               v
               (recur rest))))))
 
@@ -261,38 +232,31 @@
 (defn find-or-create-ns [n]
       (if-let [s (find-ns n)] s (create-ns n)))
 
-(defmethod responder ::code-sandbox [pojo]
+(defmethod responder ::code-sandbox [bot pojo]
   (println (str (:sender pojo) " " (:message pojo)))
   (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
     (let [_ (println "accepted")
-          form (-> (.replaceAll (:message pojo) "^," "")
-                   java.io.StringReader.
-                   java.io.PushbackReader.
-                   read)
-; http://malde.org/~ketil/Hazard_lambda.svg
-          thunk1 #(eval form)
-          thunk2 #(binding [*ns* (find-or-create-ns *sandbox-ns*)
-                            *out* (java.io.StringWriter.)]
-                           [(wrap-exceptions thunk1) (str *out*)])
-          thunk3 #(sandbox thunk2)]
-      (let [o (thunk-timeout thunk3 *execution-timeout*)]
-        (if (vector? o)
-          (doseq [i (reverse o)] (sendMsg-who pojo i))
-          (sendMsg-who pojo o))))
-    (sendMsg-who pojo (befuddled))))
+          result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
+                              (:sandbox-ns bot)) (catch Exception e (str "Eval-in-box threw an exception:" (.getMessage e))))
+          _ (println "Result:" result)]
+      
+      (if (vector? result)
+        (doseq [i (reverse result)] (sendMsg-who bot pojo i))
+        (sendMsg-who bot pojo result)))
+  (sendMsg-who bot pojo (befuddled))))
 
 
-(defmethod responder ::math [pojo]
+(defmethod responder ::math [bot pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(Integer/parseInt %) num-strings)]
-    (sendMsg-who pojo
+    (sendMsg-who bot pojo
                  (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
                    (if (> out 4)
                      "*suffusion of yellow*"
                      out)))))
 
-(defmethod responder ::doc-lookup [pojo]
-  (sendMsg-who pojo
+(defmethod responder ::doc-lookup [bot pojo]
+  (sendMsg-who bot pojo
                (symbol-to-var-doc (subs (:message pojo)
                                         5
                                         (dec (count (:message pojo)))))))
@@ -302,15 +266,15 @@
   [string & chunks]
   (.replaceFirst string (apply str "^" chunks) ""))
 
-(defmethod responder ::define-is [pojo]
-  (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
+(defmethod responder ::define-is [bot pojo]
+  (let [a (.trim (remove-from-beginning (:message pojo) (:nick bot) ":"))
         term (term a)
         x (strip-is a)
         defi (remove-from-beginning x "also ")]
     (if (re-find #"^also " x)
       (is term defi)
       (is! term defi))
-    (sendMsg-who pojo (ok))))
+    (sendMsg-who bot pojo (ok))))
 
 (defn prep-reply [sender term defi]
       (.replaceAll (if (re-find #"^<reply>" defi)
@@ -319,115 +283,122 @@
                    "#who"
                    sender))
 
-(defmethod responder ::lookup [pojo]
-  (let [msg (d?op (.trim (remove-from-beginning (:message pojo) *nick* ":")))
-        result (what-is msg)]
+(defmethod responder ::lookup [bot pojo]
+  (let [msg (d?op (.trim (remove-from-beginning (:message pojo) (:nick bot) ":")))
+        result (what-is msg)
+        words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-        (sendMsg-who pojo
+        (sendMsg-who bot pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
                                     (.trim (remove-from-beginning (str result) "<reply>"))
                                     (str msg " is " result))
                                   "#who"
                                   (:sender pojo)))
 
-      (fuzzy-lookup msg),
-        (let [term (fuzzy-lookup msg)
+      (fuzzy-lookup msg words-to-ignore),
+        (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
 
-      (fuzzy-key-lookup msg),
-        (let [term (fuzzy-key-lookup msg)
+      (fuzzy-key-lookup msg words-to-ignore),
+        (let [term (fuzzy-key-lookup msg words-to-ignore)
               defi (what-is term)]
-          (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
 
       :else,
-        (sendMsg-who pojo (befuddled)))))
+        (sendMsg-who bot pojo (befuddled)))))
 
 
-(defmethod responder ::know [pojo]
-  (sendMsg-who pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
+(defmethod responder ::know [bot pojo]
+  (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
-(defmethod responder ::url [pojo]
+(defmethod responder ::url [bot pojo]
   (dosync (commute url
                    assoc
                    (re-find url-regex (:message pojo)) (java.util.Date.)))
   (prn (str (:sender pojo) ", " (:message pojo))))
 
-(defmethod responder ::literal [pojo]
-  (let [q (remove-from-beginning (:message pojo) *nick* ": literal ")]
+(defmethod responder ::literal [bot pojo]
+  (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
     (prn q)))
 
 
-(defn user-watch []
-      (let [cur (count (.getUsers *bot* "#clojure"))
+(defn user-watch [this]
+      (let [cur (count (.getUsers this "#clojure"))
             pre (Integer/parseInt (what-is "max people"))]
         (when (> cur pre)
           (is! "max people" (str cur)))))
 
 
 (defn handleMessage [this channel sender login hostname message]
-      (responder (struct junks this channel sender login
-                         hostname message)))
+  (let [bot (get @*bots* this)]
+  (responder bot (struct junks channel sender login
+                         hostname message))))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
 
-(defn pircbot []
-      (proxy [PircBot] []
-             (onJoin [channel sender login hostname]
-                     (user-watch))
-             (onMessage [channel sender login hostname message]
-                        (handleMessage this channel sender login hostname message))
-             (onPrivateMessage [sender login hostname message]
-                        (handlePrivateMessage this  sender login hostname message))))
+(defn pircbot [bot-config]
+  (let [bot-obj 
+        (proxy [PircBot] []
+          (onJoin [this channel sender login hostname]
+                  (user-watch this))
+          (onMessage [channel sender login hostname message]
+                     (handleMessage this channel sender login hostname message))
+          (onPrivateMessage [sender login hostname message]
+                            (handlePrivateMessage this sender login hostname message)))]
+    (merge bot-config {:this bot-obj})))
 
-(defn dumpdicts []
-      (map (fn [[rel rels]]
-               (binding [*out* (-> (str "clojurebot." rel)
-                                   java.io.File.
-                                   java.io.FileWriter.)]
-                        (prn @rels)
-                        (.close *out*)))
-           [["is" dict-is] ["are" dict-are]]))
+
+(defn dict-file [config suffix]
+  (let [file (-> (str (:dict-dir config "./") (:dict-basename config (:nick config)) suffix)
+                 java.io.File.)]
+    (.createNewFile file)
+    file))
+
+(defn dump-dicts [config]
+  (dorun (map (fn [[rel rels]]
+         (binding [*out* (java.io.FileWriter. 
+                          (dict-file config rel))]
+           (prn @rels)
+           (.close *out*)))
+       [[".is" dict-is] [".are" dict-are]])))
 
 ;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream))))
     
-(defn load-dicts []
-      (dosync
-        (ref-set dict-is
-                 (eval
-                   (binding [*in* (-> "clojurebot.is"
-                                          java.io.File.
-                                          java.io.FileReader.
-                                          java.io.PushbackReader.)]
-                                (let [a (read)]
-                                  (.close *in*)
-                                  a))))))
+(defn load-dicts [config]
+  (dosync
+   (ref-set dict-is
+            (eval
+             (binding [*in* (java.io.PushbackReader. 
+                             (java.io.FileReader.
+                              (dict-file config ".is")))]  
+               (let [a (try (read) (catch Exception e {}))]
+                 (.close *in*)
+                 a))))))
 
-(defn dump-thread []
-      (send-off (agent nil)
-                (fn this [& _]
-                    (binding [*out* (-> "clojurebot.is"
-                                        java.io.File.
-                                        java.io.FileWriter.)]
-                             (prn @dict-is)
-                             (.close *out*))
-                    (Thread/sleep (* 10 60000))
-                    (send-off *agent* this))))
+(defn start-dump-thread [config]
+  (send-off (agent nil)
+            (fn this [& _]
+              (println "Dumping dictionaries")
+              (binding [*out* (-> (dict-file config ".is")
+                                  java.io.FileWriter.)]
+                
+                (prn @dict-is)
+                (.close *out*))
+              (Thread/sleep (* 10 60000))
+              (send-off *agent* this))))
 
 (defn start-clojurebot [attrs additional-setup]
-  (binding [*bot* (pircbot) 
-            *nick* (:nick attrs)
-            *network* (:network attrs)
-            *channel* (:channel attrs)
-            *sandbox-ns* (:sandbox-ns attrs)]
-;    (enable-security-manager)
-    (doto *bot*
-      (.connect *network*)
-      (.changeNick *nick*)
-      (.joinChannel *channel*))
-    (additional-setup)))
+ (let [bot (pircbot attrs)]
+   (dosync (commute *bots* assoc (:this bot) bot))
+   (doto (:this bot)
+     (.connect (:network bot))
+     (.changeNick (:nick bot))
+     (.joinChannel (:channel bot)))
+   (additional-setup bot)
+   bot))
 
-(defmacro run-clojurebot [botattrs & additional-setup]
-  `(start-clojurebot ~botattrs (fn [] (do ~@additional-setup))))
+(defmacro run-clojurebot [botname botattrs & additional-setup]
+  `(start-clojurebot ~botattrs (fn [~botname] (do ~@additional-setup))))

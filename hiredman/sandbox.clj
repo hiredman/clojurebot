@@ -3,6 +3,7 @@
              (java.io File FileWriter PushbackReader StringReader)))
 
 (def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
+(def *default-timeout* 10) ; in seconds
 
 (defn enable-security-manager []
       (System/setSecurityManager (SecurityManager.)))
@@ -18,8 +19,13 @@
                  (.cancel task true)
                  (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out"))))
  
-(defn wrap-exceptions [f]
-        (try (f) (catch Exception e (str (.getMessage e)))))
+(defn wrap-exceptions 
+  ([f]
+     (wrap-exceptions f #(do 
+                           (println (.getMessage %)) 
+                           (.getMessage %))))
+  ([f exception-handler]
+     (try (f) (catch Exception e (exception-handler e)))))
 ;;;;;;;;;;;
 
 (defn empty-perms-list []
@@ -55,7 +61,7 @@
         (eval form)
         (throw (java.lang.Exception. "DENIED"))))
 
-(enable-security-manager)
+;(enable-security-manager) ; This doesn't need to be enabled by default
 
 (defn killall-thrdgrp [thg]
       (let [a (make-array Thread (.activeCount thg))
@@ -69,15 +75,15 @@
         (eval b)
         (str a)))
 
-(defn box [_string]
+(defn eval-in-box [_string sb-ns]
       (let [form (-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
-                                 *ns* (find-ns 'foo)]
+                                 *ns* (find-ns sb-ns)]
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
                           [(str *out*) (str *err*) (str result)])))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
-                                            (context (domain (empty-perms-list)))) 10)]
+                                            (context (domain (empty-perms-list)))) *default-timeout*)]
         result))

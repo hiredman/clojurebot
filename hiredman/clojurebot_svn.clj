@@ -3,15 +3,12 @@
 (ns hiredman.clojurebot-svn
   (:use (hiredman clojurebot-core)))
 
-(declare *svn-url*)
-
 (def svn-rev-cache (ref []))
 
-
-(defn send-svn-revs [revs]
+(defn send-svn-revs [bot revs]
       (dorun
-        (map #(sendMsg *bot*
-                       *channel*
+        (map #(sendMsg (:this bot)
+                       (:channel bot)
                         (str "svn rev " (first %) "; " (last %)))
              revs)))
 
@@ -20,7 +17,10 @@
       [rev]
       (dosync (commute svn-rev-cache conj rev)))
 
-(defn get-svn-command [] (str "svn -v --xml --limit 5 log " *svn-url*))
+(defn svn-command [url] 
+  (if url 
+    (str "svn -v --xml --limit 5 log " url)
+    (throw (IllegalArgumentException. "bot configuration must contain key :svn-url"))))
 
 (defn svn-summaries
       "takes output of clojure.xml/parse on svn's xml log, returns
@@ -36,7 +36,10 @@
            (:content tag-map)))
 
 (defn get-last-svn-rev []
-      (Integer/parseInt (@dict-is "latest")))
+  (let [latest (@dict-is "latest")]
+    (if latest
+      (Integer/parseInt latest)
+      0)))
 
 (defn filter-newer-svn-revs [revs]
       (filter #(> (first %) (get-last-svn-rev))
@@ -48,11 +51,11 @@
       "takes a seq of vectors containing [rev msg]
       sends out messages about new revs. updates \"latest\" 
       to latest rev"
-      [summaries]
+      [bot summaries]
       (let [newrevs (filter-newer-svn-revs (reverse summaries))]
         (when newrevs
           (do
-            (send-svn-revs newrevs)
+            (send-svn-revs bot newrevs)
             (dosync
               (commute dict-is
                        assoc
@@ -67,29 +70,25 @@
       (.getInputStream (.. Runtime getRuntime (exec cmd))))
 
 
-(defmethod responder ::svn-rev-lookup [pojo]
+(defmethod responder ::svn-rev-lookup [bot pojo]
   (let [r (Integer/parseInt (re-find #"[0-9]+" (:message pojo)))
         t (filter #(= (first %) r)  @svn-rev-cache)]
     (if (not= 0 (count t))
-      (send-svn-revs t)
-      (let [cmd (.replace (get-svn-command) "--limit 5" (str "-r " r))
+      (send-svn-revs bot t)
+      (let [cmd (.replace (svn-command (:svn-url bot)) "--limit 5" (str "-r " r))
             b (svn-summaries (clojure.xml/parse (svn-xml-stream cmd)))]
         (do
-          (send-svn-revs b)
+          (send-svn-revs bot b)
           (dorun (map cache-svn-rev b)))))))
 
-(add-dispatch-hook #(re-find #"^svn rev [0-9]+$" (:message %)) ::svn-rev-lookup)
+(add-dispatch-hook (dfn (re-find #"^svn rev [0-9]+$" (:message msg))) ::svn-rev-lookup)
 
-
-(defn svn-notifier-thread []
+(defn start-svn-notifier-thread [bot]
       (send-off (agent nil)
                 (fn this [& _]
-                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (get-svn-command))))]
-                      (svn-message m)
+                  (println "Checking SVN revisions")
+                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url bot)))))]
+                      (svn-message bot m)
                       (map cache-svn-rev m))
                     (Thread/sleep (* 5 60000))
                     (send-off *agent* this))))
-
-(defn start-svn-notifier [url]
-  (binding [*svn-url* url]
-    (svn-notifier-thread)))
