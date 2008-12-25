@@ -1,1 +1,7 @@
-A proper git project for clojurebot. Originally written as a gist by hiredman at http://gist.github.com/27733
+Clojurebot v2
+
+Version 2 of clojurebot is not yet very thoroughly tested; the sandbox is not enabled by default, and some knowledge of java security manager is needed to install an appropriate policy file. 
+
+This version should have feature parity with v1 now.
+
+Old clojurebot resides in branch 'clojurebotv1'
