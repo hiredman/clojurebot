@@ -337,9 +337,10 @@
   (println (str (:sender pojo) " " (:message pojo)))
   (let [result (s/box (:message pojo))]
     (if (vector? result)
-      (dorun (map #(sendMsg-who pojo (if (> (count %) 300)
-                                       (reduce str (concat (take 300%) '(" ...")))
-                                       %))
+      (dorun (map #(sendMsg-who pojo
+                                (if (> (count %) 300)
+                                  (reduce str (concat (take 300%) '(" ...")))
+                                  %))
                   result))
       (sendMsg-who pojo result))))
 
