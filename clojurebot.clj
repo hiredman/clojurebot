@@ -310,12 +310,17 @@
                (symbol-to-var-doc (subs (:message pojo)
                                         5
                                         (dec (count (:message pojo)))))))
+(defn remove-from-beginning
+  "return a string with the concatenation of the given chunks removed if it is
+   found at the start of the string"
+  [stringi & chunks]
+  (.replaceFirst string (apply str "^" chunks) ""))
 
 (defmethod responder :define-is [pojo]
-  (let [a (.trim (.replaceFirst (:message pojo) "^clojurebot:" " "))
+  (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
         term (term a)
         x (strip-is a)
-        defi (.replaceFirst x "^also " "")]
+        defi (remove-from-beginning x "also ")]
     (if (re-find #"^also " x)
       (is term defi)
       (is! term defi))
@@ -323,19 +328,19 @@
 
 (defn prep-reply [sender term defi]
       (.replaceAll (if (re-find #"^<reply>" defi)
-                     (.trim (.replaceFirst (str defi) "^<reply>" ""))
+                     (.trim (remove-from-beginning (str defi) "<reply>"))
                      (str term " is " defi))
                    "#who"
                    sender))
 
 (defmethod responder :lookup [pojo]
-  (let [msg (d?op (.trim (.replaceFirst (:message pojo) (str "^" *nick* ":") "")))
+  (let [msg (d?op (.trim (remove-from-beginning (:message pojo) *nick* ":")))
         result (what-is msg)]
     (cond
       result,
         (sendMsg-who pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
-                                    (.trim (.replaceFirst (str result) "^<reply>" ""))
+                                    (.trim (remove-from-beginning (str result) "<reply>"))
                                     (str msg " is " result))
                                   "#who"
                                   (:sender pojo)))
@@ -364,7 +369,7 @@
   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder :literal [pojo]
-  (let [q (.replaceFirst (:message pojo) (str "^" *nick* ": literal ") "")]
+  (let [q (remove-from-beginning (:message pojo) *nick* ": literal ")]
     (prn q)))
 
 (defmethod responder :svn-rev-lookup [pojo]
