@@ -265,37 +265,75 @@
       (dosync
         (commute users assoc who [nil (str (name doing) what)])))
  
+;;(defn dispatch
+;;      "this function does dispatch for responder"
+;;      [pojo]
+;;      (cond
+;;        (doc-lookup? (:message pojo))
+;;          :doc-lookup 
+;;        (re-find #"^,\(" (:message pojo))
+;;          :code-sandbox
+;;        (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
+;;          :know
+;;        (and (addressed? pojo) (re-find #" is " (:message pojo))  (not= \? (last (:message pojo))))
+;;          :define-is
+;;        (and (addressed? pojo) (re-find #" literal " (:message pojo)))
+;;          :literal
+;;        (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message pojo))
+;;          :math
+;;        (re-find #"^svn rev [0-9]+$" (:message pojo))
+;;          :svn-rev-lookup
+;;        (addressed? pojo) 
+;;          :lookup
+;;        (re-find url-regex (:message pojo))
+;;          :url
+;;        :else
+;;          nil))
+
+;; MFC from clojurebotv2 Chousuke ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def *dispatchers* 
+     (ref 
+       [#(doc-lookup? (:message %)) 
+        ::doc-lookup,
+        #(re-find #"^,\(" (:message %)) 
+        ::code-sandbox,
+        #(and (addressed? %) 
+              (re-find #"how much do you know?" (:message %)))
+        ::know
+        #(and (addressed? %) (re-find #" is " (:message %))  
+               (not= \? (last (:message %))))
+        ::define-is
+        #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message %))
+        ::math
+        #(addressed? %) 
+        ::lookup
+        #(re-find url-regex (:message %))
+        ::url]))
+
 (defn dispatch
       "this function does dispatch for responder"
       [pojo]
-      (cond
-        (doc-lookup? (:message pojo))
-          :doc-lookup 
-        (re-find #"^,\(" (:message pojo))
-          :code-sandbox
-        (and (addressed? pojo) (re-find #"how much do you know?" (:message pojo)))
-          :know
-        (and (addressed? pojo) (re-find #" is " (:message pojo))  (not= \? (last (:message pojo))))
-          :define-is
-        (and (addressed? pojo) (re-find #" literal " (:message pojo)))
-          :literal
-        (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message pojo))
-          :math
-        (re-find #"^svn rev [0-9]+$" (:message pojo))
-          :svn-rev-lookup
-        (addressed? pojo) 
-          :lookup
-        (re-find url-regex (:message pojo))
-          :url
-        :else
-          nil))
+      (loop [d (partition 2 @*dispatchers*)]
+        (when d
+          (let [[[k v] & rest] d]
+            (if (k pojo)
+              v
+              (recur rest))))))
+
+(defn add-dispatch-hook
+  "Allows you to add your own hook to the message responder
+   You *must* define a 'responder multimethod corresponding to the
+   dispatch-value"
+  [dispatch-check dispatch-value]
+  (dosync (commute *dispatchers* conj dispatch-check dispatch-value)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defn find-or-create-ns [n]
       (if-let [s (find-ns n)] s (create-ns n)))
 
-(defmethod responder :code-sandbox [pojo]
+(defmethod responder ::code-sandbox [pojo]
   (println (str (:sender pojo) " " (:message pojo)))
   (let [result (s/box (:message pojo))]
     (if (vector? result)
@@ -306,7 +344,7 @@
       (sendMsg-who pojo result))))
 
 
-(defmethod responder :math [pojo]
+(defmethod responder ::math [pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(Integer/parseInt %) num-strings)]
     (sendMsg-who pojo
@@ -315,7 +353,7 @@
                      "*suffusion of yellow*"
                      out)))))
 
-(defmethod responder :doc-lookup [pojo]
+(defmethod responder ::doc-lookup [pojo]
   (sendMsg-who pojo
                (symbol-to-var-doc (subs (:message pojo)
                                         5
@@ -326,7 +364,7 @@
   [stringi & chunks]
   (.replaceFirst string (apply str "^" chunks) ""))
 
-(defmethod responder :define-is [pojo]
+(defmethod responder ::define-is [pojo]
   (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
         term (term a)
         x (strip-is a)
@@ -343,18 +381,13 @@
                    "#who"
                    sender))
 
-(defmethod responder :lookup [pojo]
+(defmethod responder ::lookup [pojo]
   (let [msg (d?op (.trim (remove-from-beginning (:message pojo) *nick* ":")))
         result (what-is msg)]
     (cond
       result,
-        (sendMsg-who pojo
-                     (.replaceAll (if (re-find #"^<reply>" result)
-                                    (.trim (remove-from-beginning (str result) "<reply>"))
-                                    (str msg " is " result))
-                                  "#who"
-                                  (:sender pojo)))
-
+        (sendMsg-who pojo 
+                     (prep-reply (:sender pojo) msg result))
       (fuzzy-lookup msg),
         (let [x (fuzzy-lookup msg)
               r (what-is x)]
@@ -364,25 +397,24 @@
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
           (sendMsg-who pojo (prep-reply (:sender pojo) term defi)))
-
       :else,
         (sendMsg-who pojo (befuddled)))))
 
 
-(defmethod responder :know [pojo]
+(defmethod responder ::know [pojo]
   (sendMsg-who pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
-(defmethod responder :url [pojo]
+(defmethod responder ::url [pojo]
   (dosync (commute url
                    assoc
                    (re-find url-regex (:message pojo)) (java.util.Date.)))
   (prn (str (:sender pojo) ", " (:message pojo))))
 
-(defmethod responder :literal [pojo]
+(defmethod responder ::literal [pojo]
   (let [q (remove-from-beginning (:message pojo) *nick* ": literal ")]
     (prn q)))
 
-(defmethod responder :svn-rev-lookup [pojo]
+(defmethod responder ::svn-rev-lookup [pojo]
   (let [r (Integer/parseInt (re-find #"[0-9]+" (:message pojo)))
         t (filter #(= (first %) r)  @svn-rev-cache)]
     (if (not= 0 (count t))
