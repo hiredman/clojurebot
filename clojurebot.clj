@@ -29,8 +29,6 @@
 
 (def *bot*) ;this will be the bot object
 
-(def *execution-timeout* 10) ;time out for sandbox exec
-
 (def start-date (java.util.Date.))
 
 ;; dictionaries for storing relationships
@@ -175,7 +173,7 @@
       (when (or (re-find #"^clojurebot:" (:message pojo)) (nil? (:channel pojo)))
         pojo))
 
-
+;;; SVN
 (def svn-command "svn -v --xml --limit 5 log  http://clojure.googlecode.com/svn/")
 
 (defn svn-summaries
@@ -227,6 +225,18 @@
       "get the xml stream from svn"
       [cmd]
       (.getInputStream (.. Runtime getRuntime (exec cmd))))
+
+(defn svn-notifier-thread []
+      (send-off (agent nil)
+                (fn this [& _]
+                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command)))]
+                      (svn-message m)
+                      (map cache-svn-rev m))
+                    (Thread/sleep (* 5 60000))
+                    (send-off *agent* this))))
+
+;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command))))
+ 
 
 (defn is
       "add a new definition to a term in dict-is"
@@ -417,17 +427,7 @@
                         (.close *out*)))
            [["is" dict-is] ["are" dict-are]]))
 
-(defn svn-notifier-thread []
-      (send-off (agent nil)
-                (fn this [& _]
-                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command)))]
-                      (svn-message m)
-                      (map cache-svn-rev m))
-                    (Thread/sleep (* 5 60000))
-                    (send-off *agent* this))))
-
-;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream svn-command))))
-    
+   
 (defn load-dicts []
       (dosync
         (ref-set dict-is

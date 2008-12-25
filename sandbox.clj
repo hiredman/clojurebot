@@ -81,6 +81,3 @@
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) 10)]
         result))
-
-
-;(cond-eval #(de-fang % *bad-forms*) a)
