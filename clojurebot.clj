@@ -11,7 +11,7 @@
 ;;                 factoids. Addressing is in optional mode.
 
 
-;java -server -ms16m -mx64m -Xss128m
+;java -server -Djava.security.manager -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot
     (:import (org.jibble.pircbot PircBot)
