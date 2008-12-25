@@ -199,7 +199,7 @@
 (defn send-svn-revs [revs]
       (dorun
         (map #(sendMsg *bot*
-                        channel
+                        *channel*
                         (str "svn rev " (first %) "; " (last %)))
              revs)))
 
@@ -362,7 +362,7 @@
   "return a string with the concatenation of the given chunks removed if it is
    found at the start of the string"
   [stringi & chunks]
-  (.replaceFirst string (apply str "^" chunks) ""))
+  (.replaceFirst stringi (apply str "^" chunks) ""))
 
 (defmethod responder ::define-is [pojo]
   (let [a (.trim (remove-from-beginning (:message pojo) *nick* ":"))
