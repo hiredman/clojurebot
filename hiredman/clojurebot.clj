@@ -1,3 +1,6 @@
+; Sample setup file for clojurebot; best eval'd line-by-line
+
+;(add-classpath "file:///Users/oranenj/koodi/VCS/clojurebot/")
 (ns hiredman.clojurebot
   (:use (hiredman clojurebot-core clojurebot-svn)))
 
@@ -13,7 +16,7 @@
       :svn-url "http://clojure.googlecode.com/svn/"
       :sandbox-ns 'sandbox
       :dict-dir "/Users/oranenj/koodi/VCS/clojurebot/" ;; must include final slash
-      :dict-basename "brain"} ; defaults to same as :nick
+      :dict-basename "brain"}) ; defaults to same as :nick
      
 (def testbot 
      (run-clojurebot mybot bot-attributes
@@ -21,6 +24,7 @@
        (start-dump-thread mybot)
        (start-svn-notifier-thread mybot)
        (println "Done loading!")))
+
 
 (hiredman.sandbox/enable-security-manager)
 ) ;;;;;;;; end comment
