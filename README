@@ -1,6 +1,6 @@
 Clojurebot v2
 
-Version 2 of clojurebot is not yet very thoroughly tested; the sandbox is not restricted by default, and some knowledge of java security manager is needed to install an appropriate policy file. 
+Version 2 of clojurebot is not yet very thoroughly tested; the sandbox is not restricted by default, and some knowledge of java security manager is needed to install an appropriate policy file. See the example.policy file to get an idea how to accomplish this.
 
 This version should have feature parity with v1 now.
 
