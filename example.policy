@@ -1,0 +1,19 @@
+/* Grant all for the REPL; the sandbox created will "throw away" these permissions, 
+ * but they are still needed for clojurebot to start up properly.
+   
+   You will need to start the java virtual machine with the following extra args:
+   
+     -Djava.security.manager -Djava.security.policy="file:///path/to/this.policy"
+   
+   With this grant-all setup, clojurebot can also be run from SLIME.
+*/
+
+grant {
+  permission java.security.AllPermission;
+};
+
+/* Untested, more specific grant. Would not work with SLIME or a repl.
+grant codeBase "file:///Users/oranenj/koodi/VCS/clojurebot/" {
+  permission java.security.AllPermission;
+};
+*/
