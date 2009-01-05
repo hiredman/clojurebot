@@ -287,7 +287,7 @@
   (let [msg (d?op (.trim (remove-from-beginning (:message pojo) (:nick bot) ":")))
         result (what-is msg)
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
-    (cond
+    (try (cond
       result,
         (sendMsg-who bot pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
@@ -301,13 +301,13 @@
               defi (what-is term)]
           (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
 
-      (fuzzy-key-lookup msg words-to-ignore),
-        (let [term (fuzzy-key-lookup msg words-to-ignore)
+      (fuzzy-key-lookup msg),
+        (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
           (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
 
       :else,
-        (sendMsg-who bot pojo (befuddled)))))
+        (sendMsg-who bot pojo (befuddled))) (catch java.lang.Exception e (println (str e))))))
 
 
 (defmethod responder ::know [bot pojo]
