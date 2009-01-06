@@ -241,7 +241,10 @@
           _ (println "Result:" result)]
       
       (if (vector? result)
-        (doseq [i (reverse result)] (sendMsg-who bot pojo i))
+        (doseq [i (reverse result)]
+               (if i
+                (sendMsg-who bot pojo i)
+                (sendMsg-who bot pojo "nil")))
         (sendMsg-who bot pojo result)))
   (sendMsg-who bot pojo (befuddled))))
 

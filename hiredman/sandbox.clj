@@ -83,7 +83,7 @@
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
-                          [(str *out*) (str *err*) (str result)])))
+                          [(str *out*) (str *err*) result])))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
         result))
