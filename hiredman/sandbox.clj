@@ -83,7 +83,10 @@
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
-                          [(str *out*) (str *err*) result])))
+                          [(str *out*) (str *err*) (binding [*out* (java.io.StringWriter.)]
+                                                            (prn result)
+                                                            (.close *out*)
+                                                            (str *out*))])))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
         result))
