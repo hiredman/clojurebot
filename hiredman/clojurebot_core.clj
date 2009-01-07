@@ -242,9 +242,7 @@
       
       (if (vector? result)
         (doseq [i (reverse result)]
-               (if i
-                (sendMsg-who bot pojo i)
-                (sendMsg-who bot pojo "nil")))
+           (sendMsg-who bot pojo i))
         (sendMsg-who bot pojo (.replace result "(NO_SOURCE_FILE:0)" ""))))
   (sendMsg-who bot pojo (befuddled))))
 
