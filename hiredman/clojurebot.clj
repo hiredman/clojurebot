@@ -2,7 +2,7 @@
 
 ;(add-classpath "file:///Users/oranenj/koodi/VCS/clojurebot/")
 (ns hiredman.clojurebot
-  (:use (hiredman clojurebot-core clojurebot-svn)))
+  (:use (hiredman clojurebot-core clojurebot-svn clojurebot-dice)))
 
 (comment ;;;;;;; eval these in a repl
 (binding [*ns* (create-ns 'sandbox)]
