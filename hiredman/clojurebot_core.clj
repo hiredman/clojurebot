@@ -150,7 +150,7 @@
 
 
 (defn addressed?
-      "is this message prefixed with clojurebot: "
+      "is this message prefixed with the bots nickname e.g. clojurebot:"
       [bot msg]
       (when (or (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg)) (nil? (:channel msg)))
         msg))
@@ -225,9 +225,9 @@
   
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
-(defn naughty-forms? [strang]
+(defn naughty-forms? [string]
       (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
-        (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
+        (some #(not= -1 %) (map #(.lastIndexOf string %) nf))))
 
 (defn find-or-create-ns [n]
       (if-let [s (find-ns n)] s (create-ns n)))
