@@ -16,4 +16,4 @@
                             (map (fn [_] (roll-die dice-type))
                                  (range 1 (inc dice-count))))))))
 
-(add-dispatch-hook (dfn (re-find #"^[0-9]+d[0-9]+$" (:message msg))) ::roll-dice)
+(add-dispatch-hook (dfn (re-find #"^[0-9]+d[0-9]+" (:message msg))) ::roll-dice)
