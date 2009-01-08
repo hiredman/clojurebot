@@ -201,8 +201,8 @@
         ::define-is
         (dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg)))
         ::math
-        ;(dfn (addressed? bot msg))
-        ;::lookup
+        (dfn (addressed? bot msg))
+        ::lookup
         (dfn (re-find url-regex (:message msg)))
         ::url]))
 
