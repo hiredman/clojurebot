@@ -328,6 +328,8 @@
 (defn user-watch [this]
       (let [cur (count (.getUsers this "#clojure"))
             pre (Integer/parseInt (what-is "max people"))]
+        (println cur)
+        (println pre)
         (when (> cur pre)
           (is! "max people" (str cur)))))
 
@@ -343,7 +345,7 @@
 (defn pircbot [bot-config]
   (let [bot-obj 
         (proxy [PircBot] []
-          (onJoin [this channel sender login hostname]
+          (onJoin [channel sender login hostname]
                   (user-watch this))
           (onMessage [channel sender login hostname message]
                      (handleMessage this channel sender login hostname message))
