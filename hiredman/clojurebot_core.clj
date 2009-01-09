@@ -226,7 +226,7 @@
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defn naughty-forms? [string]
-      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
+      (let [nf #{"#=" "catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
         (some #(not= -1 %) (map #(.lastIndexOf string %) nf))))
 
 (defn find-or-create-ns [n]
