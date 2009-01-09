@@ -1,8 +1,18 @@
 (ns hiredman.clojurebot-dice
   (:use (hiredman clojurebot-core)))
 
+
 (defn roll-die [sides]
       (randth (range 1 (inc sides))))
+
+;; (let [a (java.util.LinkedList. (range 1 7))] (java.util.Collections/shuffle a) (first a))
+
+
+(defn roll-die [sides]
+      (let [a (java.util.LinkedList. (range 1 (inc sides)))
+            _ (java.util.Collections/shuffle a)]
+        (first a)))
+
 
 (defmethod responder ::roll-dice [bot pojo]
   (let [msg (:message pojo)
