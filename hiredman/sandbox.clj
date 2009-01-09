@@ -2,7 +2,10 @@
     (:import (java.util.concurrent FutureTask TimeUnit TimeoutException)
              (java.io File FileWriter PushbackReader StringReader)))
 
-(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
+;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
+
+(def *bad-forms* #{'clojure.core/defmacro 'clojure.core/defn 'def 'eval 'try 'catch 'send})
+
 (def *default-timeout* 10) ; in seconds
 
 (defn enable-security-manager []
@@ -51,9 +54,14 @@
 (defn write-test []
       (doto (-> "foo.txt" File. FileWriter.) (.write "foo") .close))
 
-(defn de-fang [form notallowed]
+(defn de-fang
+      "looks through the macroexpand of a form for things I don't allow"
+      [form notallowed]
       (if (list? form)
-          (when (not (some #(contains? notallowed %) (tree-seq list? identity form))) form)
+          (when (not
+                  (some notallowed
+                        (tree-seq seq? identity (macroexpand form))))
+              form)
           form))
 
 (defn cond-eval [pred form]
