@@ -4,7 +4,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'clojure.core/defmacro 'clojure.core/defn 'def 'eval 'try 'catch 'send})
+(def *bad-forms* #{'def 'eval 'catch})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -60,7 +60,7 @@
       (if (list? form)
           (when (not
                   (some notallowed
-                        (tree-seq seq? identity (macroexpand form))))
+                        (tree-seq seq? macroexpand form)))
               form)
           form))
 
