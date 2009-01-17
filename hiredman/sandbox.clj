@@ -4,7 +4,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'clojure.core/defmacro 'clojure.core/defn 'def 'eval 'try 'catch 'send})
+(def *bad-forms* #{'def 'eval 'catch})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -60,7 +60,7 @@
       (if (list? form)
           (when (not
                   (some notallowed
-                        (tree-seq seq? identity (macroexpand form))))
+                        (tree-seq seq? macroexpand form)))
               form)
           form))
 
@@ -91,10 +91,12 @@
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
-                          [(str *out*) (str *err*) (binding [*out* (java.io.StringWriter.)]
-                                                            (prn result)
-                                                            (.close *out*)
-                                                            (str *out*))])))
+                          [(str *out*) (str *err*) (prn-str result)]
+                          (let [o (str *out*)
+                                e (str *err*)
+                                r (prn-str result)]
+                            [o e (when (or result (.equals "" o))
+                                   r)]))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
         result))
