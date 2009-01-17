@@ -227,8 +227,10 @@
   "Allows you to add your own hook to the message responder
    You *must* define a 'responder multimethod corresponding to the
    dispatch-value"
-  [dispatch-priority dispatch-check dispatch-value]
-  (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]])))
+  ([dispatch-priority dispatch-check dispatch-value]
+   (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]])))
+  ([dispatch-check dispatch-value]
+   (add-dispatch-hook 0 dispatch-check dispatch-value)))
  
   
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
