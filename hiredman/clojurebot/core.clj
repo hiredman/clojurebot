@@ -15,6 +15,7 @@
 
 (ns hiredman.clojurebot.core
     (:use (hiredman sandbox))
+    (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
@@ -206,22 +207,29 @@
         (dfn (re-find url-regex (:message msg)))
         ::url]))
 
+(def *dispatchers*
+     (ref '()))
+
+
 (defn dispatch
       "this function does dispatch for responder"
       [bot msg]
-      (loop [d (partition 2 @*dispatchers*)]
+      (loop [d @*dispatchers*]
         (when d
-          (let [[[k v] & rest] d]
+          (let [k (first (pq/first d))
+                v (second (pq/first d))]
             (if (k bot msg)
               v
-              (recur rest))))))
+              (recur (rest d)))))))
+
 
 (defn add-dispatch-hook
   "Allows you to add your own hook to the message responder
    You *must* define a 'responder multimethod corresponding to the
    dispatch-value"
-  [dispatch-check dispatch-value]
-  (dosync (commute *dispatchers* conj dispatch-check dispatch-value)))
+  [dispatch-priority dispatch-check dispatch-value]
+  (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]])))
+ 
   
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
