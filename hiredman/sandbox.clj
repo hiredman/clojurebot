@@ -83,11 +83,17 @@
         (eval b)
         (str a)))
 
+(defmacro my-doc [s]
+      `(let [m# (meta (var ~s))
+            al# (:arglists m#)
+            docstring# (:doc m#)]
+        (.replaceAll (.replaceAll (str al# "; " docstring# ) "\n" "") (str \\ \s) " ")))
+
 (defn eval-in-box [_string sb-ns]
       (let [form (-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
-                                 *ns* (find-ns sb-ns) doc hiredman.clojurebot.core/my-doc]
+                                 *ns* (find-ns sb-ns) doc my-doc]
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
