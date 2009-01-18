@@ -78,12 +78,6 @@
       [msg]
       (re-find #"^\(doc " msg))
 
-(defmacro my-doc [s]
-      `(let [m# (meta (var ~s))
-            al# (:arglists m#)
-            docstring# (:doc m#)]
-        (.replaceAll (.replaceAll (str al# "; " docstring# ) "\n" "") (str \\ \s) " ")))
-
 (defn d?op
       "if string ends in a question mark return
       the string without the question mark"
