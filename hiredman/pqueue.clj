@@ -2,10 +2,14 @@
     (:refer-clojure :exclude [first conj])
     (:require [clojure.core :as cc]))
 
-(defn first [x]
+(defn first
+      "returns the first item in priority queue"
+      [x]
       (second (cc/first x)))
 
 (defn conj
+      "add item to priority queue nil is the same as 0
+      [col [priority item]]"
       ([x f]
        (apply concat
               (interpose (list f)
