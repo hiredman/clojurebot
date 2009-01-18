@@ -232,6 +232,7 @@
   ([dispatch-check dispatch-value]
    (add-dispatch-hook 0 dispatch-check dispatch-value)))
  
+;; register legacy stuffs
 (dorun
   (map #(add-dispatch-hook (first %) (second %))
        [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
@@ -241,6 +242,7 @@
                   (not= \? (last (:message msg))))) ::define-is]
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
+;;this stuff needs to come last?
 (add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
 (add-dispatch-hook 21 (dfn (re-find url-regex (:message msg))) ::url)
 
