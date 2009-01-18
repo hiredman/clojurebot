@@ -87,7 +87,7 @@
       (let [form (-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
-                                 *ns* (find-ns sb-ns)]
+                                 *ns* (find-ns sb-ns) doc hiredman.clojurebot.core/my-doc]
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
