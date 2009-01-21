@@ -9,7 +9,7 @@
 
 (defn first
   "returns the first item in a priority queue"
-  [x]
+  [pq]
   (cc/first (seq pq)))
 
 (defn conj
