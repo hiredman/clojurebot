@@ -97,10 +97,10 @@
                         (let [result (cond-eval #(de-fang % *bad-forms*) form)]
                           (.close *out*)
                           (.close *err*)
-                          [(str *out*) (str *err*) (prn-str result)]
+                          ;[(str *out*) (str *err*) (prn-str result)]
                           (let [o (str *out*)
                                 e (str *err*)
-                                r (prn-str result)]
+                                r (prn-str (doall result))]
                             [o e (when (or result (.equals "" o))
                                    r)]))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
