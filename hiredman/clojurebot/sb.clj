@@ -6,9 +6,6 @@
       (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
         (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
-(defn find-or-create-ns [n]
-      (if-let [s (find-ns n)] s (create-ns n)))
-
 (defmethod responder ::code-sandbox [bot pojo]
   (println (str (:sender pojo) " " (:message pojo)))
   (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
@@ -25,4 +22,4 @@
 
 
 
-(add-dispatch-hook  (dfn (re-find #"^,\(" (:message msg)))) ::code-sandbox)
+(add-dispatch-hook  (dfn (re-find #"^,\(" (:message msg))) ::code-sandbox)
