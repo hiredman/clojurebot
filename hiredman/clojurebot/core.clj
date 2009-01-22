@@ -27,10 +27,9 @@
 (def dict-is (ref {}))
 (def dict-are (ref {}))
 
-;url is for storing urls, must figure out something to do with this
-(def url (ref {}))
-
-(def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
+;; url is for storing urls, must figure out something to do with this
+;; (def url (ref {}))
+;; (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
@@ -250,7 +249,6 @@
 
 ;;this stuff needs to come last?
 (add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
-(add-dispatch-hook 21 (dfn (re-find url-regex (:message msg))) ::url)
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
@@ -345,11 +343,11 @@
 (defmethod responder ::know [bot pojo]
   (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
-(defmethod responder ::url [bot pojo]
-  (dosync (commute url
-                   assoc
-                   (re-find url-regex (:message pojo)) (java.util.Date.)))
-  (prn (str (:sender pojo) ", " (:message pojo))))
+;; (defmethod responder ::url [bot pojo]
+;;   (dosync (commute url
+;;                    assoc
+;;                    (re-find url-regex (:message pojo)) (java.util.Date.)))
+;;   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
