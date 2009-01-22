@@ -233,14 +233,14 @@
   "Allows you to add your own hook to the message responder
    You *must* define a 'responder multimethod corresponding to the
    dispatch-value"
-  ([dispatch-priority dispatch-check dispatch-value]
-   (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]])))
-  ([dispatch-check dispatch-value]
-   (add-dispatch-hook 0 dispatch-check dispatch-value)))
+      ([dispatch-check dispatch-value]
+         (add-dispatch-hook 0 dispatch-check dispatch-value))
+      ([dispatch-priority dispatch-check dispatch-value]
+       (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]]))))
  
 ;; register legacy stuffs
 (dorun
-  (map #(add-dispatch-hook (first %) (second %))
+  (map #(add-dispatch-hook 0 (first %) (second %))
        [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
         [(dfn (and (addressed? bot msg) 
               (re-find #"how much do you know?" (:message msg)))) ::know]
@@ -254,9 +254,9 @@
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
-(defn naughty-forms? [strang]
-      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
-        (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
+;; (defn naughty-forms? [strang]
+;;       (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
+;;         (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
 ;; unused, unneeded
 ;; (defn find-or-create-ns [n]
