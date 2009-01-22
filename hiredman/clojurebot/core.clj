@@ -44,10 +44,14 @@
 (def input-accepted ["'Sea, mhuise." "In Ordnung" "Ik begrijp" "Alles klar" "Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
 (def befuddl ["Titim gan éirí ort." "Gabh mo leithscéal?" "No entiendo"  "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
 
-(defn ok []
+(defn ok
+      "random input-accepted sort of string"
+      []
       (randth input-accepted))
 
-(defn befuddled []
+(defn befuddled
+      "random \"Huh?\" sort of string"
+      []
       (randth befuddl))
 
 (defn inits
@@ -113,7 +117,9 @@
       [this recv msg]
       (.sendMessage this recv (.replace (str msg) \newline \space)))
 
-(defn sendMsg-who [bot msg msg-to-send]
+(defn sendMsg-who
+      "wrapper around sendMsg"
+      [bot msg msg-to-send]
   (sendMsg (:this bot) (who msg) msg-to-send))
 
 (defn term-lists
@@ -229,8 +235,9 @@
       (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
         (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
-(defn find-or-create-ns [n]
-      (if-let [s (find-ns n)] s (create-ns n)))
+;; unused, unneeded
+;; (defn find-or-create-ns [n]
+;;       (if-let [s (find-ns n)] s (create-ns n)))
 
 (defmethod responder ::code-sandbox [bot pojo]
   (println (str (:sender pojo) " " (:message pojo)))
@@ -277,7 +284,9 @@
       (is! term defi))
     (sendMsg-who bot pojo (ok))))
 
-(defn prep-reply [sender term defi]
+(defn prep-reply
+      "preps a reply, does substituion of stuff like <reply> and #who"
+      [sender term defi]
       (.replaceAll (if (re-find #"^<reply>" defi)
                      (.trim (remove-from-beginning (str defi) "<reply>"))
                      (str term " is " defi))
@@ -288,7 +297,7 @@
   (let [msg (d?op (.trim (remove-from-beginning (:message pojo) (:nick bot) ":")))
         result (what-is msg)
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
-    (try (cond
+    (cond
       result,
         (sendMsg-who bot pojo
                      (.replaceAll (if (re-find #"^<reply>" result)
@@ -308,7 +317,7 @@
           (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
 
       :else,
-        (sendMsg-who bot pojo (befuddled))) (catch java.lang.Exception e (println (str e))))))
+        (sendMsg-who bot pojo (befuddled)))))
 
 
 (defmethod responder ::know [bot pojo]
