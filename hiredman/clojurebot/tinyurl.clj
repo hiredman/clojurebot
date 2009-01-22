@@ -25,11 +25,13 @@
                   dis (java.io.DataInputStream. pt)]
                  (.readLine dis)))
 
+(def getTinyUrl-cached (memoize getTinyUrl))
+
 (defmethod responder ::tiny-url [bot pojo]
   (println (who pojo))
   (let [url (re-find url-reg (:message pojo))]
     (when (> (count url) 30)
-      (try (.sendNotice (:this bot) (who pojo) (getTinyUrl url)) (catch Exception e (println e))))))
+      (try (.sendNotice (:this bot) (who pojo) (getTinyUrl-cached url)) (catch Exception e (println e))))))
 
 
 (add-dispatch-hook 20 (dfn (re-find url-reg (:message msg))) ::tiny-url)
