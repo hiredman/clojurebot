@@ -15,6 +15,7 @@
 
 (ns hiredman.clojurebot.core
     (:use (hiredman sandbox))
+    (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
@@ -193,42 +194,64 @@
   `(fn [~'bot ~'msg]
      ~@body))
 
-(def *dispatchers* 
-     (ref 
-       [(dfn (doc-lookup? (:message msg))) 
-        ::doc-lookup,
-        (dfn (re-find #"^,\(" (:message msg))) 
-        ::code-sandbox,
-        (dfn (and (addressed? bot msg) 
-              (re-find #"how much do you know?" (:message msg))))
-        ::know
-        (dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
-                  (not= \? (last (:message msg)))))
-        ::define-is
-        (dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg)))
-        ::math
-        (dfn (addressed? bot msg))
-        ::lookup
-        (dfn (re-find url-regex (:message msg)))
-        ::url]))
+;; (def *dispatchers* 
+;;      (ref 
+;;        [(dfn (doc-lookup? (:message msg))) 
+;;         ::doc-lookup,
+;;         (dfn (re-find #"^,\(" (:message msg))) 
+;;         ::code-sandbox,
+;;         (dfn (and (addressed? bot msg) 
+;;               (re-find #"how much do you know?" (:message msg))))
+;;         ::know
+;;         (dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
+;;                   (not= \? (last (:message msg)))))
+;;         ::define-is
+;;         (dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg)))
+;;         ::math
+;;         (dfn (addressed? bot msg))
+;;         ::lookup
+;;         (dfn (re-find url-regex (:message msg)))
+;;         ::url]))
+
+(def *dispatchers*
+     (ref '()))
+
 
 (defn dispatch
       "this function does dispatch for responder"
       [bot msg]
-      (loop [d (partition 2 @*dispatchers*)]
+      (loop [d @*dispatchers*]
         (when d
-          (let [[[k v] & rest] d]
+          (let [k (first (pq/first d))
+                v (second (pq/first d))]
             (if (k bot msg)
               v
-              (recur rest))))))
+              (recur (rest d)))))))
+
 
 (defn add-dispatch-hook
   "Allows you to add your own hook to the message responder
    You *must* define a 'responder multimethod corresponding to the
    dispatch-value"
-  [dispatch-check dispatch-value]
-  (dosync (commute *dispatchers* conj dispatch-check dispatch-value)))
-  
+  ([dispatch-priority dispatch-check dispatch-value]
+   (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]])))
+  ([dispatch-check dispatch-value]
+   (add-dispatch-hook 0 dispatch-check dispatch-value)))
+ 
+;; register legacy stuffs
+(dorun
+  (map #(add-dispatch-hook (first %) (second %))
+       [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
+        [(dfn (and (addressed? bot msg) 
+              (re-find #"how much do you know?" (:message msg)))) ::know]
+        [(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
+                  (not= \? (last (:message msg))))) ::define-is]
+        [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
+
+;;this stuff needs to come last?
+(add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
+(add-dispatch-hook 21 (dfn (re-find url-regex (:message msg))) ::url)
+
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defn naughty-forms? [strang]
@@ -252,7 +275,6 @@
            (sendMsg-who bot pojo i))
         (sendMsg-who bot pojo (.replace result "(NO_SOURCE_FILE:0)" ""))))
   (sendMsg-who bot pojo (befuddled))))
-
 
 (defmethod responder ::math [bot pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
