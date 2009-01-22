@@ -262,19 +262,19 @@
 ;; (defn find-or-create-ns [n]
 ;;       (if-let [s (find-ns n)] s (create-ns n)))
 
-(defmethod responder ::code-sandbox [bot pojo]
-  (println (str (:sender pojo) " " (:message pojo)))
-  (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
-    (let [result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
-                              (:sandbox-ns bot))
-                      (catch Exception e
-                             (str "Eval-in-box threw an exception:" (.getMessage e))))
-          _ (println "Result:" result)]
-      (if (vector? result)
-        (doseq [i (reverse result)]
-           (sendMsg-who bot pojo i))
-        (sendMsg-who bot pojo (.replace result "(NO_SOURCE_FILE:0)" ""))))
-  (sendMsg-who bot pojo (befuddled))))
+;; (defmethod responder ::code-sandbox [bot pojo]
+;;   (println (str (:sender pojo) " " (:message pojo)))
+;;   (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
+;;     (let [result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
+;;                               (:sandbox-ns bot))
+;;                       (catch Exception e
+;;                              (str "Eval-in-box threw an exception:" (.getMessage e))))
+;;           _ (println "Result:" result)]
+;;       (if (vector? result)
+;;         (doseq [i (reverse result)]
+;;            (sendMsg-who bot pojo i))
+;;         (sendMsg-who bot pojo (.replace result "(NO_SOURCE_FILE:0)" ""))))
+;;   (sendMsg-who bot pojo (befuddled))))
 
 (defmethod responder ::math [bot pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
