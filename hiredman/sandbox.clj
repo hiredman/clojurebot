@@ -100,7 +100,7 @@
                           ;[(str *out*) (str *err*) (prn-str result)]
                           (let [o (str *out*)
                                 e (str *err*)
-                                r (prn-str (doall result))]
+                                r (prn-str (if (seq? result) (doall result) result))]
                             [o e (when (or result (.equals "" o))
                                    r)]))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
