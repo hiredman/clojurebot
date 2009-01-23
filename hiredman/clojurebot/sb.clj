@@ -8,7 +8,7 @@
 
 (defmethod responder ::code-sandbox [bot pojo]
   (println (str (:sender pojo) " " (:message pojo)))
-  (if (and (not (naughty-forms? (:message pojo))) (not= "karmazilla" (:sender pojo)))
+  (if (not (naughty-forms? (:message pojo)))
     (let [result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
                               (:sandbox-ns bot))
                       (catch Exception e
