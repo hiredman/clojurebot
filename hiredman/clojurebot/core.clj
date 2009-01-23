@@ -136,11 +136,9 @@
 (defn rlookup
       "look up terms from a seq until you find a defi"
       [terms]
-      (loop [t terms]
-            (if t
-              (if (@dict-is (first t))
-                (first t)
-                (recur (rest t))))))
+      (if (and terms (@dict-is (first terms)))
+              (first terms)
+              (recur (rest terms))))
 
 (defn fuzzy-lookup
       "look up based on permutation"
