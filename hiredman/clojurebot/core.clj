@@ -108,7 +108,9 @@
 (defn who
       "am I talking to someonein a privmsg, or in a channel?"
       [pojo]
-      (or (:channel pojo) (:sender pojo)))
+      (if (:channel pojo)
+        (:channel pojo)
+        (:sender pojo)))
 
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
