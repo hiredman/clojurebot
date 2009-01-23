@@ -137,8 +137,8 @@
       "look up terms from a seq until you find a defi"
       [terms]
       (if (and terms (@dict-is (first terms)))
-              (first terms)
-              (recur (rest terms))))
+        (first terms)
+        (recur (rest terms))))
 
 (defn fuzzy-lookup
       "look up based on permutation"
@@ -154,7 +154,9 @@
 (defn addressed?
       "is this message prefixed with clojurebot: "
       [bot msg]
-      (when (or (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg)) (nil? (:channel msg)))
+      (when (or (re-find #"^~" (:message msg))
+                (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg))
+                (nil? (:channel msg)))
         msg))
 
 
@@ -290,8 +292,13 @@
   [string & chunks]
   (.replaceFirst string (apply str "^" chunks) ""))
 
+(defn extract-message [bot pojo]
+      (if (addressed? bot pojo)
+      (reduce #(remove-from-beginning % %2)
+              (:message pojo) #{"~" (str (:nick bot) ":")})))
+
 (defmethod responder ::define-is [bot pojo]
-  (let [a (.trim (remove-from-beginning (:message pojo) (:nick bot) ":"))
+  (let [a (.trim (extract-message bot pojo))
         term (term a)
         x (strip-is a)
         defi (remove-from-beginning x "also ")]
@@ -310,7 +317,7 @@
                    sender))
 
 (defmethod responder ::lookup [bot pojo]
-  (let [msg (d?op (.trim (remove-from-beginning (:message pojo) (:nick bot) ":")))
+  (let [msg (d?op (.trim (extract-message bot pojo)))
         result (what-is msg)
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
