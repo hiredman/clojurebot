@@ -246,8 +246,8 @@
 
 (defn extract-message [bot pojo]
       (if (addressed? bot pojo)
-      (reduce #(remove-from-beginning % %2)
-              (:message pojo) #{"~" (str (:nick bot) ":")})))
+        (reduce #(remove-from-beginning % %2)
+                (:message pojo) #{"~" (str (:nick bot) ":")})))
 
 (defmethod responder ::define-is [bot pojo]
   (let [a (.trim (extract-message bot pojo))
@@ -274,7 +274,7 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result))
+        (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]

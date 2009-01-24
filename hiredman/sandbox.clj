@@ -74,7 +74,7 @@
 (defn killall-thrdgrp [thg]
       (let [a (make-array Thread (.activeCount thg))
             _ (.enumerate thg a true)]
-        (map #(.stop % (Exception. "KILLED")))
+        (map #(.stop % (Exception. "KILLED")) a)
         (.destroy thg)))
 
 (defn save-to-gensym [x]
