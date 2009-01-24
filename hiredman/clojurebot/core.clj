@@ -201,6 +201,7 @@
       "do I see someone with the nickname nick? returns nil or a seq of channels where I see him"
       [bot nick]
       (reduce #(when %2 (if (seq? %) (conj % %2) (filter identity [% %2])))
+              nil
               (map first (filter #(some (fn [y] (.equals y nick)) (last %))
                                  (everyone-I-see bot)))))
 
@@ -274,8 +275,8 @@
 
 (defn extract-message [bot pojo]
       (if (addressed? bot pojo)
-      (reduce #(remove-from-beginning % %2)
-              (:message pojo) #{"~" (str (:nick bot) ":")})))
+        (.trim (reduce #(remove-from-beginning % %2)
+               (:message pojo) #{"~" (str (:nick bot) ":")}))))
 
 (defmethod responder ::define-is [bot pojo]
   (let [a (.trim (extract-message bot pojo))
