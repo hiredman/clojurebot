@@ -6,11 +6,10 @@
 (def svn-rev-cache (ref []))
 
 (defn send-svn-revs [bot revs]
-      (dorun
-        (map #(sendMsg (:this bot)
-                       (:channel bot)
-                        (str "svn rev " (first %) "; " (last %)))
-             revs)))
+      (doseq [i (.getChannels (:this bot))]
+             (dorun
+               (map #(sendMsg (:this bot) i (str "svn rev " (first %) "; " (last %)))
+                    revs))))
 
 (defn cache-svn-rev
       "puts an svn rev into the cache"
