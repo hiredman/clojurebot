@@ -194,6 +194,16 @@
   `(fn [~'bot ~'msg]
      ~@body))
 
+(defn everyone-I-see [bot] 
+      (map #(vector % (map (comp :nick bean) (.getUsers (:this bot) %))) (.getChannels (:this bot))))
+
+(defn see-nick?
+      "do I see someone with the nickname nick? returns nil or a seq of channels where I see him"
+      [bot nick]
+      (reduce #(when %2 (if (seq? %) (conj % %2) (filter identity [% %2])))
+              (map first (filter #(some (fn [y] (.equals y nick)) (last %))
+                                 (everyone-I-see bot)))))
+
 (def *dispatchers*
      (ref '()))
 
