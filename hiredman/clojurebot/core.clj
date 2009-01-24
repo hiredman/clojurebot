@@ -228,6 +228,12 @@
          (add-dispatch-hook 0 dispatch-check dispatch-value))
       ([dispatch-priority dispatch-check dispatch-value]
        (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]]))))
+
+(defn remove-dispatch-hook [dispatch-value]
+      (dosync
+        (alter
+          *dispatchers*
+          (partial filter #(not= dispatch-value (last (last %)))))))
  
 ;; register legacy stuffs
 (dorun
