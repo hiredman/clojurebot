@@ -138,9 +138,10 @@
 (defn rlookup
       "look up terms from a seq until you find a defi"
       [terms]
-      (if (and terms (@dict-is (first terms)))
+      (when terms
+      (if (@dict-is (first terms))
         (first terms)
-        (recur (rest terms))))
+        (recur (rest terms)))))
 
 (defn fuzzy-lookup
       "look up based on permutation"
@@ -283,23 +284,15 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-        (sendMsg-who bot pojo
-                     (.replaceAll (if (re-find #"^<reply>" result)
-                                    (.trim (remove-from-beginning (str result) "<reply>"))
-                                    (str msg " is " result))
-                                  "#who"
-                                  (:sender pojo)))
-
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
           (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
-
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
           (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
-
       :else,
         (sendMsg-who bot pojo (befuddled)))))
 
@@ -328,9 +321,11 @@
 
 
 (defn handleMessage [this channel sender login hostname message]
-  (let [bot (get @*bots* this)]
-  (responder bot (struct junks channel sender login
-                         hostname message))))
+      (try 
+        (let [bot (get @*bots* this)]
+          (responder bot (struct junks channel sender login
+                                 hostname message)))
+        (catch Exception e (println e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
