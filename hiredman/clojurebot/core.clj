@@ -226,12 +226,24 @@
         [(dfn (and (addressed? bot msg) 
               (re-find #"how much do you know?" (:message msg)))) ::know]
         [(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
-                  (not= \? (last (:message msg))))) ::define-is]]))
+                  (not= \? (last (:message msg))))) ::define-is]
+        [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
 (add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
+
+(defmethod responder nil [& _])
+
+(defmethod responder ::math [bot pojo]
+  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
+        nums (map #(Integer/parseInt %) num-strings)]
+    (sendMsg-who bot pojo
+                 (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
+                   (if (> out 4)
+                     "*suffusion of yellow*"
+                     out)))))
 
 (defmethod responder ::doc-lookup [bot pojo]
   (sendMsg-who bot pojo
@@ -246,8 +258,8 @@
 
 (defn extract-message [bot pojo]
       (if (addressed? bot pojo)
-        (reduce #(remove-from-beginning % %2)
-                (:message pojo) #{"~" (str (:nick bot) ":")})))
+      (reduce #(remove-from-beginning % %2)
+              (:message pojo) #{"~" (str (:nick bot) ":")})))
 
 (defmethod responder ::define-is [bot pojo]
   (let [a (.trim (extract-message bot pojo))
@@ -274,7 +286,7 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-        (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result))
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
