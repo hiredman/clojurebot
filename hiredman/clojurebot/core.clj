@@ -226,22 +226,12 @@
         [(dfn (and (addressed? bot msg) 
               (re-find #"how much do you know?" (:message msg)))) ::know]
         [(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
-                  (not= \? (last (:message msg))))) ::define-is]
-        [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
+                  (not= \? (last (:message msg))))) ::define-is]]))
 
 ;;this stuff needs to come last?
 (add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
-
-(defmethod responder ::math [bot pojo]
-  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
-        nums (map #(Integer/parseInt %) num-strings)]
-    (sendMsg-who bot pojo
-                 (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
-                   (if (> out 4)
-                     "*suffusion of yellow*"
-                     out)))))
 
 (defmethod responder ::doc-lookup [bot pojo]
   (sendMsg-who bot pojo
