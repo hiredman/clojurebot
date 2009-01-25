@@ -14,7 +14,7 @@
           (str nick " was last seen in " channel ", " minutes " minutes ago saying: " m))))
 
 (defmethod responder ::seenx [bot msg]
-  (let [nick (re-find #"[^ ]+" (.replaceFirst (extract-message bot msg) "seen " ""))]
+  (let [nick (d?op (re-find #"[^ ]+" (.replaceFirst (extract-message bot msg) "seen " "")))]
     (if (.equals (:nick bot) nick)
       (sendMsg-who bot msg "Of course I have seen myself.")
       (if (@user-db nick)
