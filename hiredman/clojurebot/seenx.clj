@@ -26,7 +26,7 @@
 
 (defmethod responder ::watcher [bot msg]
   (dosync
-    (alter user-db assoc (:sender msg)
+    (commute user-db assoc (:sender msg)
            (vector
              (cond
                (:join msg)
