@@ -10,6 +10,8 @@
           (str nick " was last seen joining " channel ", " minutes " minutes ago" )
         (= m :part)
           (str nick " was last seen parting " channel ", " minutes " minutes ago")
+        (= m :quit)
+          (str nick " was last seen quiting IRC, " minutes " minutes ago")
          :else
           (str nick " was last seen in " channel ", " minutes " minutes ago saying: " m))))
 
@@ -33,6 +35,8 @@
                 :join
                (:part msg)
                 :part
+               (:quit msg)
+                :quit
                :else
                 (:message msg))
              (:channel msg)
