@@ -31,6 +31,8 @@
 ;; (def url (ref {}))
 ;; (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
+(def users (ref {}))
+
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
 
@@ -342,18 +344,24 @@
 (defn handleMessage [this channel sender login hostname message]
       (try 
         (let [bot (get @*bots* this)]
-          (responder bot (struct junks channel sender login
-                                 hostname message)))
+          (trampoline responder bot (struct junks channel sender login hostname message)))
         (catch Exception e (println e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
 
+(defn join-or-part [this event channel sender login hostname]
+      (try
+        (trampoline responder (get @*bots* this) (assoc (struct junks channel sender login hostname "") event))
+        (catch Exception e (println e))))
+
 (defn pircbot [bot-config]
   (let [bot-obj 
         (proxy [PircBot] []
           (onJoin [channel sender login hostname]
-                  (user-watch this))
+                  (join-or-part this :join channel sender login hostname))
+          (onPart [channel sender login hostname]
+                  (join-or-part this :part channel sender login hostname))
           (onMessage [channel sender login hostname message]
                      (handleMessage this channel sender login hostname message))
           (onPrivateMessage [sender login hostname message]
