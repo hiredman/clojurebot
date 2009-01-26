@@ -367,12 +367,13 @@
                   (join-or-part this :join channel sender login hostname))
           (onPart [channel sender login hostname]
                   (join-or-part this :part channel sender login hostname))
+          (onQuit [nick login hostname reason]
+                  (join-or-part this :quit nil nick login hostname))
           (onMessage [channel sender login hostname message]
                      (handleMessage this channel sender login hostname message))
           (onPrivateMessage [sender login hostname message]
                             (handlePrivateMessage this sender login hostname message)))]
     (merge bot-config {:this bot-obj})))
-
 
 (defn dict-file [config suffix]
   (let [file (-> (str (:dict-dir config "./") (:dict-basename config (:nick config)) suffix)
