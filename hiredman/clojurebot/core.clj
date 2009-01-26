@@ -205,6 +205,9 @@
               (map first (filter #(some (fn [y] (.equals y nick)) (last %))
                                  (everyone-I-see bot)))))
 
+(defn random-person [bot]
+      (randth (filter #(not (.equals % (:nick bot))) (apply concat (map last (everyone-I-see bot))))))
+
 (def *dispatchers*
      (ref '()))
 
@@ -288,14 +291,17 @@
       (is! term defi))
     (sendMsg-who bot pojo (ok))))
 
+(defn replace-with [str map]
+      (reduce #(.replaceAll % (first %2) (second %2)) str map))
+
 (defn prep-reply
       "preps a reply, does substituion of stuff like <reply> and #who"
-      [sender term defi]
-      (.replaceAll (if (re-find #"^<reply>" defi)
-                     (.trim (remove-from-beginning (str defi) "<reply>"))
-                     (str term " is " defi))
-                   "#who"
-                   sender))
+      [sender term defi bot]
+      (replace-with
+        (if (re-find #"^<reply>" defi)
+          (.trim (remove-from-beginning (str defi) "<reply>"))
+          (str term " is " defi))
+        {"#who" sender "#someone" (random-person bot)}))
 
 (defmethod responder ::lookup [bot pojo]
   (let [msg (d?op (.trim (extract-message bot pojo)))
@@ -303,15 +309,15 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result))
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result bot))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi)))
+          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
       :else,
         (sendMsg-who bot pojo (befuddled)))))
 
