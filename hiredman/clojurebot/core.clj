@@ -178,7 +178,9 @@
 (defn is!
       "define a term in dict-is, overwriting anything that was there"
       [term defi]
-      (dosync (commute dict-is assoc term defi)))
+      (if (= :nope (@dict-is term :nope))
+        (dosync (commute dict-is assoc term defi))
+        (throw (java.util.prefs.BackingStoreException "Already Defined"))))
 
 
 (defn what-is
@@ -286,10 +288,13 @@
         term (term a)
         x (strip-is a)
         defi (remove-from-beginning x "also ")]
-    (if (re-find #"^also " x)
-      (is term defi)
-      (is! term defi))
-    (sendMsg-who bot pojo (ok))))
+    (try
+      (if (re-find #"^also " x)
+        (is term defi)
+        (is! term defi))
+      (sendMsg-who bot pojo (ok))
+      (catch java.util.prefs.BackingStoreException e
+             (sendMsg-who bot pojo "sorry, " term " may already be defined")))))
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
