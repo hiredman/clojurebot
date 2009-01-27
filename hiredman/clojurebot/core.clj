@@ -276,10 +276,10 @@
   [string & chunks]
   (.replaceFirst string (apply str "^" chunks) ""))
 
-(defn extract-message [bot pojo]
-      (if (addressed? bot pojo)
-        (.trim (reduce #(remove-from-beginning % %2)
-               (:message pojo) #{"~" (str (:nick bot) ":")}))))
+(defn extract-message
+      "removes bot name and/or ~ from the beginning of the msg"
+      [bot pojo]
+      (.trim (.replaceAll (:message pojo) (str "(?:~)?(?:" (:nick bot) ": )(.*)") "$1")))
 
 (defmethod responder ::define-is [bot pojo]
   (let [a (.trim (extract-message bot pojo))
