@@ -85,9 +85,7 @@
       "if string ends in a question mark return
       the string without the question mark"
       [x]
-      (if (= \? (.charAt x (dec (count x))))
-        (subs x 0 (dec (count x)))
-        x))
+      (.replaceAll x  "^(.*)\\?$" "$1"))
 
 (defn symbol-to-var-doc
       "this returns the doc metadata from a var in the
