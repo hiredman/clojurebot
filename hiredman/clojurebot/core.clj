@@ -176,9 +176,9 @@
 (defn is!
       "define a term in dict-is, overwriting anything that was there"
       [term defi]
-      (if (= :nope (@dict-is term :nope))
+      (if (or (= :nope (@dict-is term :nope)) true)
         (dosync (commute dict-is assoc term defi))
-        (throw (java.util.prefs.BackingStoreException "Already Defined"))))
+        (throw (java.util.prefs.BackingStoreException. "Already Defined"))))
 
 
 (defn what-is
@@ -292,7 +292,7 @@
         (is! term defi))
       (sendMsg-who bot pojo (ok))
       (catch java.util.prefs.BackingStoreException e
-             (sendMsg-who bot pojo "sorry, " term " may already be defined")))))
+             (sendMsg-who bot pojo (str "sorry, " term " may already be defined"))))))
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
