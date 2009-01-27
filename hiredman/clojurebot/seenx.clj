@@ -32,7 +32,7 @@
            (vector
              (cond
                (:join msg)
-                :join
+                (do (user-watch (:this bot)) :join)
                (:part msg)
                 :part
                (:quit msg)
