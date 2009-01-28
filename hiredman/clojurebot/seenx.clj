@@ -16,7 +16,7 @@
           (str nick " was last seen in " channel ", " minutes " minutes ago saying: " m))))
 
 (defmethod responder ::seenx [bot msg]
-  (let [nick (d?op (re-find #"[^ ]+" (.replaceFirst (extract-message bot msg) "seen " "")))]
+  (let [nick (.replaceAll (d?op (extract-message bot msg)) "(?:.*) seen ([^ ])" "$1")]
     (if (.equals (:nick bot) nick)
       (sendMsg-who bot msg "Of course I have seen myself.")
       (if (@user-db nick)
@@ -42,6 +42,5 @@
              (:channel msg)
              (:time (bean (java.util.Date.))))))
   #(responder bot (assoc msg ::ignore true)))
-
 
 (add-dispatch-hook -31 (dfn (nil? (::ignore msg))) ::watcher)
