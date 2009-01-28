@@ -279,7 +279,7 @@
 (defn extract-message
       "removes bot name and/or ~ from the beginning of the msg"
       [bot pojo]
-      (.trim (.replaceAll (:message pojo) (str "^[~|" (:nick bot) ":]+(.*)") "$1")))
+      (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
 (defmethod responder ::define-is [bot pojo]
   (let [a (.trim (extract-message bot pojo))
@@ -337,7 +337,6 @@
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
     (prn q)))
-
 
 (defn user-watch [this]
       (let [cur (count (.getUsers this "#clojure"))
