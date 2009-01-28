@@ -21,4 +21,5 @@
       (sendMsg-who bot msg (:titleNoFormatting result))
       (sendMsg-who bot msg (:unescapedUrl result)))))
 
-(add-dispatch-hook (dfn (and (addressed? bot msg) (re-find #"^google " (extract-message bot msg)))) ::google)
+(add-dispatch-hook (dfn (and (addressed? bot msg)
+                             (re-find #"^google " (extract-message bot msg)))) ::google)
