@@ -342,8 +342,6 @@
 (defn user-watch [this]
       (let [cur (count (.getUsers this "#clojure"))
             pre (Integer/parseInt (what-is "max people"))]
-        (println cur)
-        (println pre)
         (when (> cur pre)
           (is! "max people" (str cur)))))
 
