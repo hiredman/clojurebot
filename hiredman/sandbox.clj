@@ -4,7 +4,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'def 'eval 'catch 'load-string})
+(def *bad-forms* #{'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -66,7 +66,7 @@
 
 (defn cond-eval [pred form]
       (if (pred form)
-        (eval form)
+        (eval (list 'binding ['eval nil] form))
         (throw (java.lang.Exception. "DENIED"))))
 
 ;(enable-security-manager) ; This doesn't need to be enabled by default
