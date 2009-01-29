@@ -58,7 +58,10 @@
       "looks through the macroexpand of a form for things I don't allow"
       [form notallowed]
       (if (list? form)
-          (when (not (some notallowed (tree-seq seq? macroexpand form)))
+          (when (not (some notallowed
+                           (tree-seq seq?
+                                     #(let [a (macroexpand %)] (or (and (seq? a) a) (list a)))
+                                     form)))
               form)
           form))
 
