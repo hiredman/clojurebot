@@ -1,3 +1,8 @@
 * Issue Tracker
 * Message store and Devlivery
 * change is! to note overwrite so you have to forget first
+* maybe figure out a better storage model (start using dict-are?)
+* change #who and #someone to something else, I guess $who and $someone
+* load infobot fact packs
+* status command
+* karma tracking?
