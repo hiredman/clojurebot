@@ -23,5 +23,3 @@
 
 
 (add-dispatch-hook  (dfn (re-find #"^," (:message msg))) ::code-sandbox)
-
-(remove-dispatch-hook ::code-sandbox)
