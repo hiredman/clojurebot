@@ -4,7 +4,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
+(def *bad-forms* #{'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -58,15 +58,13 @@
       "looks through the macroexpand of a form for things I don't allow"
       [form notallowed]
       (if (list? form)
-          (when (not
-                  (some notallowed
-                        (tree-seq seq? macroexpand form)))
+          (when (not (some notallowed (tree-seq seq? macroexpand form)))
               form)
           form))
 
 (defn cond-eval [pred form]
       (if (pred form)
-        (eval (list 'binding ['eval nil] form))
+        (eval form)
         (throw (java.lang.Exception. "DENIED"))))
 
 ;(enable-security-manager) ; This doesn't need to be enabled by default
