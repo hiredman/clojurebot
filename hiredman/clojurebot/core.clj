@@ -54,15 +54,23 @@
       []
       (randth befuddl))
 
-(defn inits
-      "this is Chouser's fault"
-      [s]
-      (map first
-           (take-while second
-                       (map split-at
-                            (iterate inc 0)
-                            (repeat (lazy-cat s [nil]))))))
+;; (defn inits
+;;       "this is Chouser's fault"
+;;       [s]
+;;       (map first
+;;            (take-while second
+;;                        (map split-at
+;;                             (iterate inc 0)
+;;                             (repeat (lazy-cat s [nil]))))))
 
+(def #^{:doc "pointless inits"} inits
+     (comp (partial map first)
+           (partial take-while second)
+           (partial map split-at (iterate inc 0))
+           repeat
+           (partial apply concat)
+           reverse
+           (partial list [nil])))
 
 (defn strip-is
       "return a string with everything up to the end of the
