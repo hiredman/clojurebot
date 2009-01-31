@@ -97,7 +97,7 @@
 
 (defn- normalise-docstring
        [string]
-       (.replaceAll string "\\W+" " "))
+       (.replaceAll string "\\s+" " "))
 
 (defn symbol-to-var-doc
       "this returns the doc metadata from a var in the
