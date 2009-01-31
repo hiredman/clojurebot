@@ -87,15 +87,19 @@
       [x]
       (.replaceAll x  "^(.*)\\?$" "$1"))
 
+(defn- normalise-docstring
+       [string]
+       (.replaceAll string "\\W+" " "))
+
 (defn symbol-to-var-doc
       "this returns the doc metadata from a var in the
       clojure ns or a befuddled response"
       [symb]
       (let [a (meta (find-var (symbol "clojure.core" symb)))
-            x (:doc a)
+            x (normalise-docstring (:doc a))
             y (:arglists a)]
         (if x
-          (str x "; arglists " y)
+          (str x (when y (str "; arglists " y)))
           (befuddled))))
 
 (defmacro async
