@@ -1,11 +1,8 @@
 (ns hiredman.clojurebot.google
   (:use (hiredman.clojurebot core))
+  (:use (hiredman utilities))
   (:require [org.danlarkin.json :as json]))
 
-
-(defn get-url [x]
-      (with-open [a (java.io.DataInputStream. (.getContent (java.net.URL. x)))]
-                 (.readLine a)))
 
 (defn google [term]
       (json/decode-from-str (get-url (str "http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=" (java.net.URLEncoder/encode term)))))
