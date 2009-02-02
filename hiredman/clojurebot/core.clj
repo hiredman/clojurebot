@@ -17,19 +17,30 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
+             (java.util Date Timer TimerTask)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
 (def *bots* (ref {})) ; This will hold bot objects
-(def start-date (java.util.Date.))
+(def start-date (Date.))
+
+(def task-runner (Timer. true))
+
+(defn make-timer-task [func]
+      (let [state (atom {:run? true})]
+        (proxy [TimerTask] []
+               (scheduledExecutionTime []
+                                       (@state :exec-time))
+               (cancel []
+                       (swap! state assoc :run? true))
+               (run []
+                    (when (@state :run?)
+                      (do (swap! state assoc :exec-time (.getTime (Date.)))
+                          (.run func)))))))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
 (def dict-are (ref {}))
-
-;; url is for storing urls, must figure out something to do with this
-;; (def url (ref {}))
-;; (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
@@ -414,17 +425,31 @@
                  (.close *in*)
                  a))))))
 
+;; (defn start-dump-thread [config]
+;;   (send-off (agent nil)
+;;             (fn this [& _]
+;;               (println "Dumping dictionaries")
+;;               (binding [*out* (-> (dict-file config ".is")
+;;                                   java.io.FileWriter.)]
+;;                 
+;;                 (prn @dict-is)
+;;                 (.close *out*))
+;;               (Thread/sleep (* 10 60000))
+;;               (send-off *agent* this))))
+
 (defn start-dump-thread [config]
-  (send-off (agent nil)
-            (fn this [& _]
-              (println "Dumping dictionaries")
-              (binding [*out* (-> (dict-file config ".is")
-                                  java.io.FileWriter.)]
-                
-                (prn @dict-is)
-                (.close *out*))
-              (Thread/sleep (* 10 60000))
-              (send-off *agent* this))))
+      (.scheduleAtFixedRate task-runner
+                            (make-timer-task
+                              (fn []
+                                  (println "Dumping dictionaries")
+                                  (binding [*out* (-> (dict-file config ".is")
+                                                      java.io.FileWriter.)]
+                                           (prn @dict-is)
+                                           (.close *out*))))
+                            (long (* 10 60000))
+                            (long (* 10 60000))))
+
+
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
