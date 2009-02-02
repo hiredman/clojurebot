@@ -412,7 +412,6 @@
            (.close *out*)))
        [[".is" dict-is] [".are" dict-are]])))
 
-;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream))))
     
 (defn load-dicts [config]
   (dosync
