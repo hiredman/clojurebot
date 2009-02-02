@@ -104,7 +104,7 @@
       "if string ends in a question mark return
       the string without the question mark"
       [x]
-      (.replaceAll x  "^(.*)\\?$" "$1"))
+      (.replaceAll x "^(.*)\\?$" "$1"))
 
 (defn- normalise-docstring
        [string]
@@ -129,9 +129,7 @@
 (defn who
       "am I talking to someonein a privmsg, or in a channel?"
       [pojo]
-      (if (:channel pojo)
-        (:channel pojo)
-        (:sender pojo)))
+      (or (:channel pojo) (:sender pojo)))
 
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
@@ -229,7 +227,14 @@
                                  (everyone-I-see bot)))))
 
 (defn random-person [bot]
-      (randth (filter #(not (.equals % (:nick bot))) (apply concat (map last (everyone-I-see bot))))))
+      (randth (filter #(not (.equals % (:nick bot)))
+                      (apply concat (map last (everyone-I-see bot))))))
+
+;; (comp randth
+;;       (partial filter #(not (.equals % (:nick bot))))
+;;       (partial apply concat)
+;;       (partial map last)
+;;       everyone-I-see)
 
 (def *dispatchers*
      (ref '()))
@@ -261,7 +266,11 @@
         (alter
           *dispatchers*
           (partial filter #(not= dispatch-value (last (last %)))))))
- 
+
+;; (comp dosync
+;;       (partial alter *dispatchers*)
+;;       (partial filter #(not= )))
+
 ;; register legacy stuffs
 (dorun
   (map #(add-dispatch-hook 0 (first %) (second %))
