@@ -445,6 +445,8 @@
 ;;               (Thread/sleep (* 10 60000))
 ;;               (send-off *agent* this))))
 
+;;(.schedule task-runner (make-timer-task #(prn :test)) (long 60000))
+
 (defn start-dump-thread [config]
       (.scheduleAtFixedRate task-runner
                             (make-timer-task
@@ -454,9 +456,8 @@
                                                       java.io.FileWriter.)]
                                            (prn @dict-is)
                                            (.close *out*))))
-                            (long (* 10 60000))
+                            (long (* 1 60000))
                             (long (* 10 60000))))
-
 
 
 (defn start-clojurebot [attrs additional-setup]
