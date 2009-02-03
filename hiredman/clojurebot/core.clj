@@ -35,7 +35,9 @@
                (run []
                     (when (@state :run?)
                       (do (swap! state assoc :exec-time (.getTime (Date.)))
-                          (.run func)))))))
+                          (try (.run func)
+                               (catch Exception e
+                                      (println e)))))))))
 
 (defmacro scheduleAtFixedRate [timer task delay period]
   `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
