@@ -1,3 +1,4 @@
+;; requires danlarkin's clojure-json
 (ns hiredman.clojurebot.translate
     (:use (hiredman.clojurebot core))
     (:use (hiredman utilities))
