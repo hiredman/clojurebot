@@ -17,8 +17,7 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
-             (java.util Date Timer TimerTask)
-             (java.util.concurrent FutureTask TimeUnit TimeoutException)))
+             (java.util Date Timer TimerTask)))
 
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
