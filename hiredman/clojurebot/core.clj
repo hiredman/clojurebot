@@ -49,8 +49,16 @@
   [timer task delay period]
   `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
 
-(defn schedule [runnable period]
-      (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
+(defmulti schedule (fn [runnable delay period]
+                       (if (zero? period)
+                         ::schedule
+                         ::scheduleAtFixedRate)))
+
+(defmethod schedule ::schedule [runnable delay period]
+  (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
+
+(defmethod schedule ::scheduleAtFixedRate [runnable delay period]
+  (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -456,8 +464,7 @@
                                          java.io.FileWriter.)]
                               (prn @dict-is)
                               (.close *out*)))
-                10))
-
+                1 10))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
