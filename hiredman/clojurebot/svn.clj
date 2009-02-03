@@ -84,12 +84,10 @@
 (add-dispatch-hook (dfn (re-find #"^svn rev [0-9]+$" (:message msg))) ::svn-rev-lookup)
 
 (defn start-svn-notifier-thread [bot]
-      (.scheduleAtFixedRate task-runner
-                            (make-timer-task
-                              (fn []
-                                  (println "Checking SVN revisions")
-                                  (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url bot)))))]
-                                    (svn-message bot m)
-                                    (doall (map cache-svn-rev m)))))
-                            (long (* 1 60000))
-                            (long (* 5 60000))))
+      (schedule (fn []
+                    (println "Checking SVN revisions")
+                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url bot)))))]
+                      (svn-message bot m)
+                      (doall (map cache-svn-rev m))))
+                1
+                5))
