@@ -18,12 +18,15 @@
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
-             (java.util.concurrent FutureTask TimeUnit TimeoutException)))
+             (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
 
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
 (def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
+
+(def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
+     task-runner2 (ScheduledThreadPoolExecutor. 2))
 
 (defn make-timer-task
       "wraps a func in a TimerTask suitable for scheduling on a Timer"
@@ -45,6 +48,9 @@
   "macro to auto-wrap task (a fn) in make-timer-task and other args in long"
   [timer task delay period]
   `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
+
+(defn schedule [runnable period]
+      (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -445,14 +451,12 @@
                  a))))))
 
 (defn start-dump-thread [config]
-      (scheduleAtFixedRate task-runner
-                           #(do (println "Dumping dictionaries")
-                                (binding [*out* (-> (dict-file config ".is")
-                                                    java.io.FileWriter.)]
-                                         (prn @dict-is)
-                                         (.close *out*)))
-                            (* 1 60000)
-                            (* 10 60000)))
+      (schedule #(do (println "Dumping dictionaries")
+                     (binding [*out* (-> (dict-file config ".is")
+                                         java.io.FileWriter.)]
+                              (prn @dict-is)
+                              (.close *out*)))
+                10))
 
 
 (defn start-clojurebot [attrs additional-setup]
