@@ -17,19 +17,39 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
+             (java.util Date Timer TimerTask)
              (java.util.concurrent FutureTask TimeUnit TimeoutException)))
 
 (def *bots* (ref {})) ; This will hold bot objects
-(def start-date (java.util.Date.))
+(def start-date (Date.))
+
+(def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
+
+(defn make-timer-task
+      "wraps a func in a TimerTask suitable for scheduling on a Timer"
+      [func]
+      (let [state (atom {:run? true})]
+        (proxy [TimerTask] []
+               (scheduledExecutionTime []
+                                       (@state :exec-time))
+               (cancel []
+                       (swap! state assoc :run? true))
+               (run []
+                    (when (@state :run?)
+                      (do (swap! state assoc :exec-time (.getTime (Date.)))
+                          (try (.run func)
+                               (catch Exception e
+                                      (println e)))))))))
+
+(defmacro scheduleAtFixedRate
+  "macro to auto-wrap task (a fn) in make-timer-task and other args in long"
+  [timer task delay period]
+  `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
 (def dict-are (ref {}))
-
-;; url is for storing urls, must figure out something to do with this
-;; (def url (ref {}))
-;; (def url-regex #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
@@ -63,7 +83,8 @@
 ;;                             (iterate inc 0)
 ;;                             (repeat (lazy-cat s [nil]))))))
 
-(def #^{:doc "pointless inits"} inits
+(def #^{:doc "pointless inits, similar to haskell function of the same name"}
+     inits
      (comp (partial map first)
            (partial take-while second)
            (partial map split-at (iterate inc 0))
@@ -97,7 +118,7 @@
 
 (defn- normalise-docstring
        [string]
-       (.replaceAll string "\\W+" " "))
+       (.replaceAll string "\\s+" " "))
 
 (defn symbol-to-var-doc
       "this returns the doc metadata from a var in the
@@ -204,8 +225,12 @@
   `(fn [~'bot ~'msg]
      ~@body))
 
-(defn everyone-I-see [bot] 
-      (map #(vector % (map (comp :nick bean) (.getUsers (:this bot) %))) (.getChannels (:this bot))))
+(defn everyone-I-see
+      "returns seq like ([\"#clojure\" (\"somenick\" \"someothernicl\")])
+      for ever channel the bot is in"
+      [bot] 
+      (for [channel (.getChannels (:this bot))]
+           [channel (map (comp :nick bean) (.getUsers (:this bot) channel))]))
 
 (defn see-nick?
       "do I see someone with the nickname nick? returns nil or a seq of channels where I see him"
@@ -225,7 +250,8 @@
 ;;       (partial map last)
 ;;       everyone-I-see)
 
-(def *dispatchers*
+(def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
+     *dispatchers*
      (ref '()))
 
 
@@ -255,10 +281,6 @@
         (alter
           *dispatchers*
           (partial filter #(not= dispatch-value (last (last %)))))))
-
-;; (comp dosync
-;;       (partial alter *dispatchers*)
-;;       (partial filter #(not= )))
 
 ;; register legacy stuffs
 (dorun
@@ -410,7 +432,6 @@
            (.close *out*)))
        [[".is" dict-is] [".are" dict-are]])))
 
-;(svn-message (svn-summaries (clojure.xml/parse (svn-xml-stream))))
     
 (defn load-dicts [config]
   (dosync
@@ -424,16 +445,15 @@
                  a))))))
 
 (defn start-dump-thread [config]
-  (send-off (agent nil)
-            (fn this [& _]
-              (println "Dumping dictionaries")
-              (binding [*out* (-> (dict-file config ".is")
-                                  java.io.FileWriter.)]
-                
-                (prn @dict-is)
-                (.close *out*))
-              (Thread/sleep (* 10 60000))
-              (send-off *agent* this))))
+      (scheduleAtFixedRate task-runner
+                           #(do (println "Dumping dictionaries")
+                                (binding [*out* (-> (dict-file config ".is")
+                                                    java.io.FileWriter.)]
+                                         (prn @dict-is)
+                                         (.close *out*)))
+                            (* 1 60000)
+                            (* 10 60000)))
+
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
