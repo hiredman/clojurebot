@@ -37,8 +37,8 @@
                       (do (swap! state assoc :exec-time (.getTime (Date.)))
                           (.run func)))))))
 
-(defmacro scheduledExecutionTime [& foo]
-  `(.scheduleAtFixedRate ~(first foo) (make-timer-task ~(second foo)) ~@(rest (rest foo))))
+(defmacro scheduleAtFixedRate [timer task delay period]
+  `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -452,14 +452,13 @@
 
 (defn start-dump-thread [config]
       (scheduleAtFixedRate task-runner
-                           (fn []
-                               (println "Dumping dictionaries")
-                               (binding [*out* (-> (dict-file config ".is")
-                                                   java.io.FileWriter.)]
-                                        (prn @dict-is)
-                                        (.close *out*)))
-                            (long (* 1 60000))
-                            (long (* 10 60000))))
+                           #(do (println "Dumping dictionaries")
+                                (binding [*out* (-> (dict-file config ".is")
+                                                    java.io.FileWriter.)]
+                                         (prn @dict-is)
+                                         (.close *out*)))
+                            (* 1 60000)
+                            (* 10 60000)))
 
 
 (defn start-clojurebot [attrs additional-setup]
