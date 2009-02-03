@@ -23,9 +23,11 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-(def task-runner (Timer. true))
+(def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
 
-(defn make-timer-task [func]
+(defn make-timer-task
+      "wraps a func in a TimerTask suitable for scheduling on a Timer"
+      [func]
       (let [state (atom {:run? true})]
         (proxy [TimerTask] []
                (scheduledExecutionTime []
@@ -39,7 +41,9 @@
                                (catch Exception e
                                       (println e)))))))))
 
-(defmacro scheduleAtFixedRate [timer task delay period]
+(defmacro scheduleAtFixedRate
+  "macro to auto-wrap task (a fn) in make-timer-task and other args in long"
+  [timer task delay period]
   `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
 
 ;; dictionaries for storing relationships
@@ -79,7 +83,8 @@
 ;;                             (iterate inc 0)
 ;;                             (repeat (lazy-cat s [nil]))))))
 
-(def #^{:doc "pointless inits"} inits
+(def #^{:doc "pointless inits, similar to haskell function of the same name"}
+     inits
      (comp (partial map first)
            (partial take-while second)
            (partial map split-at (iterate inc 0))
@@ -220,8 +225,12 @@
   `(fn [~'bot ~'msg]
      ~@body))
 
-(defn everyone-I-see [bot] 
-      (map #(vector % (map (comp :nick bean) (.getUsers (:this bot) %))) (.getChannels (:this bot))))
+(defn everyone-I-see
+      "returns seq like ([\"#clojure\" (\"somenick\" \"someothernicl\")])
+      for ever channel the bot is in"
+      [bot] 
+      (for [channel (.getChannels (:this bot))]
+           [channel (map (comp :nick bean) (.getUsers (:this bot) channel))]))
 
 (defn see-nick?
       "do I see someone with the nickname nick? returns nil or a seq of channels where I see him"
@@ -241,7 +250,8 @@
 ;;       (partial map last)
 ;;       everyone-I-see)
 
-(def *dispatchers*
+(def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
+     *dispatchers*
      (ref '()))
 
 
@@ -271,10 +281,6 @@
         (alter
           *dispatchers*
           (partial filter #(not= dispatch-value (last (last %)))))))
-
-;; (comp dosync
-;;       (partial alter *dispatchers*)
-;;       (partial filter #(not= )))
 
 ;; register legacy stuffs
 (dorun
