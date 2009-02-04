@@ -26,7 +26,7 @@
 (def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
 
 (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-     task-runner2 (ScheduledThreadPoolExecutor. 2))
+     task-runner2 (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
 (defn make-timer-task
       "wraps a func in a TimerTask suitable for scheduling on a Timer"
