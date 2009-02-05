@@ -17,12 +17,20 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
+<<<<<<< HEAD:hiredman/clojurebot/core.clj
              (java.util Date Timer TimerTask)))
+=======
+             (java.util Date Timer TimerTask)
+             (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
+>>>>>>> 0ede20b5563b54f11dcfe20fe6d3c2969c701c72:hiredman/clojurebot/core.clj
 
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
 (def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
+
+(def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
+     task-runner2 (ScheduledThreadPoolExecutor. 2))
 
 (defn make-timer-task
       "wraps a func in a TimerTask suitable for scheduling on a Timer"
@@ -44,6 +52,17 @@
   "macro to auto-wrap task (a fn) in make-timer-task and other args in long"
   [timer task delay period]
   `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
+
+(defmulti schedule (fn [runnable delay period]
+                       (if (zero? period)
+                         ::schedule
+                         ::scheduleAtFixedRate)))
+
+(defmethod schedule ::schedule [runnable delay period]
+  (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
+
+(defmethod schedule ::scheduleAtFixedRate [runnable delay period]
+  (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -444,15 +463,12 @@
                  a))))))
 
 (defn start-dump-thread [config]
-      (scheduleAtFixedRate task-runner
-                           #(do (println "Dumping dictionaries")
-                                (binding [*out* (-> (dict-file config ".is")
-                                                    java.io.FileWriter.)]
-                                         (prn @dict-is)
-                                         (.close *out*)))
-                            (* 1 60000)
-                            (* 10 60000)))
-
+      (schedule #(do (println "Dumping dictionaries")
+                     (binding [*out* (-> (dict-file config ".is")
+                                         java.io.FileWriter.)]
+                              (prn @dict-is)
+                              (.close *out*)))
+                1 10))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]

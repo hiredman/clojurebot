@@ -3,7 +3,7 @@
         (hiredman sandbox)))
 
 (defn naughty-forms? [strang]
-      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
+      (let [nf #{"catch" "finally" "clojure.asm"}]
         (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
 (defmethod responder ::code-sandbox [bot pojo]

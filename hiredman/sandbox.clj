@@ -91,7 +91,7 @@
         (.replaceAll (.replaceAll (str al# "; " docstring# ) "\n" "") (str \\ \s) " ")))
 
 (defn eval-in-box [_string sb-ns]
-      (let [form (-> _string StringReader. PushbackReader. read)
+      (let [form (binding [*ns* (find-ns sb-ns)] (-> _string StringReader. PushbackReader. read))
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
                                  *ns* (find-ns sb-ns) doc (var my-doc)]
