@@ -1,7 +1,8 @@
 ; Subversion announcements
 
 (ns hiredman.clojurebot.svn
-  (:use (hiredman.clojurebot core)))
+  (:use (hiredman.clojurebot core))
+  (:import (java.util.concurrent TimeUnit)))
 
 (def svn-rev-cache (ref []))
 
@@ -14,7 +15,7 @@
 (defn cache-svn-rev
       "puts an svn rev into the cache"
       [rev]
-      (dosync (commute svn-rev-cache conj rev)))
+      (dosync (commute svn-rev-cache (comp distinct conj) rev)))
 
 (defn svn-command [url] 
   (if url 
@@ -83,11 +84,22 @@
 
 (add-dispatch-hook (dfn (re-find #"^svn rev [0-9]+$" (:message msg))) ::svn-rev-lookup)
 
-(defn start-svn-notifier-thread [bot]
-      (schedule (fn []
-                    (println "Checking SVN revisions")
-                    (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url bot)))))]
-                      (svn-message bot m)
+(remove-dispatch-hook ::svn-rev-lookup)
+
+(in-ns 'hiredman.clojurebot.svn)
+
+(defn svn-notify [config]
+      (println "Checking SVN revisions")
+      (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url config)))))]
+                      (svn-message config m)
                       (doall (map cache-svn-rev m))))
-                1
-                5))
+
+(defn start-svn-notifier-thread [bot]
+      (.scheduleAtFixedRate task-runner2
+                            #(try (svn-notify bot)
+                                  (catch Exception e
+                                         (println e)))
+                            (long 0)
+                            (long 5)
+                            TimeUnit/MINUTES))
+

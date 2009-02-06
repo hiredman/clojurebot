@@ -458,13 +458,20 @@
                  (.close *in*)
                  a))))))
 
+(defn dump-dict-is [config]
+      (println "Dumping dictionaries")
+      (binding [*out* (-> (dict-file config ".is")
+                          java.io.FileWriter.)]
+                (prn @dict-is)
+                (.close *out*)))
+
 (defn start-dump-thread [config]
-      (schedule #(do (println "Dumping dictionaries")
-                     (binding [*out* (-> (dict-file config ".is")
-                                         java.io.FileWriter.)]
-                              (prn @dict-is)
-                              (.close *out*)))
-                1 10))
+      (.scheduleAtFixedRate task-runner2
+                            #(dump-dict-is config)
+                            (long 0)
+                            (long 10)
+                            TimeUnit/MINUTES))
+
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
