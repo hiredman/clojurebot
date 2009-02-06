@@ -23,42 +23,21 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-(def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
-
 (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-     task-runner2 (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
+     task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
-(defn make-timer-task
-      "wraps a func in a TimerTask suitable for scheduling on a Timer"
-      [func]
-      (let [state (atom {:run? true})]
-        (proxy [TimerTask] []
-               (scheduledExecutionTime []
-                                       (@state :exec-time))
-               (cancel []
-                       (swap! state assoc :run? true))
-               (run []
-                    (when (@state :run?)
-                      (do (swap! state assoc :exec-time (.getTime (Date.)))
-                          (try (.run func)
-                               (catch Exception e
-                                      (println e)))))))))
+(def task-runner2 task-runner)
 
-(defmacro scheduleAtFixedRate
-  "macro to auto-wrap task (a fn) in make-timer-task and other args in long"
-  [timer task delay period]
-  `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
-
-(defmulti schedule (fn [runnable delay period]
-                       (if (zero? period)
-                         ::schedule
-                         ::scheduleAtFixedRate)))
-
-(defmethod schedule ::schedule [runnable delay period]
-  (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
-
-(defmethod schedule ::scheduleAtFixedRate [runnable delay period]
-  (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
+;; (defmulti schedule (fn [runnable delay period]
+;;                        (if (zero? period)
+;;                          ::schedule
+;;                          ::scheduleAtFixedRate)))
+;; 
+;; (defmethod schedule ::schedule [runnable delay period]
+;;   (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
+;; 
+;; (defmethod schedule ::scheduleAtFixedRate [runnable delay period]
+;;   (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
