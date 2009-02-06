@@ -84,10 +84,6 @@
 
 (add-dispatch-hook (dfn (re-find #"^svn rev [0-9]+$" (:message msg))) ::svn-rev-lookup)
 
-(remove-dispatch-hook ::svn-rev-lookup)
-
-(in-ns 'hiredman.clojurebot.svn)
-
 (defn svn-notify [config]
       (println "Checking SVN revisions")
       (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url config)))))]
