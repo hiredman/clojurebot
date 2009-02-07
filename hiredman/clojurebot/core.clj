@@ -30,7 +30,7 @@
 (def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
 
 (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-     task-runner2 (ScheduledThreadPoolExecutor. 2))
+     task-runner2 (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
 (defn make-timer-task
       "wraps a func in a TimerTask suitable for scheduling on a Timer"
@@ -462,13 +462,20 @@
                  (.close *in*)
                  a))))))
 
+(defn dump-dict-is [config]
+      (println "Dumping dictionaries")
+      (binding [*out* (-> (dict-file config ".is")
+                          java.io.FileWriter.)]
+                (prn @dict-is)
+                (.close *out*)))
+
 (defn start-dump-thread [config]
-      (schedule #(do (println "Dumping dictionaries")
-                     (binding [*out* (-> (dict-file config ".is")
-                                         java.io.FileWriter.)]
-                              (prn @dict-is)
-                              (.close *out*)))
-                1 10))
+      (.scheduleAtFixedRate task-runner2
+                            #(dump-dict-is config)
+                            (long 0)
+                            (long 10)
+                            TimeUnit/MINUTES))
+
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
