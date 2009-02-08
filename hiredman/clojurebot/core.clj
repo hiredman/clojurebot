@@ -144,6 +144,17 @@
       [bot msg msg-to-send]
   (sendMsg (:this bot) (who msg) msg-to-send))
 
+(defmulti send-out (fn [& x] (first x)))
+
+(defmethod send-out :msg [_ bot recvr string]
+  (.sendMessage (:this bot) recvr string))
+
+(defmethod send-out :action [_ bot recvr string]
+  (.sendAction (:this bot) recvr string))
+
+(defmethod send-out :notice [_ bot recvr string]
+  (.sendNotice (:this bot) recvr string))
+
 (defn term-lists
       "generates permutions of the words in string"
       [msg words-to-ignore]
@@ -302,10 +313,11 @@
                      out)))))
 
 (defmethod responder ::doc-lookup [bot pojo]
-  (sendMsg-who bot pojo
-               (symbol-to-var-doc (subs (:message pojo)
-                                        5
-                                        (dec (count (:message pojo)))))))
+  (send-out :msg bot (who pojo)
+            (symbol-to-var-doc (subs (:message pojo)
+                                     5
+                                     (dec (count (:message pojo)))))))
+
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
    found at the start of the string"
@@ -348,17 +360,17 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result bot))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) msg result bot))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot pojo (prep-reply (:sender pojo) term defi bot)))
       :else,
-        (sendMsg-who bot pojo (befuddled)))))
+        (send-out :msg bot (who pojo) (befuddled)))))
 
 
 (defmethod responder ::know [bot pojo]
