@@ -18,24 +18,26 @@
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
-             (java.util.concurrent FutureTask TimeUnit TimeoutException)))
+             (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
 
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-(def task-runner (Timer. true))
+(def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
+     task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
-(defn make-timer-task [func]
-      (let [state (atom {:run? true})]
-        (proxy [TimerTask] []
-               (scheduledExecutionTime []
-                                       (@state :exec-time))
-               (cancel []
-                       (swap! state assoc :run? true))
-               (run []
-                    (when (@state :run?)
-                      (do (swap! state assoc :exec-time (.getTime (Date.)))
-                          (.run func)))))))
+(def task-runner2 task-runner)
+
+;; (defmulti schedule (fn [runnable delay period]
+;;                        (if (zero? period)
+;;                          ::schedule
+;;                          ::scheduleAtFixedRate)))
+;; 
+;; (defmethod schedule ::schedule [runnable delay period]
+;;   (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
+;; 
+;; (defmethod schedule ::scheduleAtFixedRate [runnable delay period]
+;;   (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -74,7 +76,8 @@
 ;;                             (iterate inc 0)
 ;;                             (repeat (lazy-cat s [nil]))))))
 
-(def #^{:doc "pointless inits"} inits
+(def #^{:doc "pointless inits, similar to haskell function of the same name"}
+     inits
      (comp (partial map first)
            (partial take-while second)
            (partial map split-at (iterate inc 0))
@@ -140,6 +143,17 @@
       "wrapper around sendMsg"
       [bot msg msg-to-send]
   (sendMsg (:this bot) (who msg) msg-to-send))
+
+(defmulti send-out (fn [& x] (first x)))
+
+(defmethod send-out :msg [_ bot recvr string]
+  (.sendMessage (:this bot) recvr string))
+
+(defmethod send-out :action [_ bot recvr string]
+  (.sendAction (:this bot) recvr string))
+
+(defmethod send-out :notice [_ bot recvr string]
+  (.sendNotice (:this bot) recvr string))
 
 (defn term-lists
       "generates permutions of the words in string"
@@ -215,8 +229,12 @@
   `(fn [~'bot ~'msg]
      ~@body))
 
-(defn everyone-I-see [bot] 
-      (map #(vector % (map (comp :nick bean) (.getUsers (:this bot) %))) (.getChannels (:this bot))))
+(defn everyone-I-see
+      "returns seq like ([\"#clojure\" (\"somenick\" \"someothernicl\")])
+      for ever channel the bot is in"
+      [bot] 
+      (for [channel (.getChannels (:this bot))]
+           [channel (map (comp :nick bean) (.getUsers (:this bot) channel))]))
 
 (defn see-nick?
       "do I see someone with the nickname nick? returns nil or a seq of channels where I see him"
@@ -236,7 +254,8 @@
 ;;       (partial map last)
 ;;       everyone-I-see)
 
-(def *dispatchers*
+(def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
+     *dispatchers*
      (ref '()))
 
 
@@ -267,10 +286,6 @@
           *dispatchers*
           (partial filter #(not= dispatch-value (last (last %)))))))
 
-;; (comp dosync
-;;       (partial alter *dispatchers*)
-;;       (partial filter #(not= )))
-
 ;; register legacy stuffs
 (dorun
   (map #(add-dispatch-hook 0 (first %) (second %))
@@ -298,10 +313,11 @@
                      out)))))
 
 (defmethod responder ::doc-lookup [bot pojo]
-  (sendMsg-who bot pojo
-               (symbol-to-var-doc (subs (:message pojo)
-                                        5
-                                        (dec (count (:message pojo)))))))
+  (send-out :msg bot (who pojo)
+            (symbol-to-var-doc (subs (:message pojo)
+                                     5
+                                     (dec (count (:message pojo)))))))
+
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
    found at the start of the string"
@@ -344,17 +360,17 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result bot))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) msg result bot))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot pojo (prep-reply (:sender pojo) term defi bot)))
       :else,
-        (sendMsg-who bot pojo (befuddled)))))
+        (send-out :msg bot (who pojo) (befuddled)))))
 
 
 (defmethod responder ::know [bot pojo]
@@ -434,16 +450,11 @@
                  a))))))
 
 (defn start-dump-thread [config]
-      (.scheduleAtFixedRate task-runner
-                            (make-timer-task
-                              (fn []
-                                  (println "Dumping dictionaries")
-                                  (binding [*out* (-> (dict-file config ".is")
-                                                      java.io.FileWriter.)]
-                                           (prn @dict-is)
-                                           (.close *out*))))
-                            (long (* 1 60000))
-                            (long (* 10 60000))))
+      (.scheduleAtFixedRate task-runner2
+                            #(dump-dict-is config)
+                            (long 0)
+                            (long 10)
+                            TimeUnit/MINUTES))
 
 
 (defn start-clojurebot [attrs additional-setup]
