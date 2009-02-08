@@ -433,20 +433,6 @@
                  (.close *in*)
                  a))))))
 
-;; (defn start-dump-thread [config]
-;;   (send-off (agent nil)
-;;             (fn this [& _]
-;;               (println "Dumping dictionaries")
-;;               (binding [*out* (-> (dict-file config ".is")
-;;                                   java.io.FileWriter.)]
-;;                 
-;;                 (prn @dict-is)
-;;                 (.close *out*))
-;;               (Thread/sleep (* 10 60000))
-;;               (send-off *agent* this))))
-
-;;(.schedule task-runner (make-timer-task #(prn :test)) (long 60000))
-
 (defn start-dump-thread [config]
       (.scheduleAtFixedRate task-runner
                             (make-timer-task
