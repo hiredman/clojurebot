@@ -28,17 +28,6 @@
 
 (def task-runner2 task-runner)
 
-;; (defmulti schedule (fn [runnable delay period]
-;;                        (if (zero? period)
-;;                          ::schedule
-;;                          ::scheduleAtFixedRate)))
-;; 
-;; (defmethod schedule ::schedule [runnable delay period]
-;;   (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
-;; 
-;; (defmethod schedule ::scheduleAtFixedRate [runnable delay period]
-;;   (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
-
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
 (def dict-is (ref {}))
