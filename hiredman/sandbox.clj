@@ -18,7 +18,7 @@
           (.get task seconds TimeUnit/SECONDS)
           (catch TimeoutException e
                  (.cancel task true)
-                 (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out"))))
+                 "Execution Timed Out"))))
  
  
 (defn wrap-exceptions 
