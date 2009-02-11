@@ -13,11 +13,12 @@
 
 ;;;;;;;; Chousuke
 (defn thunk-timeout [thunk seconds]
-      (try
-        (.get (future-call thunk) seconds TimeUnit/SECONDS)
-        (catch TimeoutException e
-               (.cancel task true)
-               (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out")))
+      (let [task (future-call thunk)]
+        (try
+          (.get task seconds TimeUnit/SECONDS)
+          (catch TimeoutException e
+                 (.cancel task true)
+                 (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out"))))
  
  
 (defn wrap-exceptions 
