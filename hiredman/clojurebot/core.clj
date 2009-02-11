@@ -438,6 +438,13 @@
                  (.close *in*)
                  a))))))
 
+(defn dump-dict-is [config]
+      (println "Dumping dictionaries")
+      (binding [*out* (-> (dict-file config ".is")
+                          java.io.FileWriter.)]
+               (prn @dict-is)
+               (.close *out*)))
+
 (defn start-dump-thread [config]
       (.scheduleAtFixedRate task-runner2
                             #(dump-dict-is config)
