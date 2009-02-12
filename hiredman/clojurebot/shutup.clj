@@ -1,5 +1,6 @@
 (ns hiredman.clojurebot.shutup
-  (:use (hiredman.clojurebot core)))
+  (:use (hiredman.clojurebot core))
+  (:import (java.util.concurrent TimeUnit)))
 
 (def mute (ref {}))
 
@@ -26,9 +27,9 @@
 (defmethod responder ::shutup [bot msg]
   (mute-in (:channel msg))
   (.schedule task-runner
-             (make-timer-task
-               #(unmute-in (:channel msg)))
-             (long (* 60 1000))))
+             #(unmute-in (:channel msg))
+             1
+             TimeUnit/MINUTES))
 
 ;;   (send-off (agent nil)
 ;;             (fn [& _]
