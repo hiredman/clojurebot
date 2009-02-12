@@ -31,9 +31,4 @@
              1
              TimeUnit/MINUTES))
 
-;;   (send-off (agent nil)
-;;             (fn [& _]
-;;                 (Thread/sleep (* 60 1000))
-;;                 (unmute-in (:channel msg)))))
- 
 (add-dispatch-hook (dfn (and (addressed? bot msg) (re-find #"shut up$" (:message msg)))) ::shutup)
