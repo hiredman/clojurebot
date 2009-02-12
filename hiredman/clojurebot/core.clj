@@ -136,17 +136,14 @@
 (defmulti send-out (fn [& x] (first x)))
 
 (defmethod send-out :msg [_ bot recvr string]
-  (try 
-    (.sendMessage (:this bot) (if (map? recvr) (who recvr) recvr) string)
-  (catch Exception e
-         (println "msg " recvr " " string)
-         (throw e))))
+  (println recvr " | " string)
+    (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string))
 
 (defmethod send-out :action [_ bot recvr string]
-  (.sendAction (:this bot) recvr (str string)))
+  (.sendAction #^PircBot (:this bot) recvr (str string)))
 
 (defmethod send-out :notice [_ bot recvr string]
-  (.sendNotice (:this bot) recvr (str string)))
+  (.sendNotice #^PircBot (:this bot) recvr (str string)))
 
 (defn term-lists
       "generates permutions of the words in string"
@@ -290,7 +287,7 @@
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
-(add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
+(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
