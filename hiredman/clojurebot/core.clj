@@ -386,7 +386,7 @@
       (try 
         (let [bot (get @*bots* this)]
           (trampoline responder bot (struct junks channel sender login hostname message)))
-        (catch Exception e (println e))))
+        (catch Exception e (.printStackTrace e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
@@ -395,7 +395,7 @@
       (try
         (trampoline responder (get @*bots* this)
                     (assoc (struct junks channel sender login hostname "") event true))
-        (catch Exception e (println e))))
+        (catch Exception e (.printStackTrace e))))
 
 (defn pircbot [bot-config]
   (let [bot-obj 
