@@ -136,13 +136,17 @@
 (defmulti send-out (fn [& x] (first x)))
 
 (defmethod send-out :msg [_ bot recvr string]
-  (.sendMessage (:this bot) recvr string))
+  (try 
+    (.sendMessage (:this bot) (if (map? recvr) (who recvr) recvr) string)
+  (catch Exception e
+         (println "msg " recvr " " string)
+         (throw e))))
 
 (defmethod send-out :action [_ bot recvr string]
-  (.sendAction (:this bot) recvr string))
+  (.sendAction (:this bot) recvr (str string)))
 
 (defmethod send-out :notice [_ bot recvr string]
-  (.sendNotice (:this bot) recvr string))
+  (.sendNotice (:this bot) recvr (str string)))
 
 (defn term-lists
       "generates permutions of the words in string"
@@ -364,12 +368,6 @@
 
 (defmethod responder ::know [bot pojo]
   (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
-
-;; (defmethod responder ::url [bot pojo]
-;;   (dosync (commute url
-;;                    assoc
-;;                    (re-find url-regex (:message pojo)) (java.util.Date.)))
-;;   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
