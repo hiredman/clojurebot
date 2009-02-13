@@ -88,7 +88,7 @@
       `(let [m# (meta (var ~s))
             al# (:arglists m#)
             docstring# (:doc m#)]
-        (.replaceAll (.replaceAll (str al# "; " docstring# ) "\n" "") (str \\ \s) " ")))
+        (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))
 
 (defn eval-in-box [_string sb-ns]
       (let [form (binding [*ns* (find-ns sb-ns)] (-> _string StringReader. PushbackReader. read))
