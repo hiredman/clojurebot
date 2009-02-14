@@ -27,42 +27,10 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-(def #^{:doc "Timer object upon which tasks can be scheduled for running later/repeatedly"} task-runner (Timer. true))
-
 (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-     task-runner2 (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
+     task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
-(defn make-timer-task
-      "wraps a func in a TimerTask suitable for scheduling on a Timer"
-      [func]
-      (let [state (atom {:run? true})]
-        (proxy [TimerTask] []
-               (scheduledExecutionTime []
-                                       (@state :exec-time))
-               (cancel []
-                       (swap! state assoc :run? true))
-               (run []
-                    (when (@state :run?)
-                      (do (swap! state assoc :exec-time (.getTime (Date.)))
-                          (try (.run func)
-                               (catch Exception e
-                                      (println e)))))))))
-
-(defmacro scheduleAtFixedRate
-  "macro to auto-wrap task (a fn) in make-timer-task and other args in long"
-  [timer task delay period]
-  `(.scheduleAtFixedRate ~timer (make-timer-task ~task)  (long ~delay) (long ~period)))
-
-(defmulti schedule (fn [runnable delay period]
-                       (if (zero? period)
-                         ::schedule
-                         ::scheduleAtFixedRate)))
-
-(defmethod schedule ::schedule [runnable delay period]
-  (.schedule task-runner2 runnable (long delay) TimeUnit/MINUTES))
-
-(defmethod schedule ::scheduleAtFixedRate [runnable delay period]
-  (.scheduleAtFixedRate task-runner2 runnable (long period) (long period) TimeUnit/MINUTES))
+(def task-runner2 task-runner)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -168,6 +136,18 @@
       "wrapper around sendMsg"
       [bot msg msg-to-send]
   (sendMsg (:this bot) (who msg) msg-to-send))
+
+(defmulti send-out (fn [& x] (first x)))
+
+(defmethod send-out :msg [_ bot recvr string]
+  (println recvr " | " string)
+    (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string))
+
+(defmethod send-out :action [_ bot recvr string]
+  (.sendAction #^PircBot (:this bot) recvr (str string)))
+
+(defmethod send-out :notice [_ bot recvr string]
+  (.sendNotice #^PircBot (:this bot) recvr (str string)))
 
 (defn term-lists
       "generates permutions of the words in string"
@@ -311,7 +291,7 @@
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
-(add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
+(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
@@ -327,10 +307,11 @@
                      out)))))
 
 (defmethod responder ::doc-lookup [bot pojo]
-  (sendMsg-who bot pojo
-               (symbol-to-var-doc (subs (:message pojo)
-                                        5
-                                        (dec (count (:message pojo)))))))
+  (send-out :msg bot (who pojo)
+            (symbol-to-var-doc (subs (:message pojo)
+                                     5
+                                     (dec (count (:message pojo)))))))
+
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
    found at the start of the string"
@@ -373,27 +354,21 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) msg result bot))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) msg result bot))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
-          (sendMsg-who bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot pojo (prep-reply (:sender pojo) term defi bot)))
       :else,
-        (sendMsg-who bot pojo (befuddled)))))
+        (send-out :msg bot (who pojo) (befuddled)))))
 
 
 (defmethod responder ::know [bot pojo]
   (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
-
-;; (defmethod responder ::url [bot pojo]
-;;   (dosync (commute url
-;;                    assoc
-;;                    (re-find url-regex (:message pojo)) (java.util.Date.)))
-;;   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
@@ -410,7 +385,7 @@
       (try 
         (let [bot (get @*bots* this)]
           (trampoline responder bot (struct junks channel sender login hostname message)))
-        (catch Exception e (println e))))
+        (catch Exception e (.printStackTrace e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
       (handleMessage this nil sender login hostname message))
@@ -419,7 +394,7 @@
       (try
         (trampoline responder (get @*bots* this)
                     (assoc (struct junks channel sender login hostname "") event true))
-        (catch Exception e (println e))))
+        (catch Exception e (.printStackTrace e))))
 
 (defn pircbot [bot-config]
   (let [bot-obj 
@@ -466,8 +441,8 @@
       (println "Dumping dictionaries")
       (binding [*out* (-> (dict-file config ".is")
                           java.io.FileWriter.)]
-                (prn @dict-is)
-                (.close *out*)))
+               (prn @dict-is)
+               (.close *out*)))
 
 (defn start-dump-thread [config]
       (.scheduleAtFixedRate task-runner2
