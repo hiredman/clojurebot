@@ -97,4 +97,38 @@
                             (long 0)
                             (long 5)
                             TimeUnit/MINUTES))
+;;;;;
+(defn shell [cmd]
+      (.. Runtime getRuntime (exec cmd)))
 
+(defn summary
+      "takes output of clojure.xml/parse on svn's xml log, returns
+      a vector of [rev-number commit-message]"
+      [tag-map]
+      (map (fn [x]
+               [(Integer/parseInt (:revision (:attrs x)))
+                (first
+                  (:content
+                    (first
+                      (filter #(= (:tag %) :msg)
+                              (:content x)))))])
+           (:content tag-map)))
+
+(def latest-revisions
+     (comp summary
+           clojure.xml/parse
+           #(.getInputStream %)
+           shell
+           (partial str "svn -v --xml --limit 5 log ")))
+
+(def revision
+     (comp first
+           summary
+           clojure.xml/parse
+           #(.getInputStream %)
+           shell
+           #(str "svn -v --xml -r " %2 " log " %)))
+
+(def revision-cached (memoize revision))
+
+(revision-cached "http://clojure.googlecode.com/svn/trunk/" 1279)
