@@ -52,7 +52,7 @@
       sends out messages about new revs. updates \"latest\" 
       to latest rev"
       [bot summaries]
-      (let [newrevs (filter-newer-svn-revs (reverse summaries))]
+      (let [newrevs (seq (filter-newer-svn-revs (reverse summaries)))]
         (when newrevs
           (do
             (send-svn-revs bot newrevs)
@@ -86,8 +86,8 @@
 (defn svn-notify [config]
       (println "Checking SVN revisions")
       (let [m (svn-summaries (clojure.xml/parse (svn-xml-stream (svn-command (:svn-url config)))))]
-                      (svn-message config m)
-                      (doall (map cache-svn-rev m))))
+        (svn-message config m)
+        (doseq [i (map cache-svn-rev m)] i)))
 
 (defn start-svn-notifier-thread [bot]
       (.scheduleAtFixedRate task-runner2
