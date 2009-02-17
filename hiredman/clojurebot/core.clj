@@ -56,24 +56,16 @@
       []
       (randth befuddl))
 
-;; (defn inits
-;;       "this is Chouser's fault"
-;;       [s]
-;;       (map first
-;;            (take-while second
-;;                        (map split-at
-;;                             (iterate inc 0)
-;;                             (repeat (lazy-cat s [nil]))))))
+;;(defn inits
+;;      "this is Chouser's fault"
+;;      [s]
+;;      (map first
+;;           (take-while second
+;;                       (map split-at
+;;                            (iterate inc 0)
+;;                            (repeat (lazy-cat s [nil]))))))
 
-(def #^{:doc "pointless inits, similar to haskell function of the same name"}
-     inits
-     (comp (partial map first)
-           (partial take-while second)
-           (partial map split-at (iterate inc 0))
-           repeat
-           (partial apply concat)
-           reverse
-           (partial list [nil])))
+(defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -145,26 +137,21 @@
 (defmethod send-out :notice [_ bot recvr string]
   (.sendNotice #^PircBot (:this bot) recvr (str string)))
 
+
 (defn term-lists
       "generates permutions of the words in string"
       [msg words-to-ignore]
       (let [x (re-seq #"\w+" msg)
             ignore #(not ((set words-to-ignore) %))]
-        (filter ignore
-        (apply concat
-               (map (fn [x]
-                        (map (fn [y]
-                                 (reduce #(str % " " %2) y)) x))
-                    (map #(reverse (filter identity (inits (drop % x))))
-                         (take (count x) (iterate inc 0))))))))
+        (filter ignore (map #(apply str (interpose " " %)) (mapcat #(reverse (inits (drop % x))) (take (count x) (iterate inc 0)))))))
 
 (defn rlookup
       "look up terms from a seq until you find a defi"
       [terms]
-      (when terms
+      (when (seq terms)
       (if (@dict-is (first terms))
         (first terms)
-        (recur (rest terms)))))
+        (recur (seq (rest terms))))))
 
 (defn fuzzy-lookup
       "look up based on permutation"
