@@ -252,13 +252,12 @@
 (defn dispatch
       "this function does dispatch for responder"
       [bot msg]
-      (loop [d @*dispatchers*]
-        (when d
-          (let [k (first (pq/first d))
-                v (second (pq/first d))]
-            (if (k bot msg)
-              v
-              (recur (rest d)))))))
+      (loop [d (pq/seq @*dispatchers*)]
+            (when d
+              (let [[k v] (first d)]
+                (if (k bot msg)
+                  v
+                  (recur (seq (rest d))))))))
 
 
 (defn add-dispatch-hook
