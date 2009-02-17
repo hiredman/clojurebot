@@ -136,13 +136,14 @@
 (defmulti send-out (fn [& x] (first x)))
 
 (defmethod send-out :msg [_ bot recvr string]
-  (.sendMessage (:this bot) recvr string))
+  (println recvr " | " string)
+    (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string))
 
 (defmethod send-out :action [_ bot recvr string]
-  (.sendAction (:this bot) recvr string))
+  (.sendAction #^PircBot (:this bot) recvr (str string)))
 
 (defmethod send-out :notice [_ bot recvr string]
-  (.sendNotice (:this bot) recvr string))
+  (.sendNotice #^PircBot (:this bot) recvr (str string)))
 
 (defn term-lists
       "generates permutions of the words in string"
@@ -286,7 +287,7 @@
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
-(add-dispatch-hook 20 (dfn (addressed? bot msg)) ::lookup)
+(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
@@ -364,12 +365,6 @@
 
 (defmethod responder ::know [bot pojo]
   (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
-
-;; (defmethod responder ::url [bot pojo]
-;;   (dosync (commute url
-;;                    assoc
-;;                    (re-find url-regex (:message pojo)) (java.util.Date.)))
-;;   (prn (str (:sender pojo) ", " (:message pojo))))
 
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]

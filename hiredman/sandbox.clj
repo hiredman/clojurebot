@@ -88,14 +88,14 @@
       `(let [m# (meta (var ~s))
             al# (:arglists m#)
             docstring# (:doc m#)]
-        (.replaceAll (.replaceAll (str al# "; " docstring# ) "\n" "") (str \\ \s) " ")))
+        (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))
 
 (defn eval-in-box [_string sb-ns]
-      (let [form (binding [*ns* (find-ns sb-ns)] (-> _string StringReader. PushbackReader. read))
+      (let [form #(-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
                                  *ns* (find-ns sb-ns) doc (var my-doc)]
-                        (let [result (cond-eval #(de-fang % *bad-forms*) form)]
+                        (let [result (cond-eval #(de-fang % *bad-forms*) (form))]
                           (.close *out*)
                           (.close *err*)
                           ;[(str *out*) (str *err*) (prn-str result)]

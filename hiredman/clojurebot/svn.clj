@@ -71,7 +71,6 @@
 
 
 (defmethod responder ::svn-rev-lookup [bot pojo]
-  (println :svn-responder)
   (let [r (Integer/parseInt (re-find #"[0-9]+" (:message pojo)))
         t (filter #(= (first %) r)  @svn-rev-cache)]
     (if (not= 0 (count t))

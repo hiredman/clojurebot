@@ -7,13 +7,14 @@
 (def url "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0")
 
 (defn translate [string]
-      (let [[direction lang phrase] (rest (re-matches #"^translate (from|to) ([a-z]+):(.*)" string))
+      (let [[direction lang phrase] (rest (re-matches #"^translate (from|to) ([a-z]+)(?:\:|\ )(.*)" string))
             langpair (condp = direction
                             "to"
                               (java.net.URLEncoder/encode (str "en|" lang) "UTF-8")
                              "from"
                               (java.net.URLEncoder/encode (str lang "|en") "UTF-8"))
-            phrase (java.net.URLEncoder/encode (.trim phrase))]
+            phrase (java.net.URLEncoder/encode (.trim #^String phrase))]
+        (println langpair)
         ((comp #(java.net.URLDecoder/decode % "UTF-8")
                :translatedText :responseData
                json/decode-from-str
