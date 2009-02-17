@@ -3,8 +3,7 @@
     (:use (hiredman utilities))
     (:import (java.io File InputStreamReader BufferedReader)))
 
-(def google-code-url
-     "http://code.google.com/p/clojure/source/browse/trunk/src/clj/clojure/")
+(def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/clojure/")
 
 (defn get-rev-number []
       ((comp #(Integer/parseInt %)
@@ -16,7 +15,7 @@
              #(BufferedReader. %)
              #(InputStreamReader. %)
              #(.getInputStream %)
-             #(.. Runtime getRuntime (exec % %2 %3)))
+             #(.. Runtime getRuntime (exec % %2 %3)));end comp
        (into-array ["svn" "info"])
        nil
        (File. "/home/hiredman/clojure/")))
