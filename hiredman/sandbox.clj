@@ -95,17 +95,18 @@
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
                                  *ns* (find-ns sb-ns) doc (var my-doc)]
-                        (let [result (cond-eval #(de-fang % *bad-forms*) (form))]
+                        (let [result (cond-eval #(de-fang % *bad-forms*) (form))
+                              result (if (instance? clojure.lang.LazySeq result)
+                                       (let [a (seq result)]
+                                         (doseq [i a] i)
+                                         a)
+                                       result)]
                           (.close *out*)
                           (.close *err*)
-                          ;[(str *out*) (str *err*) (prn-str result)]
                           (let [o (str *out*)
                                 e (str *err*)
-                                r (prn-str (if (instance? clojure.lang.LazySeq result)
-                                             (do (doseq [i (seq result)] i) result)
-                                             result))]
-                            [o e (when (or (seq result) (.equals "" o))
-                                   r)]))))
+                                r (prn-str result)]
+                            [o e (when (or result (.equals "" o)) r)]))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
         result))
