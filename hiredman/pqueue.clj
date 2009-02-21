@@ -2,10 +2,12 @@
     (:refer-clojure :exclude [first conj seq])
     (:require [clojure.core :as cc]))
 
+;(in-ns 'hiredman.pqueue)
+
 (defn seq
   "returns a lazy sequence of the items in the priority queue"
   [pq]
-  (map second pq))
+  (cc/seq (map second pq)))
 
 (defn first
   "returns the first item in a priority queue"

@@ -101,8 +101,10 @@
                           ;[(str *out*) (str *err*) (prn-str result)]
                           (let [o (str *out*)
                                 e (str *err*)
-                                r (prn-str (if (seq? result) (doall result) result))]
-                            [o e (when (or result (.equals "" o))
+                                r (prn-str (if (instance? clojure.lang.LazySeq result)
+                                             (do (doseq [i (seq result)] i) result)
+                                             result))]
+                            [o e (when (or (seq result) (.equals "" o))
                                    r)]))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
