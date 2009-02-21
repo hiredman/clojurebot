@@ -102,7 +102,7 @@
                           (let [o (str *out*)
                                 e (str *err*)
                                 r (prn-str (if (instance? clojure.lang.LazySeq result)
-                                             (do (doseq [i (seq result)] i) result)
+                                             (doall  result)
                                              result))]
                             [o e (when (or (seq result) (.equals "" o))
                                    r)]))))
