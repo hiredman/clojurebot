@@ -14,7 +14,8 @@
 ;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
-    (:use (hiredman sandbox))
+    (:use (hiredman sandbox)
+          (clojure-contrib test-is))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -92,6 +93,7 @@
 
 (defn- normalise-docstring
        [string]
+       (println string)
        (.replaceAll string "\\s+" " "))
 
 (defn symbol-to-var-doc
