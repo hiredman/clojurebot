@@ -3,3 +3,13 @@ Clojurebot, as seen in #clojure
 Version 1 is now forgotten! Hooray.
 
 Setting up the sandbox can be tricky; Read the example policy file for some info.
+
+included modules: code-lookup, forget, sb, svn, core, google, seenx, tinyul, dice,
+javadoc, shutup, translate
+
+code-lookup: looks up def in google code
+             example "clojurebot: def defn"
+             replies with url of def
+
+google: "clojurebot: google x" bot respondes with first google hit
+
