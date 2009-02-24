@@ -25,7 +25,7 @@
 (defn wrap-exceptions 
   ([f]
      (wrap-exceptions f #(do 
-                           (println (.getMessage %)) 
+                           (println (.printStackTrace %)) 
                            (.getMessage %))))
   ([f exception-handler]
      (try (f) (catch Exception e (exception-handler e)))))
@@ -90,22 +90,26 @@
             docstring# (:doc m#)]
         (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))
 
+(defn force-lazy-seq
+      "if passed a lazy seq, forces seq with doall, if not return what is passed"
+      [s]
+      (or (and (instance? clojure.lang.LazySeq s) (doall s)) s))
+
+(defn eval-in-box-helper [form]
+      (let [result (cond-eval #(de-fang % *bad-forms*) form)]
+                          (.close *out*)
+                          (.close *err*)
+                          (let [o (str *out*)
+                                e (str *err*)
+                                r (prn-str (force-lazy-seq result))]
+                            [o e (when (or result (.equals o "")) r)])))
+
 (defn eval-in-box [_string sb-ns]
       (let [form #(-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
                                  *ns* (find-ns sb-ns) doc (var my-doc)]
-                        (let [result (cond-eval #(de-fang % *bad-forms*) (form))]
-                          (.close *out*)
-                          (.close *err*)
-                          ;[(str *out*) (str *err*) (prn-str result)]
-                          (let [o (str *out*)
-                                e (str *err*)
-                                r (prn-str (if (instance? clojure.lang.LazySeq result)
-                                             (doall  result)
-                                             result))]
-                            [o e (when (or (seq result) (.equals "" o))
-                                   r)]))))
+                        (eval-in-box-helper (form))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
         result))
