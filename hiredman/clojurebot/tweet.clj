@@ -43,7 +43,7 @@
         (seq (map entry (entries xml)))))
 
 (defn get-latest-tweets [bot term channel]
-      (doseq [t (get-tweets "clojure")]
+      (doseq [t (take 3 (get-tweets "clojure"))]
              (core/send-out :notice bot channel (str (first t) " --" (second t)))))
 
 (defn watch [bot term channel]
