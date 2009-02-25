@@ -18,12 +18,8 @@
           (clojure-contrib test-is))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
-<<<<<<< HEAD:hiredman/clojurebot/core.clj
-             (java.util Date Timer TimerTask)))
-=======
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
->>>>>>> 0ede20b5563b54f11dcfe20fe6d3c2969c701c72:hiredman/clojurebot/core.clj
 
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))

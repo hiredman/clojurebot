@@ -7,7 +7,7 @@
   `(do
      (when (not *horizon*) (throw (RuntimeException. "Naked Singularity")))
      (swap!
-       ~(condp = which :fails '*fails* :succeeds '*succeeds* :exits '*exits*)
+       ~(condp = which :fails 'hiredman.horizon/*fails* :succeeds 'hiredman.horizon/*succeeds* :exits 'hiredman.horizon/*exits*)
        conj (fn [] ~@forms))))
 
 (defmacro horizon [& body]

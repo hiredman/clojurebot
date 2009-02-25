@@ -1,4 +1,7 @@
-(ns hiredman.utilities)
+(ns hiredman.utilities
+    (:use (hiredman horizon))
+    (:import (java.net URL)
+             (java.io BufferedReader InputStreamReader)))
 
 (defn get-url [x]
       (with-open [a (java.io.BufferedReader. (java.io.InputStreamReader. (.getContent (java.net.URL. x))))]
@@ -9,3 +12,8 @@
                       ['& 'x]
                       (list 'let ['method (keyword (.getName %))] fn)) (.getMethods (eval class)))]
     `(proxy [~class] [] ~@x)))
+
+(defn scoped-get-url [x]
+      (let [t (-> x URL. .getContent InputStreamReader. BufferedReader.)]
+        (hiredman.horizon/when-hrz :exits #(.close t))
+        t))
