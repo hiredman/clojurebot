@@ -34,7 +34,7 @@
 
 (defn entry [t]
       (let [[content author] (map (comp first :content) (filter interesting-tag? (:content t)))
-            author (first (:content author))]
+            author (first (re-find #"([^ ]+)" (first (:content author))))]
         [content author]))
 
 (defn get-tweets [term]
@@ -44,7 +44,7 @@
 
 (defn get-latest-tweets [bot term channel]
       (doseq [t (get-tweets "clojure")]
-             (core/send-out :notice )))
+             (core/send-out :notice bot channel (str (first t) " --" (second t)))))
 
 (defn watch [bot term channel]
       (.scheduleAtFixedRate core/task-runner
@@ -52,5 +52,3 @@
                             (long 0)
                             (long 60)
                             TimeUnit/MINUTES))
-
-(clojure.xml/parse (.getContent (java.net.URL. (str url "clojure"))))
