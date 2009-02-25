@@ -14,8 +14,7 @@
 ;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
-    (:use (hiredman sandbox)
-          (clojure-contrib test-is))
+    (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
