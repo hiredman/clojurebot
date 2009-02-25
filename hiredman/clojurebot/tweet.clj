@@ -1,7 +1,7 @@
 (ns hiredman.clojurebot.tweet
     (:require [hiredman.clojurebot.core :as core])
-    (:user (hiredman horizon))
-    (:import (java.util.concurrent TimeUnit/MINUTES)
+    (:use (hiredman horizon))
+    (:import (java.util.concurrent TimeUnit)
              (java.util Date)))
 
 (def urlx "http://search.twitter.com/search.atom?q=")
