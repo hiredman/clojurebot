@@ -1,5 +1,6 @@
 (ns hiredman.clojurebot.tweet
-    (:require [hiredman.clojurebot.core :as core])
+    (:require [hiredman.clojurebot.core :as core]
+              [hiredman.clojurebot.seenx :as seenx])
     (:use (hiredman horizon))
     (:import (java.util.concurrent TimeUnit)
              (java.util Date)))
