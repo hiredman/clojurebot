@@ -1,7 +1,10 @@
 (ns hiredman.clojurebot.seenx
-  (:use (hiredman.clojurebot core)))
+  (:use (hiredman.clojurebot core))
+  (:import (java.util.concurrent TimeUnit)))
 
 (def user-db (ref {}))
+
+(def activity (atom 0))
 
 (defn last-seen-str [nick [m channel ms]]
       (let [minutes (int (/ (/ (- (:time (bean (java.util.Date.))) ms) 1000) 60))]
@@ -43,6 +46,18 @@
                 (:message msg))
              (:channel msg)
              (:time (bean (java.util.Date.))))))
+    (when (and (not (:part msg)) (:message msg)) (swap! activity2 inc))
   #(responder bot (assoc msg ::ignore true)))
 
 (add-dispatch-hook -31 (dfn (nil? (::ignore msg))) ::watcher)
+
+(defn lower-activity []
+      (try (swap! activity (fn [x] (if (> x 0) (dec x) 0)))
+                            (catch Exception e
+                                   (.printStackTrace e))))
+
+(.scheduleAtFixedRate task-runner
+                      lower-activity
+                      (long 60)
+                      (long 30)
+                      TimeUnit/SECONDS)
