@@ -44,9 +44,11 @@
         (seq (map entry (entries xml)))))
 
 (defn get-latest-tweets [bot term channel]
-      (core/send-out :notice bot channel "Tweets:")
-      (doseq [t (reverse (get-tweets "clojure"))]
-             (core/send-out :notice bot channel (str (first t) " --" (second t)))))
+      (let [ts (reverse (get-tweets "clojure"))]
+        (when (seq ts)
+          (core/send-out :notice bot channel "Tweets:")
+          (doseq [t ts]
+             (core/send-out :notice bot channel (str (first t) " --" (second t)))))))
 
 (defn watch [bot term channel]
       (.scheduleAtFixedRate core/task-runner
