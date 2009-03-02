@@ -46,7 +46,7 @@
                 (:message msg))
              (:channel msg)
              (:time (bean (java.util.Date.))))))
-    (when (and (not (:part msg)) (:message msg)) (swap! activity2 inc))
+    (when (and (not (:part msg)) (:message msg)) (swap! activity inc))
   #(responder bot (assoc msg ::ignore true)))
 
 (add-dispatch-hook -31 (dfn (nil? (::ignore msg))) ::watcher)
