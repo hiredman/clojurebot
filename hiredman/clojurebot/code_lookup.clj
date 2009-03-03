@@ -27,7 +27,7 @@
         [(:line a) (:file a)]))
 
 (defn make-url [[line file]]
-      (let [google (java.net.URLEncoder/encode (str google-code-url file "?=" clojurebot-rev "#" line))
+      (let [google (java.net.URLEncoder/encode (str google-code-url file "?r=" clojurebot-rev "#" line))
             url (str "http://tinyurl.com/api-create.php?url=" google)]
         (get-url url)))
 
