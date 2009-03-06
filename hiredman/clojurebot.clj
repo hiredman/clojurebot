@@ -27,6 +27,11 @@
        (load-dicts mybot)
        (start-dump-thread mybot)
        (start-svn-watcher mybot :clojure "http://clojure.googlecode.com/svn/" clojure-channel-helper-callback)
+       (start-svn-watcher mybot :contrib "http://clojure-contrib.googlecode.com/svn/"
+                          (fn [bot revs]
+                                (is! "latest contrib" (first (last (sort-by first revs))))
+                                (doseq [r revs]
+                                       (doseq [c (.getChannels (:this bot))]
+                                              (send-out :notice bot c (str "Contrib: r"(first r) " " (second r)))))))
        ;(hiredman.clojurebot.tweet/watch mybot "clojure" "#clojure")
        (println "Done loading!")))
-
