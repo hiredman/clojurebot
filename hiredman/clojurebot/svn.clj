@@ -131,7 +131,7 @@
 
 (def revision-cached (memoize revision))
 
-(def latest (atom {}))
+(def latest (atom {:clojure 1326}))
 
 (defn start-svn-watcher [bot name url callback]
       (.scheduleAtFixedRate core/task-runner
