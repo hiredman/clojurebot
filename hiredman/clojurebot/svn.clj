@@ -37,24 +37,28 @@
 
 (def revision-cached (memoize revision))
 
-(def latest (atom {:clojure 1326}))
+(def latest (atom {}))
 
 (defn start-svn-watcher [bot name url callback]
       (.scheduleAtFixedRate core/task-runner
                             (fn []
+                                (try
                                 (println name " checking SVN revs")
-                                (when-let [revs (seq (filter #(> (first %) (get @latest name)) (latest-revisions url)))]
-                                        (swap! latest assoc name (last (sort-by first revs)))
-                                        (callback bot revs)))
-                            (long 0)
+                                (when-let [revs (seq (filter #(> (first %) (get @latest name 0)) (latest-revisions url)))]
+                                        (swap! latest assoc name (first (last (sort-by first revs))))
+                                        (callback bot revs))
+                                (catch Exception e
+                                       (.printStackTrace e))))
+                            (long 1)
                             (long 5)
                             TimeUnit/MINUTES))
 
 (defn clojure-channel-helper-callback
       [bot revs]
       (doseq [r revs]
-             (core/send-out :notice bot (str "r" (first r) " " (second r))))
-      (core/is! "latest" (.toString (last (sort-by first revs)))))
+             (doseq [c (.getChannels (:this bot))]
+                    (core/send-out :notice bot c (str "r" (first r) " " (second r)))))
+      (core/is! "latest" (.toString (first (last (sort-by first revs))))))
 
 (def default-repo (atom ""))
 
@@ -65,7 +69,5 @@
 
 (core/add-dispatch-hook (core/dfn (re-find #"^r[0-9]+$" (:message msg))) ::svn-rev-lookup)
 
-
 (defn twitter [user pw status] 
       (shell (str "curl -u "user":"pw" -d status=\""status"\" http://twitter.com/statuses/update.xml")))
-
