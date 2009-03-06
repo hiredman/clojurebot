@@ -136,7 +136,7 @@
 (defn start-svn-watcher [bot name url callback]
       (.scheduleAtFixedRate core/task-runner
                             (fn []
-                                (if-let [revs (seq (filter #(> (first %) (get @latest name)) (latest-revisions url)))]
+                                (when-let [revs (seq (filter #(> (first %) (get @latest name)) (latest-revisions url)))]
                                         (swap! latest assoc name (last (sort-by first revs)))
                                         (callback bot revs)))
                             (long 0)
