@@ -2,29 +2,30 @@
 
 ;(add-classpath "file:///Users/oranenj/koodi/VCS/clojurebot/")
 (ns hiredman.clojurebot
-  (:use (hiredman.clojurebot core svn dice sb)))
+  ;(:use (hiredman.clojurebot core)))
+  (:use (hiredman.clojurebot core svn))
+  (:require (hiredman.clojurebot core svn dice sb seenx google forget translate code-lookup javadoc tweet)))
+(set! *warn-on-reflection* true)
 
-(comment ;;;;;;; eval these in a repl
 (binding [*ns* (create-ns 'sandbox)]
   (clojure.core/refer 'clojure.core)
   (import '(java.util Date)))
 
 (def bot-attributes 
-     {:nick "testclobot"
+     {:nick "clojurebot"
       :network "irc.freenode.net"
-      :channel "#testbot-channel"
+      :channel "#clojurebot"
       :svn-url "http://clojure.googlecode.com/svn/"
       :sandbox-ns 'sandbox
-      :dict-dir "/Users/oranenj/koodi/VCS/clojurebot/" ;; must include final slash
-      :dict-basename "brain"}) ; defaults to same as :nick
+      :dict-dir "/home/hiredman/"}) ;; must include final slash
+
+(swap! default-repo (constantly "http://clojure.googlecode.com/svn/"))
      
-(def testbot 
+(def bot 
      (run-clojurebot mybot bot-attributes
        (load-dicts mybot)
        (start-dump-thread mybot)
-       (start-svn-notifier-thread mybot)
+       (start-svn-watcher mybot :clojure "http://clojure.googlecode.com/svn/" clojure-channel-helper-callback)
+       ;(hiredman.clojurebot.tweet/watch mybot "clojure" "#clojure")
        (println "Done loading!")))
 
-
-(hiredman.sandbox/enable-security-manager)
-) ;;;;;;;; end comment
