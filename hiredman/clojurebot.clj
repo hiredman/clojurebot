@@ -5,6 +5,7 @@
   ;(:use (hiredman.clojurebot core)))
   (:use (hiredman.clojurebot core svn))
   (:require (hiredman.clojurebot core svn dice sb seenx google forget translate code-lookup javadoc tweet)))
+
 (set! *warn-on-reflection* true)
 
 (binding [*ns* (create-ns 'sandbox)]
@@ -15,7 +16,7 @@
      {:nick "clojurebot"
       :network "irc.freenode.net"
       :channel "#clojurebot"
-      :svn-url "http://clojure.googlecode.com/svn/"
+      :svn-url "http://clojure.googlecode.com/svn/" ;depricated?
       :sandbox-ns 'sandbox
       :dict-dir "/home/hiredman/"}) ;; must include final slash
 
