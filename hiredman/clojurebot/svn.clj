@@ -1,11 +1,9 @@
 ; Subversion announcements
 
 (ns hiredman.clojurebot.svn
-  (:require [hiredman.clojurebot.core :as core])
+  (:require [hiredman.clojurebot.core :as core]
+            [hiredman.utilities :as util])
   (:import (java.util.concurrent TimeUnit)))
-
-(defn shell [cmd]
-      (.. Runtime getRuntime (exec cmd)))
 
 (defn summary
       "takes output of clojure.xml/parse on svn's xml log, returns
@@ -24,7 +22,7 @@
      (comp summary
            clojure.xml/parse
            #(.getInputStream %)
-           shell
+           util/shell
            (partial str "svn -v --xml --limit 5 log ")))
 
 (def revision
@@ -68,6 +66,3 @@
                                                  (str "r" (first x) " " (second x))))))
 
 (core/add-dispatch-hook (core/dfn (re-find #"^r[0-9]+$" (:message msg))) ::svn-rev-lookup)
-
-(defn twitter [user pw status] 
-      (shell (str "curl -u "user":"pw" -d status=\""status"\" http://twitter.com/statuses/update.xml")))
