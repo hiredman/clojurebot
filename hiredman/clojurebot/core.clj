@@ -137,6 +137,9 @@
 (defmethod send-out :notice [_ bot recvr string]
   (.sendNotice #^PircBot (:this bot) recvr (str string)))
 
+(defn do-channels [bot fn]
+      (doseq [c (.getChannels (:this bot))]
+             (fn c)))
 
 (defn term-lists
       "generates permutions of the words in string"
