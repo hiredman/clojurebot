@@ -66,3 +66,6 @@
 (core/add-dispatch-hook (core/dfn (re-find #"^r[0-9]+$" (:message msg))) ::svn-rev-lookup)
 
 
+(defn twitter [user pw status] 
+      (shell (str "curl -u "user":"pw" -d status=\""status"\" http://twitter.com/statuses/update.xml")))
+
