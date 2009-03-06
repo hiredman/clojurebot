@@ -4,12 +4,21 @@ Version 1 is now forgotten! Hooray.
 
 Setting up the sandbox can be tricky; Read the example policy file for some info.
 
-included modules: code-lookup, forget, sb, svn, core, google, seenx, tinyul, dice,
+included modules: code-lookup, forget, sb, svn, core, google, seenx, tinyurl, dice,
 javadoc, shutup, translate
 
-code-lookup: looks up def in google code
-             example "clojurebot: def defn"
-             replies with url of def
+svn looks ups of revisions from the main repo:
+ 13:38   hiredman : r1006
+ 13:38  -clojurebot:#clojurebot- r1006 improved UnsupportedOperationException message, patch from Chouser
 
-google: "clojurebot: google x" bot respondes with first google hit
+google stuff:
+ 13:41   hiredman : clojurebot: google clojurebot
+ 13:41   clojurebot : First, out of 24 results is:
+ 13:41   clojurebot : Clojurebot&#39;s Brain
+ 13:41   clojurebot : http://clj.thelastcitadel.com/clojurebot
+
+code-lookup:
+ 13:42   hiredman : clojurebot: def defn
+ 13:42  -clojurebot:#clojurebot- defn: http://tinyurl.com/bgzldj
+the url goes to the definition of that thing in google code (revision clojurebot is running)
 
