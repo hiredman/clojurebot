@@ -15,7 +15,8 @@
 
 (ns hiredman.clojurebot.core
     (:use (hiredman sandbox))
-    (:require [hiredman.pqueue :as pq])
+    (:require [hiredman.pqueue :as pq]
+              [hiredman.schedule :as sched])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
@@ -23,10 +24,11 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-(def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-     task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
+;; (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
+;;      task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
+;; 
 
-(def task-runner2 task-runner)
+(def task-runner sched/task-runner)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
