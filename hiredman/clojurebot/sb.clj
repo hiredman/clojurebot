@@ -18,8 +18,7 @@
         (doseq [i (reverse result)]
            (sendMsg-who bot pojo i))
         (sendMsg-who bot pojo (.replace result "(NO_SOURCE_FILE:0)" ""))))
-  (sendMsg-who bot pojo (befuddled))))
-
+  (sendMsg-who bot pojo (str (:sender pojo) ": " (befuddled)))))
 
 
 (add-dispatch-hook  (dfn (re-find #"^," (:message msg))) ::code-sandbox)
