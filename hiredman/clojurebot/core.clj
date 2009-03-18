@@ -15,7 +15,8 @@
 
 (ns hiredman.clojurebot.core
     (:use (hiredman sandbox))
-    (:require [hiredman.pqueue :as pq])
+    (:require [hiredman.pqueue :as pq]
+              [hiredman.utilities :as util])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
@@ -128,14 +129,16 @@
 (defmulti send-out (fn [& x] (first x)))
 
 (defmethod send-out :msg [_ bot recvr string]
-  (println recvr " | " string)
-    (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string))
+  (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string)))
 
 (defmethod send-out :action [_ bot recvr string]
-  (.sendAction #^PircBot (:this bot) recvr (str string)))
+  (io! (.sendAction #^PircBot (:this bot) recvr (str string))))
 
 (defmethod send-out :notice [_ bot recvr string]
-  (.sendNotice #^PircBot (:this bot) recvr (str string)))
+  (io! (.sendNotice #^PircBot (:this bot) recvr (str string))))
+
+(defmethod send-out :tweet [_ & stuff]
+  (io! (util/tweet (apply str stuff))))
 
 (defn do-channels [bot fn]
       (doseq [c (.getChannels (:this bot))]
@@ -187,6 +190,20 @@
                   [old defi])]
           (dosync (commute dict-is assoc term v)))
         (dosync (commute dict-is assoc term defi))))
+
+(defn is-
+      "add a new definition to a term"
+      [bot term defi]
+      (let [old  (get-in @(:store bot) [:is term])]
+           (send-off (:store bot)
+                     assoc
+                     (cond
+                       (vector? old)
+                        (conj old defi)
+                       (not (nil? old))
+                        [old defi]
+                       :else
+                        defi))))
 
 (defn is!
       "define a term in dict-is, overwriting anything that was there"
@@ -313,6 +330,7 @@
         term (term a)
         x (strip-is a)
         defi (remove-from-beginning x "also ")]
+    (is- bot term defi)
     (try
       (if (re-find #"^also " x)
         (is term defi)
@@ -428,6 +446,24 @@
                           java.io.FileWriter.)]
                (prn @dict-is)
                (.close *out*)))
+
+(defn load-store [bot]
+  (send (:store bot)
+        (fn [& _]
+          (println "Reading store")
+          (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader)]
+            (with-open [i *in*]
+              (try (read)
+                (catch Exception e
+                  (println e))))))))
+
+(defn watch-store [bot]
+  (add-watch (:store bot)
+             :writer
+             (fn [key ref old-state new-state]
+               (println "Writing store")
+               (binding [*out* (-> (dict-file bot ".store") java.io.FileWriter.)]
+                 (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
       (.scheduleAtFixedRate task-runner2
