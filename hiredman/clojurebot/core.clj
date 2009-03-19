@@ -119,7 +119,7 @@
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
-      (.sendMessage this recv (.replace (str msg) \newline \space)))
+      (io! (.sendMessage this recv (.replace (str msg) \newline \space))))
 
 (defn sendMsg-who
       "wrapper around sendMsg"
@@ -129,13 +129,13 @@
 (defmulti send-out (fn [& x] (first x)))
 
 (defmethod send-out :msg [_ bot recvr string]
-  (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string)))
+  (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :action [_ bot recvr string]
-  (io! (.sendAction #^PircBot (:this bot) recvr (str string))))
+  (io! (.sendAction #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :notice [_ bot recvr string]
-  (io! (.sendNotice #^PircBot (:this bot) recvr (str string))))
+  (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :tweet [_ & stuff]
   (io! (util/tweet (apply str stuff))))
@@ -197,6 +197,7 @@
       (let [old  (get-in @(:store bot) [:is term])]
            (send-off (:store bot)
                      assoc
+                     term
                      (cond
                        (vector? old)
                         (conj old defi)
@@ -302,7 +303,7 @@
 (defmethod responder ::math [bot pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(Integer/parseInt %) num-strings)]
-    (sendMsg-who bot pojo
+    (send-out :msg bot pojo
                  (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
                    (if (> out 4)
                      "*suffusion of yellow*"
@@ -335,9 +336,9 @@
       (if (re-find #"^also " x)
         (is term defi)
         (is! term defi))
-      (sendMsg-who bot pojo (ok))
+      (send-out :msg bot pojo (ok))
       (catch java.util.prefs.BackingStoreException e
-             (sendMsg-who bot pojo (str "sorry, " term " may already be defined"))))))
+             (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
@@ -371,7 +372,7 @@
 
 
 (defmethod responder ::know [bot pojo]
-  (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
+  (send-out :msg bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
