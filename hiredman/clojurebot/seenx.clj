@@ -47,9 +47,9 @@
              (:channel msg)
              (:time (bean (java.util.Date.))))))
     (when (and (not (:part msg)) (:message msg)) (swap! activity inc))
-  #(responder bot (assoc msg ::ignore true)))
+  #(responder bot (vary-meta msg assoc ::ignore true)))
 
-(add-dispatch-hook -31 (dfn (nil? (::ignore msg))) ::watcher)
+(add-dispatch-hook -31 (dfn (nil? (::ignore (meta msg)))) ::watcher)
 
 (defn lower-activity []
       (try (swap! activity (fn [x] (if (> x 0) (dec x) 0)))
