@@ -366,7 +366,7 @@
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
-          (send-out :msg bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
       :else,
         (send-out :msg bot (who pojo) (befuddled)))))
 
@@ -452,7 +452,7 @@
   (send (:store bot)
         (fn [& _]
           (println "Reading store")
-          (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader)]
+          (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader.)]
             (with-open [i *in*]
               (try (read)
                 (catch Exception e
