@@ -10,7 +10,7 @@
 
 (defmethod core/responder ::delicious [bot pojo]
   (let [url (re-find url-reg (:message pojo))
-        desc (.replaceAll (core/extract-message bot pojo) (.toString url-reg) "")
+        desc (:message pojo)
         tag (str (:sender pojo) " " (:channel pojo))]
     (post (:delicious bot) url desc tag)))
 
