@@ -30,7 +30,7 @@
            summary
            clojure.xml/parse
            #(.getInputStream %)
-           shell
+           util/shell
            #(str "svn -v --xml -r " %2 " log " %)))
 
 (def revision-cached (memoize revision))
@@ -44,7 +44,7 @@
                                 (println name " checking SVN revs")
                                 (when-let [revs (seq (filter #(> (first %) (get @latest name 0)) (latest-revisions url)))]
                                         (swap! latest assoc name (first (last (sort-by first revs))))
-                                        (callback bot revs))
+                                        (callback bot (reverse revs)))
                                 (catch Exception e
                                        (.printStackTrace e))))
                             (long 1)
@@ -55,7 +55,9 @@
       [bot revs]
       (doseq [r revs]
              (doseq [c (.getChannels (:this bot))]
-                    (core/send-out :notice bot c (str "r" (first r) " " (second r)))))
+                    (core/send-out :notice bot c (str "r" (first r) " " (second r)))
+                    (when (:tweet bot)
+                      (core/send-out :tweet (str "r" (first r) " " (second r))))))
       (core/is! "latest" (.toString (first (last (sort-by first revs))))))
 
 (def default-repo (atom ""))
