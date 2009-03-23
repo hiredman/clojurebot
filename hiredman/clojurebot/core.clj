@@ -451,25 +451,25 @@
                (.close *out*)))
 
 (defn load-store [bot]
-  (send (:store bot)
-        (fn [& _]
-          (println "Reading store")
-          (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader.)]
-            (with-open [i *in*]
-              (try (read)
-                (catch Exception e
-                  (println e))))))))
+      (send (:store bot)
+            (fn [& _]
+              (println "Reading store")
+              (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader.)]
+                (with-open [i *in*]
+                  (try (read)
+                    (catch Exception e
+                      (println e))))))))
 
 (defn watch-store [bot]
-  (add-watch (:store bot)
-             :writer
-             (fn [key ref old-state new-state]
-               (println "Writing store")
-               (binding [*out* (-> (dict-file bot ".store") java.io.FileWriter.)]
-                 (with-open [o *out*] (prn new-state))))))
+      (add-watch (:store bot)
+                 :writer
+                 (fn [key ref old-state new-state]
+                   (println "Writing store")
+                   (binding [*out* (-> (dict-file bot ".store") java.io.FileWriter.)]
+                     (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
-      (.scheduleAtFixedRate task-runner2
+      (.scheduleAtFixedRate task-runner
                             #(dump-dict-is config)
                             (long 0)
                             (long 10)
