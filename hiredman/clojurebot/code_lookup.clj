@@ -4,6 +4,8 @@
     (:import (java.io File InputStreamReader BufferedReader)))
 
 (def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/clojure/")
+(def google-java-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/jvm/")
+;;http://code.google.com/p/clojure/source/browse/trunk/src/jvm/clojure/lang/Cons.java?r=1334
 
 (defn get-rev-number []
       ((comp #(Integer/parseInt %)
@@ -33,10 +35,25 @@
 
 (def make-url-cached (memoize make-url))
 
+(def java-code-url (memoize (fn [url]
+                                (get-url
+                                  (str "http://tinyurl.com/api-create.php?url="
+                                       (java.net.URLEncoder/encode url))))))
+
 (defmethod responder ::code-lookup [bot msg]
   (let [message (extract-message bot msg)
         thing (second (.split #^String message " "))]
-    (send-out :notice bot (who msg) (str thing ": " (make-url-cached (get-file-and-ln thing))))))
+    (if (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing)
+      (let [[one two three] (.split thing "\\.")
+            one (if (= one "c") "clojure" one)
+            two (if (= two "l") "lang" two)
+            thing (str one "." two "." three)
+            thing2 (str one "/" two "/" three ".java")]  
+      (send-out :notice bot (who msg) (str thing ": " (java-code-url (str google-java-code-url thing2 "?r=" clojurebot-rev)))))
+      (send-out :notice bot (who msg) (try
+                                        (str thing ": " (make-url-cached (get-file-and-ln thing)))
+                                        (catch Exception e
+                                               (befuddled)))))))
 
 (add-dispatch-hook (dfn (and (addressed? bot msg)
                              (re-find #"^(def|source) " (extract-message bot msg)))) ::code-lookup)

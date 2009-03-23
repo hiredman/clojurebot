@@ -16,7 +16,8 @@
 (ns hiredman.clojurebot.core
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq]
-              [hiredman.schedule :as sched])
+              [hiredman.schedule :as sched]
+              [hiredman.utilities :as util])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
@@ -120,7 +121,7 @@
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
-      (.sendMessage this recv (.replace (str msg) \newline \space)))
+      (io! (.sendMessage this recv (.replace (str msg) \newline \space))))
 
 (defn sendMsg-who
       "wrapper around sendMsg"
@@ -130,15 +131,20 @@
 (defmulti send-out (fn [& x] (first x)))
 
 (defmethod send-out :msg [_ bot recvr string]
-  (println recvr " | " string)
-    (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) string))
+  (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :action [_ bot recvr string]
-  (.sendAction #^PircBot (:this bot) recvr (str string)))
+  (io! (.sendAction #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :notice [_ bot recvr string]
-  (.sendNotice #^PircBot (:this bot) recvr (str string)))
+  (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
+(defmethod send-out :tweet [_ & stuff]
+  (io! (util/tweet (apply str stuff))))
+
+(defn do-channels [bot fn]
+      (doseq [c (.getChannels (:this bot))]
+             (fn c)))
 
 (defn term-lists
       "generates permutions of the words in string"
@@ -186,6 +192,21 @@
                   [old defi])]
           (dosync (commute dict-is assoc term v)))
         (dosync (commute dict-is assoc term defi))))
+
+(defn is-
+      "add a new definition to a term"
+      [bot term defi]
+      (let [old  (get-in @(:store bot) [:is term])]
+           (send-off (:store bot)
+                     assoc
+                     term
+                     (cond
+                       (vector? old)
+                        (conj old defi)
+                       (not (nil? old))
+                        [old defi]
+                       :else
+                        defi))))
 
 (defn is!
       "define a term in dict-is, overwriting anything that was there"
@@ -284,7 +305,7 @@
 (defmethod responder ::math [bot pojo]
   (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
         nums (map #(Integer/parseInt %) num-strings)]
-    (sendMsg-who bot pojo
+    (send-out :msg bot pojo
                  (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
                    (if (> out 4)
                      "*suffusion of yellow*"
@@ -312,13 +333,14 @@
         term (term a)
         x (strip-is a)
         defi (remove-from-beginning x "also ")]
+    (is- bot term defi)
     (try
       (if (re-find #"^also " x)
         (is term defi)
         (is! term defi))
-      (sendMsg-who bot pojo (ok))
+      (send-out :msg bot pojo (ok))
       (catch java.util.prefs.BackingStoreException e
-             (sendMsg-who bot pojo (str "sorry, " term " may already be defined"))))))
+             (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
@@ -346,13 +368,13 @@
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
-          (send-out :msg bot pojo (prep-reply (:sender pojo) term defi bot)))
+          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
       :else,
         (send-out :msg bot (who pojo) (befuddled)))))
 
 
 (defmethod responder ::know [bot pojo]
-  (sendMsg-who bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
+  (send-out :msg bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defmethod responder ::literal [bot pojo]
   (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
@@ -427,6 +449,24 @@
                           java.io.FileWriter.)]
                (prn @dict-is)
                (.close *out*)))
+
+(defn load-store [bot]
+  (send (:store bot)
+        (fn [& _]
+          (println "Reading store")
+          (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader.)]
+            (with-open [i *in*]
+              (try (read)
+                (catch Exception e
+                  (println e))))))))
+
+(defn watch-store [bot]
+  (add-watch (:store bot)
+             :writer
+             (fn [key ref old-state new-state]
+               (println "Writing store")
+               (binding [*out* (-> (dict-file bot ".store") java.io.FileWriter.)]
+                 (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
       (.scheduleAtFixedRate task-runner2
