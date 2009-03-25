@@ -8,13 +8,12 @@
 (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
      task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
-(defn fixedrate [name task t1 t2 tu]
-      (let [ft (.scheduleAtFixedRate task-runner
-                                     (long t1)
-                                     (long t2)
-                                     tu)]
-        (dosync
-          (alter tasks assoc name ft))))
+(defn fixedrate
+  ([{:keys [task start-delay rate unit]}]
+   (fixedrate task start-delay rate unit))
+  ([name task t1 t2 tu]
+   (let [ft (.scheduleAtFixedRate task-runner #^Callable task (long t1) (long t2) tu)]
+     (dosync (alter tasks assoc name ft)))))
 
 (defn cancel [name]
       (.cancel (get @tasks name) true)
