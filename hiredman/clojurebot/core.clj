@@ -197,9 +197,7 @@
       "add a new definition to a term"
       [bot term defi]
       (let [old  (get-in @(:store bot) [:is term])]
-           (send-off (:store bot)
-                     assoc
-                     term
+           (send-off (:store bot) assoc term
                      (cond
                        (vector? old)
                         (conj old defi)
@@ -469,11 +467,9 @@
                      (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
-      (.scheduleAtFixedRate task-runner
-                            #(dump-dict-is config)
-                            (long 0)
-                            (long 10)
-                            TimeUnit/MINUTES))
+      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/units)}))
+
+;(.scheduleAtFixedRate task-runner #(dump-dict-is config) (long 0) (long 10) (:minutes sched/units)))
 
 
 (defn start-clojurebot [attrs additional-setup]
