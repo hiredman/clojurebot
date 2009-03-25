@@ -1,7 +1,7 @@
 (ns hiredman.schedule
     (:import (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
  
-(def unit {:minutes TimeUnit/MINUTES :seconds TimeUnit/SECONDS})
+(def unit {:minutes TimeUnit/MINUTES :seconds TimeUnit/SECONDS :hours TimeUnit/HOURS})
 
 (def tasks (ref {}))
 
