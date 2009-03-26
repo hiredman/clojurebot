@@ -9,8 +9,8 @@
      task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
 
 (defn fixedrate
-  ([{:keys [task start-delay rate unit]}]
-   (fixedrate task start-delay rate unit))
+  ([{:keys [name task start-delay rate unit]}]
+   (fixedrate name task start-delay rate unit))
   ([name task t1 t2 tu]
    (let [ft (.scheduleAtFixedRate task-runner #^Callable task (long t1) (long t2) tu)]
      (dosync (alter tasks assoc name ft)))))
