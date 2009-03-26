@@ -175,10 +175,12 @@
 (defn addressed?
       "is this message prefixed with clojurebot: "
       [bot msg]
-      (when (or (re-find #"^~" (:message msg))
-                (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg))
-                (nil? (:channel msg)))
-        msg))
+  (if-let [m (:addressed? (meta msg))]
+    m
+    (when (or (re-find #"^~" (:message msg))
+              (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg))
+              (nil? (:channel msg)))
+       msg)))
 
 
 
@@ -296,6 +298,13 @@
 ;;this stuff needs to come last?
 (add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
 
+(defmacro defresponder [key priority fn & body]
+  `(do
+     (defmethod responder ~key [~'bot ~'msg]
+       (let [~'msg (with-meta ~'msg (assoc (meta ~'msg) ~key true))]
+         ~@body))
+     (add-dispatch-hook ~priority (dfn (when (not (~key (meta ~'msg))) (~fn ~'bot ~'msg))) ~key)))
+
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defmethod responder nil [& _])
@@ -308,6 +317,8 @@
                    (if (> out 4)
                      "*suffusion of yellow*"
                      out)))))
+
+
 
 (defmethod responder ::doc-lookup [bot pojo]
   (send-out :msg bot (who pojo)
