@@ -25,10 +25,6 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-;; (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-;;      task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
-;; 
-
 (def task-runner sched/task-runner)
 
 ;; dictionaries for storing relationships
@@ -118,6 +114,8 @@
       [pojo]
       (or (:channel pojo) (:sender pojo)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn sendMsg
       "send a message to a recv, a recv is a channel name or a nick"
       [this recv msg]
@@ -141,6 +139,8 @@
 
 (defmethod send-out :tweet [_ & stuff]
   (io! (util/tweet (apply str stuff))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn do-channels [bot fn]
       (doseq [c (.getChannels (:this bot))]
@@ -248,16 +248,9 @@
       (randth (filter #(not (.equals % (:nick bot)))
                       (apply concat (map last (everyone-I-see bot))))))
 
-;; (comp randth
-;;       (partial filter #(not (.equals % (:nick bot))))
-;;       (partial apply concat)
-;;       (partial map last)
-;;       everyone-I-see)
-
 (def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
      *dispatchers*
      (ref '()))
-
 
 (defn dispatch
       "this function does dispatch for responder"
@@ -268,7 +261,6 @@
                 (if (k bot msg)
                   v
                   (recur (seq (rest d))))))))
-
 
 (defn add-dispatch-hook
   "Allows you to add your own hook to the message responder
@@ -317,8 +309,6 @@
                    (if (> out 4)
                      "*suffusion of yellow*"
                      out)))))
-
-
 
 (defmethod responder ::doc-lookup [bot pojo]
   (send-out :msg bot (who pojo)
@@ -381,7 +371,6 @@
       :else,
         (send-out :msg bot (who pojo) (befuddled)))))
 
-
 (defmethod responder ::know [bot pojo]
   (send-out :msg bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
@@ -394,7 +383,6 @@
             pre (Integer/parseInt (what-is "max people"))]
         (when (> cur pre)
           (is! "max people" (str cur)))))
-
 
 (defn handleMessage [this channel sender login hostname message]
       (try 
@@ -440,7 +428,6 @@
            (.close *out*)))
        [[".is" dict-is] [".are" dict-are]])))
 
-    
 (defn load-dicts [config]
   (dosync
    (ref-set dict-is
@@ -479,9 +466,6 @@
 
 (defn start-dump-thread [config]
       (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/units)}))
-
-;(.scheduleAtFixedRate task-runner #(dump-dict-is config) (long 0) (long 10) (:minutes sched/units)))
-
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
