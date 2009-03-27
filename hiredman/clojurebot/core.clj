@@ -301,7 +301,7 @@
 (defmacro defresponder [key priority fn & body]
   `(do
      (defmethod responder ~key [~'bot ~'msg]
-       (let [~'msg (with-meta ~'msg (assoc (meta ~'msg) ~key true))]
+       (let [~'msg (vary-meta ~'msg assoc ~key true)]
          ~@body))
      (add-dispatch-hook ~priority (dfn (when (not (~key (meta ~'msg))) (~fn ~'bot ~'msg))) ~key)))
 
