@@ -8,7 +8,10 @@
       (with-open [a (-> (doto (-> x URL. .openConnection)
                               (.setRequestProperty "User-Agent" "clojurebot"))
                         .getInputStream InputStreamReader. BufferedReader.)]
-                 (.readLine a)))
+        (loop [buf (StringBuilder.) line (.readLine a)]
+          (if line
+            (recur (doto buf (.append line)) (.readLine a))
+            (.toString buf)))))
 
 (defmacro mk-interface [class fn]
   (let [x (map #(list (symbol (.getName %))
