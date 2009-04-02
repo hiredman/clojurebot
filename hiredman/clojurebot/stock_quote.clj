@@ -9,11 +9,14 @@
   (json/decode-from-str (apply str (butlast (drop 4 (util/get-url (.concat url symbol)))))))
 
 (defn format-quote [{:keys [l t c cp]}]
-  (format "%s; %s" t cp))
+  (format "%s; %s" t c))
 
 (core/defresponder ::stock-quote 0
   (core/dfn (and (:addressed? (meta msg))
                  (re-find #"ticker [A-Z]+" (core/extract-message bot msg)))) ;;
-  (core/send-out :msg bot msg (format-quote (stock-quote (.replaceAll (core/extract-message bot msg) "^ticker " "")))))
+  (core/send-out :msg bot msg (try
+                                (format-quote (stock-quote (.replaceAll (core/extract-message bot msg) "^ticker " "")))
+                                (catch java.io.IOException e
+                                  (.toString e)))))
 
-(core/remove-dispatch-hook ::stock-quote)
+;(core/remove-dispatch-hook ::stock-quote)
