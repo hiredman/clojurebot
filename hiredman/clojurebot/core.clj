@@ -398,8 +398,9 @@
 
 (defn handleMessage [this channel sender login hostname message]
       (try 
-        (let [bot (get @*bots* this)]
-          (trampoline responder bot (struct junks channel sender login hostname message)))
+        (let [bot (get @*bots* this)
+              msg (struct junks channel sender login hostname message)]
+          (trampoline responder bot (vary-meta msg assoc :addressed? (addressed? bot msg))))
         (catch Exception e (.printStackTrace e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
@@ -478,7 +479,7 @@
                      (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
-      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/units)}))
+      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 ;(.scheduleAtFixedRate task-runner #(dump-dict-is config) (long 0) (long 10) (:minutes sched/units)))
 
