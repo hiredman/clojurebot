@@ -19,7 +19,7 @@
 (core/defresponder ::delicious 20
   (core/dfn (and (re-find url-reg (:message msg))
                  (:channel msg))) ;;
-  (let [url (re-find url-reg (:message pojo))
-        desc (:message pojo)
-        tag (str (:sender pojo) " " (:channel pojo))]
+  (let [url (re-find url-reg (:message msg))
+        desc (:message msg)
+        tag (str (:sender msg) " " (:channel msg))]
     (post (:delicious bot) url desc tag)))
