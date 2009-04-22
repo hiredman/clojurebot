@@ -58,4 +58,4 @@
                             (catch Exception e
                                    (.printStackTrace e))))
 
-(sched/fixedrate {:name ::activity :task lower-activity :start-delay 60 :rate 30 :unit (:seconds sched/units)})
+(sched/fixedrate {:name ::activity :task lower-activity :start-delay 60 :rate 30 :unit (:seconds sched/unit)})
