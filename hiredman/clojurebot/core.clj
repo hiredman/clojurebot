@@ -292,8 +292,8 @@
        [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
         [(dfn (and (addressed? bot msg) 
               (re-find #"how much do you know?" (:message msg)))) ::know]
-        [(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
-                  (not= \? (last (:message msg))))) ::define-is]
+        ;;[(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
+        ;;          (not= \? (last (:message msg))))) ::define-is]
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
@@ -351,6 +351,7 @@
 ;;       (send-out :msg bot pojo (ok))
 ;;       (catch java.util.prefs.BackingStoreException e
 ;;              (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
+
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
