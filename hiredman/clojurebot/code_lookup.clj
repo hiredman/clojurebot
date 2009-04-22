@@ -3,7 +3,7 @@
     (:use (hiredman utilities))
     (:import (java.io File InputStreamReader BufferedReader)))
 
-(def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/clojure/")
+(def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/")
 (def google-java-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/jvm/")
 ;;http://code.google.com/p/clojure/source/browse/trunk/src/jvm/clojure/lang/Cons.java?r=1334
 
