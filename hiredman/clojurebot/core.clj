@@ -338,19 +338,19 @@
       [bot pojo]
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
-(defmethod responder ::define-is [bot pojo]
-  (let [a (.trim (extract-message bot pojo))
-        term (term a)
-        x (strip-is a)
-        defi (remove-from-beginning x "also ")]
-    (is- bot term defi)
-    (try
-      (if (re-find #"^also " x)
-        (is term defi)
-        (is! term defi))
-      (send-out :msg bot pojo (ok))
-      (catch java.util.prefs.BackingStoreException e
-             (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
+;; (defmethod responder ::define-is [bot pojo]
+;;   (let [a (.trim (extract-message bot pojo))
+;;         term (term a)
+;;         x (strip-is a)
+;;         defi (remove-from-beginning x "also ")]
+;;     (is- bot term defi)
+;;     (try
+;;       (if (re-find #"^also " x)
+;;         (is term defi)
+;;         (is! term defi))
+;;       (send-out :msg bot pojo (ok))
+;;       (catch java.util.prefs.BackingStoreException e
+;;              (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
