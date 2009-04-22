@@ -13,7 +13,7 @@
 
 (core/defresponder ::stock-quote 0
   (core/dfn (and (:addressed? (meta msg))
-                 (re-find #"ticker [A-Z]+" (core/extract-message bot msg)))) ;;
+                 (re-find #"^ticker [A-Z]+" (core/extract-message bot msg)))) ;;
   (core/send-out :msg bot msg (try
                                 (format-quote (stock-quote (.replaceAll (core/extract-message bot msg) "^ticker " "")))
                                 (catch java.io.IOException e
