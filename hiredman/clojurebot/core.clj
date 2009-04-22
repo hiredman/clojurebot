@@ -17,6 +17,7 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
+              [hiredman.twitter :as twitter]
               [hiredman.utilities :as util])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -140,7 +141,7 @@
   (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :tweet [_ & stuff]
-  (io! (util/tweet (apply str stuff))))
+  (twitter/tweet (apply str stuff)))
 
 (defn do-channels [bot fn]
       (doseq [c (.getChannels (:this bot))]
