@@ -143,6 +143,23 @@
 (defmethod send-out :tweet [_ & stuff]
   (twitter/tweet (apply str stuff)))
 
+(defmulti new-send-out (comp type first list))
+
+(defn send-out [one two & r]
+  (apply new-send-out two one r))
+
+(defmethod new-send-out clojure.lang.PersistentHashMap [bot msg-type recvr message]
+  (condp = msg-type
+    :msg
+      (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
+    :action
+      (io! (.sendAction #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
+    :notice
+      (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))))
+
+(defmethod new-send-out :irc [bot msg-type recvr message]
+  (new-send-out (vary-meta bot dissoc :type) msg-type recvr message))
+
 (defn do-channels [bot fn]
       (doseq [c (.getChannels (:this bot))]
              (fn c)))
@@ -322,7 +339,7 @@
 
 
 (defmethod responder ::doc-lookup [bot pojo]
-  (send-out :msg bot (who pojo)
+  (new-send-out bot :msg (who pojo)
             (symbol-to-var-doc (subs (:message pojo)
                                      5
                                      (dec (count (:message pojo)))))))
@@ -371,11 +388,11 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) msg result bot))
+          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) msg result bot))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
+          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) term defi bot)))
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
