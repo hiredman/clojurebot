@@ -336,13 +336,8 @@
                      "*suffusion of yellow*"
                      out)))))
 
-
-
 (defmethod responder ::doc-lookup [bot pojo]
-  (new-send-out bot :msg (who pojo)
-            (symbol-to-var-doc (subs (:message pojo)
-                                     5
-                                     (dec (count (:message pojo)))))))
+  #(responder bot (update-in pojo [:message] (fn [x] (str "," x)))))
 
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
