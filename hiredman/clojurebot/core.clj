@@ -26,11 +26,7 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-;; (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-;;      task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
-;; 
-
-(def task-runner sched/task-runner)
+;(def task-runner sched/task-runner)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -265,12 +261,6 @@
 (defn random-person [bot]
       (randth (filter #(not (.equals % (:nick bot)))
                       (apply concat (map last (everyone-I-see bot))))))
-
-;; (comp randth
-;;       (partial filter #(not (.equals % (:nick bot))))
-;;       (partial apply concat)
-;;       (partial map last)
-;;       everyone-I-see)
 
 (def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
      *dispatchers*
