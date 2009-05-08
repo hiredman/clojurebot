@@ -397,18 +397,13 @@
 
 
 (defmethod responder ::know [bot pojo]
-  (send-out :msg bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
-
-(defmethod responder ::literal [bot pojo]
-  (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
-    (prn q)))
+  (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defn user-watch [this]
       (let [cur (count (.getUsers this "#clojure"))
             pre (Integer/parseInt (what-is "max people"))]
         (when (> cur pre)
           (is! "max people" (str cur)))))
-
 
 (defn handleMessage [this channel sender login hostname message]
       (try 
