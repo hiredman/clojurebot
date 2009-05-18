@@ -7,11 +7,19 @@
 (def literal (string "literal")) ;literally the string "literal"
 (def spaces (fp/semantics (fp/rep* (fp/lit \space)) first)) ;collapses spaces
 (def number (fp/semantics (fp/rep+ (fp/term (set (map (comp first str) (range 10))))) #(Integer/parseInt (apply str %))))
-(def character (fp/term #(instance? Character %))) ;any character
-(def text (fp/rep+ character)) ;repeating characters
+(def character (fp/term #(instance? Character %))) ;)any character
+
+(def text (fp/rep+ (fp/except character (fp/lit \?))))
+
 (def escaped-is (fp/followed-by (fp/lit (char 92)) (string "is"))) ;\is
 (def term (fp/rep+ (fp/except character (fp/except (string " is ") escaped-is)))) ;a bunch of characters up to the first not escaped is
-(def definition (fp/semantics (fp/conc term (string " is ") text)(fn [[term _ defi]] (vary-meta {:term (.trim (apply str term)) :definition (.trim (apply str defi))} assoc :type :def))))
+
+(def definition
+  (fp/semantics (fp/conc term (string " is ") text)
+                (fn [[term _ defi]]
+                  (vary-meta {:term (.trim (apply str term)) :definition (.trim (apply str defi))}
+                             assoc :type :def))))
+
 (def definition-add (fp/semantics (fp/conc term (string " is ") (string "also") (fp/lit \space) text) (fn [[term _ _ _ defi]] (vary-meta {:term (apply str term) :definition (apply str defi)} assoc :type :def-add))))
 (def indexed-lookup (fp/semantics (fp/conc literal spaces (fp/lit \[) number (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:number number :term term} assoc :type :indexed-look-up))))
 (def index-count (fp/semantics (fp/conc literal spaces (fp/lit \[) (fp/lit \?) (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:term term} assoc :type :count))))
