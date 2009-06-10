@@ -12,6 +12,7 @@
 (def text (fp/rep+ (fp/except character (fp/lit \?))))
 
 (def escaped-is (fp/followed-by (fp/lit (char 92)) (string "is"))) ;\is
+
 (def term (fp/rep+ (fp/except character (fp/except (string " is ") escaped-is)))) ;a bunch of characters up to the first not escaped is
 
 (def definition
