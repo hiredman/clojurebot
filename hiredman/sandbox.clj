@@ -4,7 +4,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
+(def *bad-forms* #{'intern 'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -85,10 +85,14 @@
         (str a)))
 
 (defmacro my-doc [s]
-      `(let [m# (meta (var ~s))
-            al# (:arglists m#)
-            docstring# (:doc m#)]
-        (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))
+  `(let [m# (meta (resolve '~s))
+         al# (:arglists m#)
+         docstring# (:doc m#)]
+     (if m#
+       (.replaceAll (str al# "; " docstring# ) "\\s+" " ")
+       (-> hiredman.clojurebot.code-lookup/contrib
+         :vars ((partial filter (fn [a#] (= (:name a#) (.toString '~s))))) first
+         ((fn [foo#] (.replaceAll (str (:namespace foo#) "/" (:name foo#) ";"  (print-str (:arglists foo#)) "; " (:doc foo#)) "\\s+" " ")))))))
 
 (defn force-lazy-seq
       "if passed a lazy seq, forces seq with doall, if not return what is passed"
@@ -105,6 +109,7 @@
                             [o e (when (or result (.equals o "")) r)])))
 
 (defn eval-in-box [_string sb-ns]
+  (println _string)
       (let [form #(-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
