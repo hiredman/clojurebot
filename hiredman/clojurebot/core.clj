@@ -17,7 +17,6 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
-              [hiredman.twitter :as twitter]
               [hiredman.utilities :as util])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -26,7 +25,7 @@
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
 
-;(def task-runner sched/task-runner)
+(def task-runner sched/task-runner)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
@@ -66,6 +65,15 @@
 ;;                            (repeat (lazy-cat s [nil]))))))
 
 (defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
+
+;;(defn inits [strings]
+;;  (concat
+;;    (take-while #(> (count %) 0) (iterate rest strings))
+;;    (take-while #(> (count %) 0) (iterate rest (reverse strings)))))
+
+(defn powerset [aset]
+  (if (empty? aset)'(nil)
+    (let [s (powerset (rest aset))] (concat s (map #(conj % (first aset)) s)))))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -135,9 +143,6 @@
 
 (defmethod send-out :notice [_ bot recvr string]
   (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
-
-(defmethod send-out :tweet [_ & stuff]
-  (twitter/tweet (apply str stuff)))
 
 (defmulti new-send-out (comp type first list))
 
@@ -440,7 +445,6 @@
            (.close *out*)))
        [[".is" dict-is] [".are" dict-are]])))
 
-    
 (defn load-dicts [config]
   (dosync
    (ref-set dict-is
@@ -478,10 +482,7 @@
                      (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
-      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
-
-;(.scheduleAtFixedRate task-runner #(dump-dict-is config) (long 0) (long 10) (:minutes sched/units)))
-
+  (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
