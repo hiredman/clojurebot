@@ -17,6 +17,7 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
+              [hiredman.twitter :as twitter]
               [hiredman.utilities :as util])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -140,7 +141,24 @@
   (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
 
 (defmethod send-out :tweet [_ & stuff]
-  (io! (util/tweet (apply str stuff))))
+  (twitter/tweet (apply str stuff)))
+
+(defmulti new-send-out (comp type first list))
+
+(defn send-out [one two & r]
+  (apply new-send-out two one r))
+
+(defmethod new-send-out clojure.lang.PersistentHashMap [bot msg-type recvr message]
+  (condp = msg-type
+    :msg
+      (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
+    :action
+      (io! (.sendAction #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
+    :notice
+      (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))))
+
+(defmethod new-send-out :irc [bot msg-type recvr message]
+  (new-send-out (vary-meta bot dissoc :type) msg-type recvr message))
 
 (defn do-channels [bot fn]
       (doseq [c (.getChannels (:this bot))]
@@ -175,10 +193,12 @@
 (defn addressed?
       "is this message prefixed with clojurebot: "
       [bot msg]
-      (when (or (re-find #"^~" (:message msg))
-                (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg))
-                (nil? (:channel msg)))
-        msg))
+  (if-let [m (:addressed? (meta msg))]
+    m
+    (when (or (re-find #"^~" (:message msg))
+              (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg))
+              (nil? (:channel msg)))
+       msg)))
 
 
 
@@ -289,12 +309,19 @@
        [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
         [(dfn (and (addressed? bot msg) 
               (re-find #"how much do you know?" (:message msg)))) ::know]
-        [(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
-                  (not= \? (last (:message msg))))) ::define-is]
+        ;;[(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
+        ;;          (not= \? (last (:message msg))))) ::define-is]
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
 (add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
+
+(defmacro defresponder [key priority fn & body]
+  `(do
+     (defmethod responder ~key [~'bot ~'msg]
+       (let [~'msg (vary-meta ~'msg assoc ~key true)]
+         ~@body))
+     (add-dispatch-hook ~priority (dfn (when (not (~key (meta ~'msg))) (~fn ~'bot ~'msg))) ~key)))
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
@@ -309,8 +336,10 @@
                      "*suffusion of yellow*"
                      out)))))
 
+
+
 (defmethod responder ::doc-lookup [bot pojo]
-  (send-out :msg bot (who pojo)
+  (new-send-out bot :msg (who pojo)
             (symbol-to-var-doc (subs (:message pojo)
                                      5
                                      (dec (count (:message pojo)))))))
@@ -326,19 +355,20 @@
       [bot pojo]
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
-(defmethod responder ::define-is [bot pojo]
-  (let [a (.trim (extract-message bot pojo))
-        term (term a)
-        x (strip-is a)
-        defi (remove-from-beginning x "also ")]
-    (is- bot term defi)
-    (try
-      (if (re-find #"^also " x)
-        (is term defi)
-        (is! term defi))
-      (send-out :msg bot pojo (ok))
-      (catch java.util.prefs.BackingStoreException e
-             (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
+;; (defmethod responder ::define-is [bot pojo]
+;;   (let [a (.trim (extract-message bot pojo))
+;;         term (term a)
+;;         x (strip-is a)
+;;         defi (remove-from-beginning x "also ")]
+;;     (is- bot term defi)
+;;     (try
+;;       (if (re-find #"^also " x)
+;;         (is term defi)
+;;         (is! term defi))
+;;       (send-out :msg bot pojo (ok))
+;;       (catch java.util.prefs.BackingStoreException e
+;;              (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
+
 
 (defn replace-with [str map]
       (reduce #(.replaceAll % (first %2) (second %2)) str map))
@@ -358,11 +388,11 @@
         words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
     (cond
       result,
-          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) msg result bot))
+          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) msg result bot))
       (fuzzy-lookup msg words-to-ignore),
         (let [term (fuzzy-lookup msg words-to-ignore)
               defi (what-is term)]
-          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
+          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) term defi bot)))
       (fuzzy-key-lookup msg),
         (let [term (fuzzy-key-lookup msg)
               defi (what-is term)]
@@ -387,8 +417,9 @@
 
 (defn handleMessage [this channel sender login hostname message]
       (try 
-        (let [bot (get @*bots* this)]
-          (trampoline responder bot (struct junks channel sender login hostname message)))
+        (let [bot (get @*bots* this)
+              msg (struct junks channel sender login hostname message)]
+          (trampoline responder bot (vary-meta msg assoc :addressed? (addressed? bot msg))))
         (catch Exception e (.printStackTrace e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
@@ -467,7 +498,7 @@
                      (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
-      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/units)}))
+      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 ;(.scheduleAtFixedRate task-runner #(dump-dict-is config) (long 0) (long 10) (:minutes sched/units)))
 

@@ -1,11 +1,16 @@
 (ns hiredman.clojurebot.code-lookup
     (:use (hiredman.clojurebot core))
     (:use (hiredman utilities))
+    (:require [org.danlarkin.json :as json])
     (:import (java.io File InputStreamReader BufferedReader)))
 
-(def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/clojure/")
+(def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/")
 (def google-java-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/jvm/")
 ;;http://code.google.com/p/clojure/source/browse/trunk/src/jvm/clojure/lang/Cons.java?r=1334
+
+(def contrib-url "http://clojure-contrib.googlecode.com/svn/wiki/ApiDocIndex.json")
+
+(def contrib (json/decode-from-str (get-url contrib-url)))
 
 (defn get-rev-number []
       ((comp #(Integer/parseInt %)
@@ -51,7 +56,14 @@
             thing2 (str one "/" two "/" three ".java")]  
       (send-out :notice bot (who msg) (str thing ": " (java-code-url (str google-java-code-url thing2 "?r=" clojurebot-rev)))))
       (send-out :notice bot (who msg) (try
-                                        (str thing ": " (make-url-cached (get-file-and-ln thing)))
+                                        (let [n (get-file-and-ln thing)
+                                              [q w] n]
+                                          (if (or q w)
+                                            (str thing ": " (make-url-cached n))
+                                            (reduce #(str % " " %2) (str thing ":") (map (comp #(get-url
+                                                               (str "http://tinyurl.com/api-create.php?url="
+                                                                    (java.net.URLEncoder/encode %)))
+                                                            :source-url) (filter #(= (:name %) thing) (:vars contrib))))))
                                         (catch Exception e
                                                (befuddled)))))))
 

@@ -12,8 +12,7 @@
     (let [result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
                               (:sandbox-ns bot))
                       (catch Exception e
-                             (str "Eval-in-box threw an exception:" (.getMessage e))))
-          _ (println "Result:" result)]
+                             (str "Eval-in-box threw an exception:" (.getMessage e))))]
       (if (vector? result)
         (doseq [i (reverse result)]
            (sendMsg-who bot pojo i))

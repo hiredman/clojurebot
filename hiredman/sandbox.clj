@@ -108,7 +108,7 @@
       (let [form #(-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
-                                 *ns* (find-ns sb-ns) doc (var my-doc)]
+                                 *ns* (find-ns sb-ns) doc (var my-doc) *print-level* 30]
                         (eval-in-box-helper (form))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]
