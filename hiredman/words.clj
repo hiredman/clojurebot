@@ -18,7 +18,7 @@
            (range (count items)))))
 
 (defn word-seq [sentence]
-  (re-seq #"\w+" sentence))
+  (seq (set (re-seq #"\w+" sentence))))
 
 (defn chunk-words [words]
   (take-while (comp not empty?) (iterate rest words)))
@@ -28,5 +28,6 @@
 
 (defn sentence-permutations [sentence]
     (-> sentence word-seq permute ((partial mapcat chunk-words))
+      set
       ((partial map word-seq->sentence))
-      set ((partial sort-by count)) reverse))
+      ((partial sort-by count)) reverse))
