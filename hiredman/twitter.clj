@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [send])
   (:require [org.danlarkin.json :as json]
             [clojure.core :as cc]
+            [hiredman.clojurebot.core :as core]
             [hiredman.sandbox :as sb])
   (:import (java.net URL URLEncoder)
            (java.io BufferedReader InputStreamReader OutputStreamWriter)
@@ -13,32 +14,24 @@
                                      :messages (URL. "http://twitter.com/direct_messages.json")
                                      :mentions (URL. "http://twitter.com/statuses/mentions.json")})
 
+(defstruct account :username :password)
+
 (defn- base64encode [string] (.trim (.encode (BASE64Encoder.) (.getBytes string))))
 
+(def tweet-a false)
+
 (defn send [username password text]
-  (let [creds (base64encode (str username ":" password))
-        con (doto (.openConnection (:update twitter-urls))
-              (.setDoInput true) (.setDoOutput true) (.setUseCaches false)
-              (.setRequestProperty "Authorization" (str "Basic " creds))
-              (.setRequestProperty "User-Agent" "clojurebot 10/10"))
-        status (str "status=" (URLEncoder/encode text "UTF-8"))]
-    (with-open [wrt (-> con .getOutputStream OutputStreamWriter.)]
-                (.write wrt status))
-    (with-open [rdr (-> con .getInputStream InputStreamReader. BufferedReader.)]
-                (apply str (line-seq rdr)))))
-
-(defn start-twitter [user passwd & tags]
-      (send-off (agent nil)
-                (fn this [& _]
-                    (when-let [status (.take twit)]
-                        (send user passwd (let [x (apply str status " " tags)]
-                                                  (if (<= 140 (count (.getBytes x)))
-                                                    x
-                                                    status))))
-                    (Thread/sleep 600000)
-                    (send-off *agent* this))))
-
-(defn tweet [status] (io! (.offer twit status)))
+  (when tweet-a
+    (let [creds (base64encode (str username ":" password))
+          con (doto (.openConnection (:update twitter-urls))
+                (.setDoInput true) (.setDoOutput true) (.setUseCaches false)
+                (.setRequestProperty "Authorization" (str "Basic " creds))
+                (.setRequestProperty "User-Agent" "clojurebot 10/10"))
+          status (str "status=" (URLEncoder/encode text "UTF-8"))]
+      (with-open [wrt (-> con .getOutputStream OutputStreamWriter.)]
+                  (.write wrt status))
+      (with-open [rdr (-> con .getInputStream InputStreamReader. BufferedReader.)]
+                  (apply str (line-seq rdr))))))
 
 (defn get-api [call username password]
   (let [creds (base64encode (str username ":" password))
@@ -61,36 +54,30 @@
                                (:mentions twitter-urls)
                                (URL. (str (:mentions twitter-urls) "?since_id=" (first id)))) creds)]
     (with-open [rdr (-> con .getInputStream InputStreamReader. BufferedReader.)]
-                (json/decode-from-str (apply str (line-seq rdr))))))
+      ;(take-while identity (repeatedly #(.readLine rdr)))
+      (json/decode-from-str (apply str (line-seq rdr))))))
 
 
+(defn login [username password]
+  (vary-meta (struct account username password) assoc :type ::twitter))
 
-(defn format-mentions [x]
-  {:text (:text x) :name (:screen_name (:user x)) :id (:id x)})
+(defmethod core/new-send-out ::twitter [acct _ thing message]
+  (when (not= "" message)
+    (send (:username acct) (:password acct) (str "@" (:sender thing) " " message))))
 
-(defn dwd [tweet]
-  (try
-    (let [x (sb/eval-in-box (.trim (.replaceAll (:text tweet) "^@clojurebot:?" "")) 'sandbox)]
-      (if (x 0)
-        (x 0)
-        (x 2)))
-    (catch Exception e
-      (str "Eval-in-box threw an exception:" (.getMessage e)))))
+(defn tweet [x]
+  (vary-meta (struct core/junks nil (-> x :user :screen_name) nil nil
+                     (.replaceAll (:text x) "^@clojurebot " ""))
+             assoc :addressed? true))
 
-(defn twitter-repl [a & _]
-  (let [mentions (filter #(re-find #"^@clojurebot" (:text %))
-                         (sort-by :id
-                                  (map format-mentions
-                                       (get-mentions  a))))
-        last_m (:id (last mentions))]
-    (doall (map (fn [tw] (tweet (str "@" (:name tw) " " (dwd tw)))) mentions))
-    (Thread/sleep (* 60000 1))
-    (send-off *agent* twitter-repl)
-    last_m))
+(def running true)
 
-(defn twitter-repl [a & _]
-  nil)
-
-;(def twagent (agent 1606137842))
-
-;(send-off twagent twitter-repl)
+(defn twitter-loop [_ acct]
+  (let [m (get-mentions (:username acct) (:password acct) (:x (meta acct)))]
+    (doseq [i m]
+      (try (trampoline core/responder acct (tweet i))
+        (catch Exception e
+          (.printStackTrace e))))
+    (when running
+      (send-off *agent* twitter-loop (vary-meta acct assoc :x (:id (last (sort-by :id m)))))
+      (Thread/sleep 100000))))

@@ -17,7 +17,6 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
-              [hiredman.twitter :as twitter]
               [hiredman.utilities :as util])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -25,10 +24,6 @@
 
 (def *bots* (ref {})) ; This will hold bot objects
 (def start-date (Date.))
-
-;; (def #^{:doc "ScheduledThreadPoolExecutor for scheduling repeated/delayed tasks"}
-;;      task-runner (ScheduledThreadPoolExecutor. (+ 1 (.availableProcessors (Runtime/getRuntime)))))
-;; 
 
 (def task-runner sched/task-runner)
 
@@ -70,6 +65,15 @@
 ;;                            (repeat (lazy-cat s [nil]))))))
 
 (defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
+
+;;(defn inits [strings]
+;;  (concat
+;;    (take-while #(> (count %) 0) (iterate rest strings))
+;;    (take-while #(> (count %) 0) (iterate rest (reverse strings)))))
+
+(defn powerset [aset]
+  (if (empty? aset)'(nil)
+    (let [s (powerset (rest aset))] (concat s (map #(conj % (first aset)) s)))))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -139,9 +143,6 @@
 
 (defmethod send-out :notice [_ bot recvr string]
   (io! (.sendNotice #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (str string)))))
-
-(defmethod send-out :tweet [_ & stuff]
-  (twitter/tweet (apply str stuff)))
 
 (defmulti new-send-out (comp type first list))
 
@@ -266,12 +267,6 @@
       (randth (filter #(not (.equals % (:nick bot)))
                       (apply concat (map last (everyone-I-see bot))))))
 
-;; (comp randth
-;;       (partial filter #(not (.equals % (:nick bot))))
-;;       (partial apply concat)
-;;       (partial map last)
-;;       everyone-I-see)
-
 (def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
      *dispatchers*
      (ref '()))
@@ -336,13 +331,8 @@
                      "*suffusion of yellow*"
                      out)))))
 
-
-
 (defmethod responder ::doc-lookup [bot pojo]
-  (new-send-out bot :msg (who pojo)
-            (symbol-to-var-doc (subs (:message pojo)
-                                     5
-                                     (dec (count (:message pojo)))))))
+  #(responder bot (update-in pojo [:message] (fn [x] (str "," x)))))
 
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
@@ -402,18 +392,13 @@
 
 
 (defmethod responder ::know [bot pojo]
-  (send-out :msg bot pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
-
-(defmethod responder ::literal [bot pojo]
-  (let [q (remove-from-beginning (:message pojo) (:nick bot) ": literal ")]
-    (prn q)))
+  (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defn user-watch [this]
       (let [cur (count (.getUsers this "#clojure"))
             pre (Integer/parseInt (what-is "max people"))]
         (when (> cur pre)
           (is! "max people" (str cur)))))
-
 
 (defn handleMessage [this channel sender login hostname message]
       (try 
@@ -460,7 +445,6 @@
            (.close *out*)))
        [[".is" dict-is] [".are" dict-are]])))
 
-    
 (defn load-dicts [config]
   (dosync
    (ref-set dict-is
@@ -498,10 +482,7 @@
                      (with-open [o *out*] (prn new-state))))))
 
 (defn start-dump-thread [config]
-      (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
-
-;(.scheduleAtFixedRate task-runner #(dump-dict-is config) (long 0) (long 10) (:minutes sched/units)))
-
+  (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]

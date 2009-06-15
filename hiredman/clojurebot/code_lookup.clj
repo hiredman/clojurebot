@@ -45,29 +45,41 @@
                                   (str "http://tinyurl.com/api-create.php?url="
                                        (java.net.URLEncoder/encode url))))))
 
-(defmethod responder ::code-lookup [bot msg]
+(defmulti lookup
+  (fn [bot msg thing]
+    (cond
+      (re-find #"c\.l\.[a-zA-z]+" thing) :clojure-java
+      (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing) :java
+      :else :clojure)))
+
+(defmethod lookup :clojure-java [bot msg thing]
+  (lookup bot msg (.replaceAll thing "c\\.l" "clojure.lang")))
+
+(defmethod lookup :java [bot msg thing]
+  (send-out :notice bot (who msg)
+            (str thing ": "
+                 (java-code-url
+                   (str google-java-code-url
+                        (.replaceAll thing "\\." "/") ".java?r=" clojurebot-rev)))))
+
+(defn contrib-lookup [thing]
+  (map (comp #(get-url (str "http://tinyurl.com/api-create.php?url="
+                       (java.net.URLEncoder/encode %)))
+             :source-url)
+       (filter #(= (:name %) thing) (:vars contrib))))
+
+(defmethod lookup :clojure [bot msg thing]
+  (let [[file line] (get-file-and-ln thing)]
+    (if (or (nil? file) (nil? line))
+      (if-let [results (seq (contrib-lookup thing))]
+        (send-out :notice bot (who msg)
+                  (reduce #(str % " " %2) (str thing ":") results))
+        (send-out :msg bot (who msg) (befuddled)))
+      (send-out :notice bot (who msg) (str thing ": " (make-url-cached [file line]))))))
+
+(defresponder ::code-lookup 0
+  (dfn (and (addressed? bot msg)
+            (re-find #"^(def|source) " (extract-message bot msg))))
   (let [message (extract-message bot msg)
-        thing (second (.split #^String message " "))]
-    (if (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing)
-      (let [[one two three] (.split thing "\\.")
-            one (if (= one "c") "clojure" one)
-            two (if (= two "l") "lang" two)
-            thing (str one "." two "." three)
-            thing2 (str one "/" two "/" three ".java")]  
-      (send-out :notice bot (who msg) (str thing ": " (java-code-url (str google-java-code-url thing2 "?r=" clojurebot-rev)))))
-      (send-out :notice bot (who msg) (try
-                                        (let [n (get-file-and-ln thing)
-                                              [q w] n]
-                                          (if (or q w)
-                                            (str thing ": " (make-url-cached n))
-                                            (reduce #(str % " " %2) (str thing ":") (map (comp #(get-url
-                                                               (str "http://tinyurl.com/api-create.php?url="
-                                                                    (java.net.URLEncoder/encode %)))
-                                                            :source-url) (filter #(= (:name %) thing) (:vars contrib))))))
-                                        (catch Exception e
-                                               (befuddled)))))))
-
-(add-dispatch-hook (dfn (and (addressed? bot msg)
-                             (re-find #"^(def|source) " (extract-message bot msg)))) ::code-lookup)
-
-;(count (re-find #"^(?:def|source) [^ ]+" "source foo bar"))
+        thing (.replaceAll message "^(def|source) " "")]
+    (lookup bot msg thing)))
