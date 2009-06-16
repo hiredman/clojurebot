@@ -12,6 +12,10 @@
 
 (def contrib (json/decode-from-str (get-url contrib-url)))
 
+
+;;this function returns the rev number of my local svn check out
+;;which is presumably the svn rev clojurebot is running, so the
+;;metadata line numbers will match up
 (defn get-rev-number []
       ((comp #(Integer/parseInt %)
              second
@@ -27,16 +31,24 @@
        nil
        (File. "/home/hiredman/clojure/")))
 
+
+;;run the above function
 (def clojurebot-rev (get-rev-number))
 
-(defn get-file-and-ln [string]
-      (let [a (meta (resolve (symbol string)))]
-        [(:line a) (:file a)]))
+(defn get-file-and-ln
+  "takes a string, resovles that string -> symbol -> var and 
+  reads :line and :file metadata returns a pair (vector of two elements)"
+  [string]
+  (let [a (meta (resolve (symbol string)))]
+    [(:line a) (:file a)]))
 
-(defn make-url [[line file]]
-      (let [google (java.net.URLEncoder/encode (str google-code-url file "?r=" clojurebot-rev "#" line))
-            url (str "http://tinyurl.com/api-create.php?url=" google)]
-        (get-url url)))
+(defn make-url
+  "takes a pair, returns a tiny url pointing to that file/line in
+  google code svn repo"
+  [[line file]]
+  (let [google (java.net.URLEncoder/encode (str google-code-url file "?r=" clojurebot-rev "#" line))
+        url (str "http://tinyurl.com/api-create.php?url=" google)]
+    (get-url url)))
 
 (def make-url-cached (memoize make-url))
 
@@ -48,12 +60,12 @@
 (defmulti lookup
   (fn [bot msg thing]
     (cond
-      (re-find #"c\.l\.[a-zA-z]+" thing) :clojure-java
-      (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing) :java
-      :else :clojure)))
+      (re-find #"c\.l\.[a-zA-z]+" thing) :clojure-java ;c.l.* abbrs for clojure's java side
+      (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing) :java ;normal lookup of clojure's java side
+      :else :clojure))) ;default case looking up clojure code
 
 (defmethod lookup :clojure-java [bot msg thing]
-  (lookup bot msg (.replaceAll thing "c\\.l" "clojure.lang")))
+  (lookup bot msg (.replaceAll thing "c\\.l" "clojure.lang"))) ;expand and send back through
 
 (defmethod lookup :java [bot msg thing]
   (send-out :notice bot (who msg)
