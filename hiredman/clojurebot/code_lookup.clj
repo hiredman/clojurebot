@@ -29,6 +29,20 @@
 
 (def clojurebot-rev (get-rev-number))
 
+(defn get-sha-number []
+      ((comp; #(Integer/parseInt %)
+             second
+             #(.split % " ")
+             first 
+             line-seq
+             #(BufferedReader. %)
+             #(InputStreamReader. %)
+             #(.getInputStream %)
+             #(.. Runtime getRuntime (exec % %2 %3)));end comp
+       (into-array ["git" "log" "-1"])
+       nil
+       (File. "/home/hiredman/clojure/")))
+
 (defn get-file-and-ln [string]
       (let [a (meta (resolve (symbol string)))]
         [(:line a) (:file a)]))
