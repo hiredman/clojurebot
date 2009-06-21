@@ -17,7 +17,8 @@
     (:use (hiredman sandbox))
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
-              [hiredman.utilities :as util])
+              [hiredman.utilities :as util]
+              [hiredman.words :as w])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
@@ -65,15 +66,6 @@
 ;;                            (repeat (lazy-cat s [nil]))))))
 
 (defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
-
-;;(defn inits [strings]
-;;  (concat
-;;    (take-while #(> (count %) 0) (iterate rest strings))
-;;    (take-while #(> (count %) 0) (iterate rest (reverse strings)))))
-
-(defn powerset [aset]
-  (if (empty? aset)'(nil)
-    (let [s (powerset (rest aset))] (concat s (map #(conj % (first aset)) s)))))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -190,7 +182,7 @@
       [term]
       (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
 
-
+;;TODO recognize "clojurebot, blah bleh"
 (defn addressed?
       "is this message prefixed with clojurebot: "
       [bot msg]
