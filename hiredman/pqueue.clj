@@ -24,4 +24,4 @@
   [que & values]
   (let [entries (cc/seq (apply hash-map values))
         s (concat entries (cc/seq que))]
-    (into empty (sort-by #(if-let [x (cc/peek %)] x 0) s))))
+    (into empty (sort-by #(if-let [x (cc/first %)] x 0) s))))
