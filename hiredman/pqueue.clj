@@ -1,23 +1,27 @@
 (ns hiredman.pqueue
-    (:refer-clojure :exclude [first conj seq])
+    (:refer-clojure :exclude [first conj seq pop peek empty])
     (:require [clojure.core :as cc]))
 
-;(in-ns 'hiredman.pqueue)
+(def empty clojure.lang.PersistentQueue/EMPTY)
 
 (defn seq
   "returns a lazy sequence of the items in the priority queue"
   [pq]
   (cc/seq (map second pq)))
 
+(defn peek [pq]
+  (cc/first (cc/peek pq)))
+
+(defn pop [pq]
+  (pop pq))
+
 (defn first
   "returns the first item in a priority queue"
   [pq]
-  (cc/first (seq pq)))
+  (peek pq))
 
 (defn conj
-  "adds items to the priority queue. items must be pairs of form
-  [priority value]; nil as a priority is equal to 0."
-  [pq & items]
-  (sort-by #(if-let [x (cc/first %)]
-              x
-              0) (apply cc/conj pq items)))
+  [que & values]
+  (let [entries (cc/seq (apply hash-map values))
+        s (concat entries (cc/seq que))]
+    (into empty (sort-by #(if-let [x (cc/peek %)] x 0) s))))
