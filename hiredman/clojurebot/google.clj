@@ -17,11 +17,11 @@
 (defmethod responder ::google [bot msg]
   (let [term (.trim (.replaceFirst (extract-message bot msg) "^google " ""))]
     (if (= 0 (rand-int wheel))
-      (send-out :msg bot msg (str lmgtfy (java.net.URLEncoder/encode term)))
+      (new-send-out bot :msg msg (str lmgtfy (java.net.URLEncoder/encode term)))
       (let [[num result] (cull (google term))]
-        (sendMsg-who bot msg (str "First, out of " num " results is:"))
-        (sendMsg-who bot msg (:titleNoFormatting result))
-        (sendMsg-who bot msg (:unescapedUrl result))))))
+        (new-send-out bot :msg msg (str "First, out of " num " results is:"))
+        (new-send-out bot :msg msg (:titleNoFormatting result))
+        (new-send-out bot :msg msg (:unescapedUrl result))))))
 
 (add-dispatch-hook (dfn (and (:addressed? (meta msg))
                              (re-find #"^google " (extract-message bot msg)))) ::google)

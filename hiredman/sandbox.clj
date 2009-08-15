@@ -32,7 +32,8 @@
 ;;;;;;;;;;;
 
 (defn empty-perms-list []
-      (java.security.Permissions.))
+      (doto (java.security.Permissions.)
+        (.add (RuntimePermission. "accessDeclaredMembers"))))
 
 (defn domain [perms]
      (java.security.ProtectionDomain.

@@ -8,14 +8,10 @@
 (def google-java-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/jvm/")
 ;;http://code.google.com/p/clojure/source/browse/trunk/src/jvm/clojure/lang/Cons.java?r=1334
 
-(def contrib-url "http://clojure-contrib.googlecode.com/svn/wiki/ApiDocIndex.json")
+(def contrib-url "http://github.com/richhickey/clojure-contrib/raw/gh-pages/api-index.json")
 
 (def contrib (json/decode-from-str (get-url contrib-url)))
 
-
-;;this function returns the rev number of my local svn check out
-;;which is presumably the svn rev clojurebot is running, so the
-;;metadata line numbers will match up
 (defn get-rev-number []
       ((comp #(Integer/parseInt %)
              second
@@ -31,24 +27,47 @@
        nil
        (File. "/home/hiredman/clojure/")))
 
+;;(def clojurebot-rev (get-rev-number))
+(def clojurebot-rev 1)
 
-;;run the above function
-(def clojurebot-rev (get-rev-number))
+(defn get-sha-number []
+      ((comp; #(Integer/parseInt %)
+             second
+             #(.split % " ")
+             first 
+             line-seq
+             #(BufferedReader. %)
+             #(InputStreamReader. %)
+             #(.getInputStream %)
+             #(.. Runtime getRuntime (exec % %2 %3)));end comp
+       (into-array ["git" "log" "-1"])
+       nil
+       (File. "/home/hiredman/clojure/")))
 
-(defn get-file-and-ln
-  "takes a string, resovles that string -> symbol -> var and 
-  reads :line and :file metadata returns a pair (vector of two elements)"
-  [string]
-  (let [a (meta (resolve (symbol string)))]
-    [(:line a) (:file a)]))
+(def clojurebot-rev (get-sha-number))
 
-(defn make-url
-  "takes a pair, returns a tiny url pointing to that file/line in
-  google code svn repo"
-  [[line file]]
-  (let [google (java.net.URLEncoder/encode (str google-code-url file "?r=" clojurebot-rev "#" line))
-        url (str "http://tinyurl.com/api-create.php?url=" google)]
-    (get-url url)))
+(def foo "http://github.com/richhickey/clojure-contrib/blob/7ea70da82e42416864e2f97e3d314aced34af682/src/clojure/contrib/")
+(def bar "http://code.google.com/p/clojure-contrib/source/browse/trunk/src/clojure/contrib/")
+
+(defn google-code->github-url
+  "transforms a googlecode source url into a github url"
+  [url project rev]
+  (-> url
+    (.replaceAll "http://code.google.com/p/clojure/source/browse/trunk"
+                 (str "http://github.com/richhickey/" project "/blob/" rev))
+    (.replaceAll "\\?r=(.*)#(\\d+)" "#L$2")))
+
+
+(defn get-file-and-ln [string]
+      (let [a (meta (resolve (symbol string)))]
+        [(:line a) (:file a)]))
+
+(defn make-url [[line file]]
+      (let [google (str google-code-url file "?r=" clojurebot-rev "#" line)
+            google (google-code->github-url google "clojure" clojurebot-rev)
+            google (java.net.URLEncoder/encode google)
+            url (str "http://tinyurl.com/api-create.php?url=" google)]
+        (get-url url)))
 
 (def make-url-cached (memoize make-url))
 
@@ -60,23 +79,29 @@
 (defmulti lookup
   (fn [bot msg thing]
     (cond
-      (re-find #"c\.l\.[a-zA-z]+" thing) :clojure-java ;c.l.* abbrs for clojure's java side
-      (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing) :java ;normal lookup of clojure's java side
-      :else :clojure))) ;default case looking up clojure code
+      (re-find #"c\.l\.[a-zA-z]+" thing) :clojure-java
+      (re-find #"[a-zA-z]+\.[a-zA-z]+\.[a-zA-z]+" thing) :java
+      :else :clojure)))
 
 (defmethod lookup :clojure-java [bot msg thing]
-  (lookup bot msg (.replaceAll thing "c\\.l" "clojure.lang"))) ;expand and send back through
+  (lookup bot msg (.replaceAll thing "c\\.l" "clojure.lang")))
 
 (defmethod lookup :java [bot msg thing]
   (send-out :notice bot (who msg)
             (str thing ": "
                  (java-code-url
-                   (str google-java-code-url
-                        (.replaceAll thing "\\." "/") ".java?r=" clojurebot-rev)))))
+                   (google-code->github-url
+                     (str google-java-code-url
+                          (.replaceAll thing "\\." "/") ".java?r=" clojurebot-rev)
+                     "clojure"
+                     clojurebot-rev)))))
+
 
 (defn contrib-lookup [thing]
   (map (comp #(get-url (str "http://tinyurl.com/api-create.php?url="
                        (java.net.URLEncoder/encode %)))
+             ;;#(.replaceAll % "#(\\d)" "#L$1") ;;horrible patching for github
+             ;;#(.replace % bar foo)
              :source-url)
        (filter #(= (:name %) thing) (:vars contrib))))
 

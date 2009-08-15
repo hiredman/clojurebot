@@ -2,11 +2,13 @@
     (:use (hiredman horizon))
     (:import (java.net URL URLEncoder)
              (java.io BufferedReader InputStreamReader OutputStreamWriter)
+             (java.text SimpleDateFormat ParsePosition)
              (sun.misc BASE64Encoder)))
 
 (defn get-url [x]
   (with-open [a (-> (doto (-> x URL. .openConnection)
-                      (.setRequestProperty "User-Agent" "clojurebot"))
+                      (.setRequestProperty "User-Agent" "clojurebot")
+                      (.setRequestProperty "Accept" "application/xml"))
                     .getInputStream InputStreamReader. BufferedReader.)]
     (loop [buf (StringBuilder.) line (.readLine a)]
       (if line
@@ -27,9 +29,12 @@
 (defn shell [cmd]
       (.. Runtime getRuntime (exec cmd)))
 
-(def #^{:private true} twit (java.util.concurrent.LinkedBlockingQueue.))
-
-(def #^{:private true} twitter-urls {:update (URL. "http://twitter.com/statuses/update.xml")})
+(defn tinyurl [url]
+  (get-url (str "http://tinyurl.com/api-create.php?url=" (URLEncoder/encode url))))
+(def tinyurl (memoize tinyurl))
 
 (defn- base64encode [string]
   (.trim (.encode (BASE64Encoder.) (.getBytes string))))
+
+(defn date [string format]
+  (.parse (SimpleDateFormat. format) string (ParsePosition. 0)))

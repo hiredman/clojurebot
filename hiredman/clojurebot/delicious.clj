@@ -5,6 +5,7 @@
   (:import (java.net URLEncoder URL)))
 
 (def url-reg #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
+;;#"(\w+://.*?)[.>]*(?: |$)"
 
 (defn post
   "posts a url to the delicious account of [user pass]"
@@ -16,5 +17,8 @@
                  (:channel msg))) ;;
   (let [url (re-find url-reg (:message msg))
         desc (:message msg)
-        tag (str (:sender msg) " " (:channel msg))]
+        tag (str (:sender msg) " " (:channel msg)
+                 (when (re-find #"lisppaste" (:sender msg)) (str " " (first (.split desc " ")))))]
     (post (:delicious bot) url desc tag)))
+
+;(core/remove-dispatch-hook ::delicious)
