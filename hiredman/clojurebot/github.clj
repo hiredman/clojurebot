@@ -38,7 +38,7 @@
        reverse))
 
 (defn new-commit? [date bot]
-  (if-let [d (@(:store bot) "last commit")]
+  (if-let [d (get (deref (:store bot)) "last commit")]
     (.before (parse-date d) date)
     true))
 
