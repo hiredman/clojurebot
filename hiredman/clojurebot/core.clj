@@ -261,7 +261,7 @@
 
 (def #^{:doc "ref contains priority queue that is used for dispatching the responder multimethod"}
      *dispatchers*
-     (ref '()))
+     (ref pq/empty))
 
 
 (defn dispatch
@@ -282,13 +282,14 @@
       ([dispatch-check dispatch-value]
          (add-dispatch-hook 0 dispatch-check dispatch-value))
       ([dispatch-priority dispatch-check dispatch-value]
-       (dosync (commute *dispatchers* pq/conj [dispatch-priority [dispatch-check dispatch-value]]))))
+       (dosync (commute *dispatchers* pq/conj dispatch-priority [dispatch-check dispatch-value]))))
 
 (defn remove-dispatch-hook [dispatch-value]
-      (dosync
-        (alter
-          *dispatchers*
-          (partial filter #(not= dispatch-value (last (last %)))))))
+  (dosync
+    (alter
+      *dispatchers*
+      (comp (partial into pq/empty)
+            (partial filter #(not= dispatch-value (last (last %))))))))
 
 ;; register legacy stuffs
 (dorun
@@ -296,8 +297,6 @@
        [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
         [(dfn (and (addressed? bot msg) 
               (re-find #"how much do you know?" (:message msg)))) ::know]
-        ;;[(dfn (and (addressed? bot msg) (re-find #" is " (:message msg))  
-        ;;          (not= \? (last (:message msg))))) ::define-is]
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
