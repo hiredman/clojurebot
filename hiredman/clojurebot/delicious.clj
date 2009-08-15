@@ -4,6 +4,7 @@
   (:import (java.net URLEncoder URL)))
 
 (def url-reg #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
+;;#"(\w+://.*?)[.>]*(?: |$)"
 
 (defn post [[user pass] url descr tag]
       (util/shell (str "fetch -o /dev/null https://" user ":" pass "@api.del.icio.us/v1/posts/add?url=" (URLEncoder/encode url) "&description=" (URLEncoder/encode descr) "&tags=" (URLEncoder/encode tag))))
