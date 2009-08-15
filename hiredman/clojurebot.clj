@@ -1,10 +1,10 @@
-; Sample setup file for clojurebot; best eval'd line-by-line
-
-;(add-classpath "file:///Users/oranenj/koodi/VCS/clojurebot/")
 (ns hiredman.clojurebot
-  ;(:use (hiredman.clojurebot core)))
   (:use (hiredman.clojurebot core svn))
-  (:require (hiredman.clojurebot core svn dice sb seenx google forget translate code-lookup javadoc tweet)))
+  (:require (hiredman.clojurebot core dice sb seenx google delicious noise stock-quote
+                                 factoids forget translate code-lookup javadoc ticket
+                                 github)
+            [hiredman.utilities :as util]
+            [hiredman.twitter :as twitter]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,23 +15,17 @@
 (def bot-attributes 
      {:nick "clojurebot"
       :network "irc.freenode.net"
-      :channel "#clojurebot"
-      :svn-url "http://clojure.googlecode.com/svn/" ;depricated?
+      :channel "#clojure"
+      :tweet true
       :sandbox-ns 'sandbox
+      :store (agent {})
       :dict-dir "/home/hiredman/"}) ;; must include final slash
 
-(swap! default-repo (constantly "http://clojure.googlecode.com/svn/"))
-     
 (def bot 
      (run-clojurebot mybot bot-attributes
        (load-dicts mybot)
+       (load-store mybot)
+       (watch-store mybot)
        (start-dump-thread mybot)
-       (start-svn-watcher mybot :clojure "http://clojure.googlecode.com/svn/" clojure-channel-helper-callback)
-       (start-svn-watcher mybot :contrib "http://clojure-contrib.googlecode.com/svn/"
-                          (fn [bot revs]
-                                (is! "latest contrib" (first (last (sort-by first revs))))
-                                (doseq [r revs]
-                                       (doseq [c (.getChannels (:this bot))]
-                                              (send-out :notice bot c (str "Contrib: r"(first r) " " (second r)))))))
-       ;(hiredman.clojurebot.tweet/watch mybot "clojure" "#clojure")
+       (hiredman.clojurebot.github/start-github-watch mybot "#clojure")
        (println "Done loading!")))
