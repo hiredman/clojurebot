@@ -23,15 +23,15 @@
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
 
-(def *bots* (ref {})) ; This will hold bot objects
-(def start-date (Date.))
+(defonce *bots* (ref {})) ; This will hold bot objects
+(defonce start-date (Date.))
 
-(def task-runner sched/task-runner)
+(defonce task-runner sched/task-runner)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
-(def dict-is (ref {}))
-(def dict-are (ref {}))
+(defonce dict-is (ref {}))
+(defonce dict-are (ref {}))
 
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
