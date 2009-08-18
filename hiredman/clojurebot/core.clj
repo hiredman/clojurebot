@@ -141,7 +141,7 @@
 (defn send-out [one two & r]
   (apply new-send-out two one r))
 
-(defmethod new-send-out clojure.lang.PersistentHashMap [bot msg-type recvr message]
+(defmethod new-send-out clojure.lang.IPersistentMap [bot msg-type recvr message]
   (condp = msg-type
     :msg
       (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
