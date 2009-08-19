@@ -23,7 +23,10 @@
   (let [url (re-find url-reg (:message msg))
         desc (:message msg)
         tag (str (:sender msg) " " (:channel msg)
-                 (when (re-find #"lisppaste" (:sender msg)) (str " " (first (.split desc " ")))))]
+                 (when (re-find #"lisppaste" (:sender msg)) (str " pastbin " (first (.split desc " ")))))
+        tag (if (re-find #"gist\.github\.com" url)
+              (str tag " pastbin")
+              tag)]
     (post (:delicious bot) url desc tag)))
 
 ;(core/remove-dispatch-hook ::delicious)
