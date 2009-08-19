@@ -10,3 +10,6 @@
 * documentation?
 * s/// factoid editing
 * logging
+* use defonce
+* move to a newer fnparse
+* delicious plugin special tag gists
