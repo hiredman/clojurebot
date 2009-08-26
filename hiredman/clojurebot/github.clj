@@ -15,7 +15,7 @@
           (ParsePosition. 0)))
 
 (defn deparse-date [date]
-  (str
+  (.toString
     (.format (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ssZ")
              date
              (StringBuffer.)
