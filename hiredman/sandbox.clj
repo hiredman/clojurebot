@@ -1,4 +1,5 @@
 (ns hiredman.sandbox
+    (:require [hiredman.clojurebot.core :as core])
     (:import (java.util.concurrent FutureTask TimeUnit TimeoutException)
              (java.io File FileWriter PushbackReader StringReader)))
 
@@ -93,7 +94,10 @@
        (.replaceAll (str al# "; " docstring# ) "\\s+" " ")
        (-> hiredman.clojurebot.code-lookup/contrib
          :vars ((partial filter (fn [a#] (= (:name a#) (.toString '~s))))) first
-         ((fn [foo#] (.replaceAll (str (:namespace foo#) "/" (:name foo#) ";"  (print-str (:arglists foo#)) "; " (:doc foo#)) "\\s+" " ")))))))
+         ((fn [foo#]
+            (if foo#
+              (.replaceAll (str (:namespace foo#) "/" (:name foo#) ";"  (print-str (:arglists foo#)) "; " (:doc foo#)) "\\s+" " ")
+              (symbol (core/befuddled)))))))))
 
 (defn force-lazy-seq
       "if passed a lazy seq, forces seq with doall, if not return what is passed"
