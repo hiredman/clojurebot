@@ -475,9 +475,15 @@
 (defn start-dump-thread [config]
   (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
+(defn wall-hack-method [class-name name- params obj & args]
+  (-> (name class-name) Class/forName (.getDeclaredMethod (name name-) (into-array Class params))
+    (doto (.setAccessible true))
+    (.invoke obj (into-array Object args))))
+
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
    (dosync (commute *bots* assoc (:this bot) bot))
+   (wall-hack-method 'org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
    (doto (:this bot)
      (.connect (:network bot))
      (.changeNick (:nick bot))
