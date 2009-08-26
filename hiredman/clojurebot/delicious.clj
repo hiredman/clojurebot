@@ -4,6 +4,7 @@
   (:import (java.net URLEncoder URL)))
 
 (def url-reg #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
+(def pastebins #"(gist\.github\.com|paste.lisp.org/display|pastbin\.com)")
 ;;#"(\w+://.*?)[.>]*(?: |$)"
 
 (defn post [[user pass] url descr tag]
@@ -23,8 +24,8 @@
   (let [url (re-find url-reg (:message msg))
         desc (:message msg)
         tag (str (:sender msg) " " (:channel msg)
-                 (when (re-find #"lisppaste" (:sender msg)) (str " pastbin " (first (.split desc " ")))))
-        tag (if (re-find #"gist\.github\.com" url)
+                 (when (re-find #"lisppaste" (:sender msg)) (str " " (first (.split desc " ")))))
+        tag (if (re-find pastebins url)
               (str tag " pastbin")
               tag)]
     (post (:delicious bot) url desc tag)))
