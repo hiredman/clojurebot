@@ -23,15 +23,15 @@
              (java.util Date Timer TimerTask)
              (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
 
-(def *bots* (ref {})) ; This will hold bot objects
-(def start-date (Date.))
+(defonce *bots* (ref {})) ; This will hold bot objects
+(defonce start-date (Date.))
 
-(def task-runner sched/task-runner)
+(defonce task-runner sched/task-runner)
 
 ;; dictionaries for storing relationships
 ;; 'are' dict is not used right now.
-(def dict-is (ref {}))
-(def dict-are (ref {}))
+(defonce dict-is (ref {}))
+(defonce dict-are (ref {}))
 
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
@@ -43,8 +43,8 @@
         (first (drop (rand-int (count se)) se))))
 
 ;; responses that can be randomly selected from
-(def input-accepted ["'Sea, mhuise." "In Ordnung" "Ik begrijp" "Alles klar" "Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
-(def befuddl ["Titim gan éirí ort." "Gabh mo leithscéal?" "No entiendo"  "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
+(defonce input-accepted ["'Sea, mhuise." "In Ordnung" "Ik begrijp" "Alles klar" "Ok." "Roger." "You don't have to tell me twice." "Ack. Ack." "c'est bon!"])
+(defonce befuddl ["Titim gan éirí ort." "Gabh mo leithscéal?" "No entiendo"  "excusez-moi" "Excuse me?" "Huh?" "I don't understand." "Pardon?" "It's greek to me."])
 
 (defn ok
       "random input-accepted sort of string"
@@ -141,7 +141,7 @@
 (defn send-out [one two & r]
   (apply new-send-out two one r))
 
-(defmethod new-send-out clojure.lang.PersistentHashMap [bot msg-type recvr message]
+(defmethod new-send-out clojure.lang.IPersistentMap [bot msg-type recvr message]
   (condp = msg-type
     :msg
       (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
@@ -475,9 +475,15 @@
 (defn start-dump-thread [config]
   (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
+(defn wall-hack-method [class-name name- params obj & args]
+  (-> (name class-name) Class/forName (.getDeclaredMethod (name name-) (into-array Class params))
+    (doto (.setAccessible true))
+    (.invoke obj (into-array Object args))))
+
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
    (dosync (commute *bots* assoc (:this bot) bot))
+   (wall-hack-method 'org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
    (doto (:this bot)
      (.connect (:network bot))
      (.changeNick (:nick bot))

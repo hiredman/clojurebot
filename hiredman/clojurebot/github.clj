@@ -16,10 +16,8 @@
           (.replaceAll string "(\\d\\d):(\\d\\d)$" "$1$2")
           (ParsePosition. 0)))
 
-(defn deparse-date
-  "Date -> String"
-  [date]
-  (str
+(defn deparse-date [date]
+  (.toString
     (.format (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ssZ")
              date
              (StringBuffer.)

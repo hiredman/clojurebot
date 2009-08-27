@@ -1,7 +1,7 @@
-* track clojure issues (atom feed from google code)
 * Message store and Devlivery
 * change is! to not overwrite so you have to forget first
 * maybe figure out a better storage model (start using dict-are?)
+  - derby?
 * change #who and #someone to something else, I guess $who and $someone
 * load infobot fact packs
 * status command
@@ -10,3 +10,5 @@
 * documentation?
 * NYT best seller api http://open.blogs.nytimes.com/2009/01/27/announcing-the-best-sellers-api/
 * s/// factoid editing
+* logging
+* delicious plugin special tag gists
