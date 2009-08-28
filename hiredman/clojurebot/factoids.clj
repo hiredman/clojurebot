@@ -75,6 +75,6 @@
 
 (core/defresponder ::factoids 0
   (core/dfn (and (:addressed? (meta msg)) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
-  (factoid-command-processor (vary-meta (first (factoid-command (core/extract-message bot msg) nil)) assoc :bot bot :message msg)))
+  (factoid-command-processor (vary-meta (first (doto (factoid-command {:remainder (seq (core/extract-message bot msg) )}) prn)) assoc :bot bot :message msg)))
 
 ;(core/remove-dispatch-hook ::factoids)
