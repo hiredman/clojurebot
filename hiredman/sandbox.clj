@@ -1,10 +1,11 @@
 (ns hiredman.sandbox
+    (:require [hiredman.clojurebot.core :as core])
     (:import (java.util.concurrent FutureTask TimeUnit TimeoutException)
              (java.io File FileWriter PushbackReader StringReader)))
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
+(def *bad-forms* #{'intern 'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod 'hiredman.clojurebot/bot})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -32,7 +33,8 @@
 ;;;;;;;;;;;
 
 (defn empty-perms-list []
-      (java.security.Permissions.))
+      (doto (java.security.Permissions.)
+        (.add (RuntimePermission. "accessDeclaredMembers"))))
 
 (defn domain [perms]
      (java.security.ProtectionDomain.
@@ -85,10 +87,17 @@
         (str a)))
 
 (defmacro my-doc [s]
-      `(let [m# (meta (var ~s))
-            al# (:arglists m#)
-            docstring# (:doc m#)]
-        (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))
+  `(let [m# (meta (resolve '~s))
+         al# (:arglists m#)
+         docstring# (:doc m#)]
+     (if m#
+       (.replaceAll (str al# "; " docstring# ) "\\s+" " ")
+       (-> hiredman.clojurebot.code-lookup/contrib
+         :vars ((partial filter (fn [a#] (= (:name a#) (.toString '~s))))) first
+         ((fn [foo#]
+            (if foo#
+              (.replaceAll (str (:namespace foo#) "/" (:name foo#) ";"  (print-str (:arglists foo#)) "; " (:doc foo#)) "\\s+" " ")
+              (symbol (core/befuddled)))))))))
 
 (defn force-lazy-seq
       "if passed a lazy seq, forces seq with doall, if not return what is passed"
@@ -105,10 +114,11 @@
                             [o e (when (or result (.equals o "")) r)])))
 
 (defn eval-in-box [_string sb-ns]
+  (println _string)
       (let [form #(-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
-                                 *ns* (find-ns sb-ns) doc (var my-doc)]
+                                 *ns* (find-ns sb-ns) doc (var my-doc) *print-level* 30]
                         (eval-in-box-helper (form))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
                                             (context (domain (empty-perms-list)))) *default-timeout*)]

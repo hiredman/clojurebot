@@ -2,7 +2,8 @@
 
 (ns hiredman.clojurebot.svn
   (:require [hiredman.clojurebot.core :as core]
-            [hiredman.utilities :as util])
+            [hiredman.utilities :as util]
+            [hiredman.twitter :as twitter])
   (:import (java.util.concurrent TimeUnit)))
 
 (defn summary
@@ -15,7 +16,8 @@
                   (:content
                     (first
                       (filter #(= (:tag %) :msg)
-                              (:content x)))))])
+                              (:content x)))))
+                (-> x :content ((partial filter #(= (:tag %) :author))) first :content first)])
            (:content tag-map)))
 
 (def latest-revisions
@@ -57,7 +59,7 @@
              (doseq [c (.getChannels (:this bot))]
                     (core/send-out :notice bot c (str "r" (first r) " " (second r)))
                     (when (:tweet bot)
-                      (core/send-out :tweet (str "r" (first r) " " (second r))))))
+                      (twitter/send (first (:twitter bot)) (second (:twitter bot)) (str "r" (first r) " " (second r))))))
       (core/is! "latest" (.toString (first (last (sort-by first revs))))))
 
 (def default-repo (atom ""))

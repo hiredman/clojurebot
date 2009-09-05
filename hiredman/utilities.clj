@@ -2,13 +2,18 @@
     (:use (hiredman horizon))
     (:import (java.net URL URLEncoder)
              (java.io BufferedReader InputStreamReader OutputStreamWriter)
+             (java.text SimpleDateFormat ParsePosition)
              (sun.misc BASE64Encoder)))
 
 (defn get-url [x]
-      (with-open [a (-> (doto (-> x URL. .openConnection)
-                              (.setRequestProperty "User-Agent" "clojurebot"))
-                        .getInputStream InputStreamReader. BufferedReader.)]
-                 (.readLine a)))
+  (with-open [a (-> (doto (-> x URL. .openConnection)
+                      (.setRequestProperty "User-Agent" "clojurebot")
+                      (.setRequestProperty "Accept" "application/xml"))
+                    .getInputStream InputStreamReader. BufferedReader.)]
+    (loop [buf (StringBuilder.) line (.readLine a)]
+      (if line
+        (recur (doto buf (.append line)) (.readLine a))
+        (.toString buf)))))
 
 (defmacro mk-interface [class fn]
   (let [x (map #(list (symbol (.getName %))
@@ -24,24 +29,12 @@
 (defn shell [cmd]
       (.. Runtime getRuntime (exec cmd)))
 
-(def #^{:private true} twit (java.util.concurrent.LinkedBlockingQueue.))
+(defn tinyurl [url]
+  (get-url (str "http://tinyurl.com/api-create.php?url=" (URLEncoder/encode url))))
+(def tinyurl (memoize tinyurl))
 
-(defn tweet-send [user pw status] 
-      (shell (str "curl -u "user":"pw" -d status=" (URLEncoder/encode status) " http://twitter.com/statuses/update.xml")))
+(defn- base64encode [string]
+  (.trim (.encode (BASE64Encoder.) (.getBytes string))))
 
-(defn start-twitter [user passwd & tags]
-      (send-off (agent nil)
-                (fn this [& _]
-                    (when-let [status (.take twit)]
-                        (tweet-send user passwd (let [x (apply str status " " tags)]
-                                                  (if (<= 140 (count (.getBytes x)))
-                                                    x
-                                                    status))))
-                    (Thread/sleep 600000)
-                    (send-off *agent* this))))
-
-
-
-(defn tweet [status]
-      (println "tweet |" status)
-      (.offer twit status))
+(defn date [string format]
+  (.parse (SimpleDateFormat. format) string (ParsePosition. 0)))
