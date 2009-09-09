@@ -74,7 +74,7 @@
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 (core/defresponder ::factoids 0
-  (core/dfn (and (:addressed? (meta msg)) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
-  (factoid-command-processor (vary-meta (first (doto (factoid-command {:remainder (seq (core/extract-message bot msg) )}) prn)) assoc :bot bot :message msg)))
+  (core/dfn (and (:addressed? (meta msg)) (not (.endsWith (core/extract-message bot msg) "?")) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
+  (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))
 
 ;(core/remove-dispatch-hook ::factoids)
