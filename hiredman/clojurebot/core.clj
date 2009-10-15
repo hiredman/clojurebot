@@ -14,10 +14,12 @@
 ;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
-    (:use (hiredman sandbox))
+    (:use (hiredman sandbox)
+          [hiredman.clojurebot.storage :only (db-name)])
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
               [hiredman.utilities :as util]
+              [hiredman.triples :as trip]
               [hiredman.words :as w])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -150,30 +152,30 @@
       (doseq [c (.getChannels (:this bot))]
              (fn c)))
 
-(defn term-lists
-      "generates permutions of the words in string"
-      [msg words-to-ignore]
-      (let [x (re-seq #"\w+" msg)
-            ignore #(not ((set words-to-ignore) %))]
-        (filter ignore (map #(apply str (interpose " " %)) (mapcat #(reverse (inits (drop % x))) (take (count x) (iterate inc 0)))))))
-
-(defn rlookup
-      "look up terms from a seq until you find a defi"
-      [terms]
-      (when (seq terms)
-      (if (@dict-is (first terms))
-        (first terms)
-        (recur (seq (rest terms))))))
-
-(defn fuzzy-lookup
-      "look up based on permutation"
-      [message words-to-ignore]
-      (rlookup (term-lists message words-to-ignore)))
-
-(defn fuzzy-key-lookup
-      "look up based on match part of a term"
-      [term]
-      (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
+;;(defn term-lists
+;;      "generates permutions of the words in string"
+;;      [msg words-to-ignore]
+;;      (let [x (re-seq #"\w+" msg)
+;;            ignore #(not ((set words-to-ignore) %))]
+;;        (filter ignore (map #(apply str (interpose " " %)) (mapcat #(reverse (inits (drop % x))) (take (count x) (iterate inc 0)))))))
+;;
+;;(defn rlookup
+;;      "look up terms from a seq until you find a defi"
+;;      [terms]
+;;      (when (seq terms)
+;;      (if (@dict-is (first terms))
+;;        (first terms)
+;;        (recur (seq (rest terms))))))
+;;
+;;(defn fuzzy-lookup
+;;      "look up based on permutation"
+;;      [message words-to-ignore]
+;;      (rlookup (term-lists message words-to-ignore)))
+;;
+;;(defn fuzzy-key-lookup
+;;      "look up based on match part of a term"
+;;      [term]
+;;      (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
 
 ;;TODO recognize "clojurebot, blah bleh"
 (defn addressed?
@@ -330,6 +332,7 @@
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
 (defmethod responder ::know [bot pojo]
+  (prn (trip/query ))
   (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defn user-watch [this]
