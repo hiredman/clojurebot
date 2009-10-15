@@ -1,5 +1,6 @@
 (ns hiredman.clojurebot.factoids
   (:require [hiredman.clojurebot.core :as core]
+            [hiredman.triples :as trip]
             [name.choi.joshua.fnparse :as fp]))
 
 (defmacro string [str] (cons 'fp/conc (map #(list 'fp/lit %) str)))
@@ -63,12 +64,17 @@
                      :else
                         (core/befuddled)))))
 
+(defn db-name [bot]
+  (str (:dict-dir bot) (:nick bot) ".db"))
+
 (defmethod factoid-command-processor :def [bag]
+  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
   (core/is- (:bot (meta bag)) (:term bag) (:definition bag))
   (core/is!  (:term bag) (:definition bag))
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 (defmethod factoid-command-processor :def-add [bag]
+  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
   (core/is- (:bot (meta bag)) (:term bag) (str "also " (:definition bag)))
   (core/is (:term bag) (:definition bag))
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
@@ -78,3 +84,34 @@
   (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))
 
 ;(core/remove-dispatch-hook ::factoids)
+;(hiredman.triples/import-file (hiredman.triples/derby db-name) (str (hiredman.clojurebot.core/dict-file bot ".is")))
+
+(defn inits "again I blame Chouser" [[f & r :as c]]
+  (when c (lazy-cat (map #(conj % f)
+                   (inits r)) (inits r) [(list f)])))
+
+(def fuzzer
+  (comp reverse
+        distinct
+        (partial map #(reduce (fn [a b] (format "%s %s" a b)) %))
+        (partial sort-by count)
+        (partial mapcat inits)
+        inits
+        (partial re-seq #"\w+")))
+
+(core/remove-dispatch-hook ::lookup)
+
+(core/defresponder ::lookup 20
+  (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
+  (-> (core/extract-message bot msg)
+    fuzzer
+    ((partial mapcat #(trip/query (trip/derby (db-name bot)) % "is" :y)))
+    vec
+    ((fn [x]
+       (if (empty? x)
+         (core/befuddled)
+         (-> x 
+           ((fn [x] (x (rand-int (count x)))))
+           ((fn [{:keys [subject object predicate]}]
+              (core/prep-reply (:sender msg) subject object bot)))))))
+    ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))

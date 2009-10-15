@@ -19,3 +19,7 @@
       (.cancel (get @tasks name) true)
       (dosync
         (alter tasks dissoc name)))
+
+;; example usage
+;; (fixedrate
+;;  {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes unit)})

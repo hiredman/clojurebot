@@ -10,7 +10,8 @@
         update-in [:karma name] dec))
 
 (defn get-karma [name bot]
-  (-> bot :store deref :karma (get name)))
+  (let [k (-> bot :store deref :karma (get name))]
+    (if k k 0)))
 
 (defn setup-karma [bot]
   (send (:store bot) assoc :karma {}))

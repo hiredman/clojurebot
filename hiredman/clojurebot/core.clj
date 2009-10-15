@@ -302,7 +302,7 @@
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
-(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
+;(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
 
 (defmacro defresponder [key priority fn & body]
   `(do
@@ -365,24 +365,24 @@
           (str term " is " defi))
         {"#who" sender "#someone" (random-person bot)}))
 
-(defmethod responder ::lookup [bot pojo]
-  (let [msg (d?op (.trim (extract-message bot pojo)))
-        result (what-is msg)
-        words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
-    (cond
-      result,
-          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) msg result bot))
-      (fuzzy-lookup msg words-to-ignore),
-        (let [term (fuzzy-lookup msg words-to-ignore)
-              defi (what-is term)]
-          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) term defi bot)))
-      (fuzzy-key-lookup msg),
-        (let [term (fuzzy-key-lookup msg)
-              defi (what-is term)]
-          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
-      :else,
-        (send-out :msg bot (who pojo) (befuddled)))))
-
+;;(defmethod responder ::lookup [bot pojo]
+;;  (let [msg (d?op (.trim (extract-message bot pojo)))
+;;        result (what-is msg)
+;;        words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
+;;    (cond
+;;      result,
+;;          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) msg result bot))
+;;      (fuzzy-lookup msg words-to-ignore),
+;;        (let [term (fuzzy-lookup msg words-to-ignore)
+;;              defi (what-is term)]
+;;          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) term defi bot)))
+;;      (fuzzy-key-lookup msg),
+;;        (let [term (fuzzy-key-lookup msg)
+;;              defi (what-is term)]
+;;          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
+;;      :else,
+;;        (send-out :msg bot (who pojo) (befuddled)))))
+;;
 
 (defmethod responder ::know [bot pojo]
   (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
