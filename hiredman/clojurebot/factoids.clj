@@ -24,7 +24,7 @@
                   (vary-meta {:term (.trim (apply str term)) :definition (.trim (apply str defi))}
                              assoc :type :def))))
 
-(def definition-add (fp/semantics (fp/conc term (string " is ") (string "also") (fp/lit \space) text) (fn [[term _ _ _ defi]] (vary-meta {:term (apply str term) :definition (apply str defi)} assoc :type :def-add))))
+(def definition-add (fp/semantics (fp/conc term (string " is ") (string "also") (fp/lit \space) text) (fn [[term _ _ _ defi]] (vary-meta {:term (apply str term) :definition (apply str defi)} assoc :type :def))))
 (def indexed-lookup (fp/semantics (fp/conc literal spaces (fp/lit \[) number (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:number number :term term} assoc :type :indexed-look-up))))
 (def index-count (fp/semantics (fp/conc literal spaces (fp/lit \[) (fp/lit \?) (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:term term} assoc :type :count))))
 (def index (fp/alt index-count indexed-lookup))
@@ -71,9 +71,9 @@
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
-(defmethod factoid-command-processor :def-add [bag]
-  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
-  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
+;;(defmethod factoid-command-processor :def-add [bag]
+;;  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
+;;  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 (core/defresponder ::factoids 0
   (core/dfn (and (:addressed? (meta msg)) (not (.endsWith (core/extract-message bot msg) "?")) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
