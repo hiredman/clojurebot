@@ -3,6 +3,7 @@
             [hiredman.triples :as trip]
             [name.choi.joshua.fnparse :as fp]))
 
+;;BEGIN GARBAGE
 (defmacro string [str] (cons 'fp/conc (map #(list 'fp/lit %) str)))
 
 (def literal (string "literal")) ;literally the string "literal"
@@ -28,8 +29,13 @@
 (def indexed-lookup (fp/semantics (fp/conc literal spaces (fp/lit \[) number (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:number number :term term} assoc :type :indexed-look-up))))
 (def index-count (fp/semantics (fp/conc literal spaces (fp/lit \[) (fp/lit \?) (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:term term} assoc :type :count))))
 (def index (fp/alt index-count indexed-lookup))
+;;END GARBAGE
+
+;;parse a string into some kind of factoid related something or other
+;;takes arguments in the style of fnparse {:remainder (seq some-string)}
 (def factoid-command (fp/alt index-count indexed-lookup definition-add definition))
 
+;;this should be ditched
 (defn simple-lookup [term]
   (@core/dict-is term))
 
@@ -49,6 +55,7 @@
                      :else
                         1))))
 
+;;this too
 (defmethod factoid-command-processor :indexed-look-up [bag]
   (let [defi (simple-lookup (:term bag))]
     (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag))
@@ -65,7 +72,10 @@
                         (core/befuddled)))))
 
 (defn db-name [bot]
-  (str (:dict-dir bot) (:nick bot) ".db"))
+  (let [name (str (:dict-dir bot) (:nick bot) ".db")]
+    (when-not (.exists (java.io.File. name))
+      (trip/create-store name))
+    name))
 
 (defmethod factoid-command-processor :def [bag]
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
@@ -86,7 +96,7 @@
   (when c (lazy-cat (map #(conj % f)
                    (inits r)) (inits r) [(list f)])))
 
-(def fuzzer
+(def #^{:doc "gives a bunch of possible permutations of a string"} fuzzer
   (comp reverse
         distinct
         (partial map #(reduce (fn [a b] (format "%s %s" a b)) %))
@@ -105,7 +115,7 @@
         (if (re-find #"^<reply>" defi)
           (.trim (core/remove-from-beginning (str defi) "<reply>"))
           (str term " is " defi))
-        {"#who" sender "#someone" (random-person bot)}))
+        {"#who" sender "#someone" (core/random-person bot)}))
 
 ;(core/remove-dispatch-hook ::lookup)
 

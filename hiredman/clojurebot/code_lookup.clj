@@ -1,3 +1,4 @@
+;; DEPENDS clojure-json
 (ns hiredman.clojurebot.code-lookup
     (:use (hiredman.clojurebot core))
     (:use (hiredman utilities))
@@ -64,17 +65,16 @@
 
 (defn make-url [[line file]]
       (let [google (str google-code-url file "?r=" clojurebot-rev "#" line)
-            google (google-code->github-url google "clojure" clojurebot-rev)
-            google (java.net.URLEncoder/encode google)
-            url (str "http://tinyurl.com/api-create.php?url=" google)]
-        (get-url url)))
-
-(def make-url-cached (memoize make-url))
+            google (google-code->github-url google "clojure" clojurebot-rev)]
+        (tinyurl google)))
+(def make-url-cached make-url)
 
 (def java-code-url (memoize (fn [url]
                                 (get-url
                                   (str "http://tinyurl.com/api-create.php?url="
                                        (java.net.URLEncoder/encode url))))))
+
+(def java-code-url (fn [url] (tinyurl url)))
 
 (defmulti lookup
   (fn [bot msg thing]
@@ -95,7 +95,6 @@
                           (.replaceAll thing "\\." "/") ".java?r=" clojurebot-rev)
                      "clojure"
                      clojurebot-rev)))))
-
 
 (defn contrib-lookup [thing]
   (map (comp #(get-url (str "http://tinyurl.com/api-create.php?url="

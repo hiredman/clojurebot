@@ -56,18 +56,9 @@
       []
       (randth befuddl))
 
-;;(defn inits
-;;      "this is Chouser's fault"
-;;      [s]
-;;      (map first
-;;           (take-while second
-;;                       (map split-at
-;;                            (iterate inc 0)
-;;                            (repeat (lazy-cat s [nil]))))))
-;;,(letfn [(pset [[f & r :as c]] (when c (lazy-cat (map #(conj % f) 
-;;                   (pset r)) (pset r) [#{f}])))] (pset [1 2 3 4]))
-
-(defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
+(defn inits "again I blame Chouser" [[f & r :as c]]
+  (when c (lazy-cat (map #(conj % f) 
+                   (inits r)) (inits r) [(list f)])))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -432,14 +423,14 @@
   (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 (defn wall-hack-method [class-name name- params obj & args]
-  (-> (name class-name) Class/forName (.getDeclaredMethod (name name-) (into-array Class params))
+  (-> class-name (.getDeclaredMethod (name name-) (into-array Class params))
     (doto (.setAccessible true))
     (.invoke obj (into-array Object args))))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
    (dosync (commute *bots* assoc (:this bot) bot))
-   (wall-hack-method 'org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
+   (wall-hack-method org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
    (doto (:this bot)
      (.connect (:network bot))
      (.changeNick (:nick bot))
