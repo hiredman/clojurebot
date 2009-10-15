@@ -56,18 +56,9 @@
       []
       (randth befuddl))
 
-;;(defn inits
-;;      "this is Chouser's fault"
-;;      [s]
-;;      (map first
-;;           (take-while second
-;;                       (map split-at
-;;                            (iterate inc 0)
-;;                            (repeat (lazy-cat s [nil]))))))
-;;,(letfn [(pset [[f & r :as c]] (when c (lazy-cat (map #(conj % f) 
-;;                   (pset r)) (pset r) [#{f}])))] (pset [1 2 3 4]))
-
-(defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
+(defn inits "again I blame Chouser" [[f & r :as c]]
+  (when c (lazy-cat (map #(conj % f) 
+                   (inits r)) (inits r) [(list f)])))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -338,23 +329,10 @@
       [bot pojo]
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
-;; (defmethod responder ::define-is [bot pojo]
-;;   (let [a (.trim (extract-message bot pojo))
-;;         term (term a)
-;;         x (strip-is a)
-;;         defi (remove-from-beginning x "also ")]
-;;     (is- bot term defi)
-;;     (try
-;;       (if (re-find #"^also " x)
-;;         (is term defi)
-;;         (is! term defi))
-;;       (send-out :msg bot pojo (ok))
-;;       (catch java.util.prefs.BackingStoreException e
-;;              (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
-
-
 (defn replace-with [str map]
-      (reduce #(.replaceAll % (first %2) (second %2)) str map))
+  (reduce #(.replaceAll % (first %2) (second %2)) str map))
+
+;(replace-with "foo bar baz" {"bar" "beep"})
 
 (defn prep-reply
       "preps a reply, does substituion of stuff like <reply> and #who"
@@ -478,14 +456,14 @@
   (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 (defn wall-hack-method [class-name name- params obj & args]
-  (-> (name class-name) Class/forName (.getDeclaredMethod (name name-) (into-array Class params))
+  (-> class-name (.getDeclaredMethod (name name-) (into-array Class params))
     (doto (.setAccessible true))
     (.invoke obj (into-array Object args))))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
    (dosync (commute *bots* assoc (:this bot) bot))
-   (wall-hack-method 'org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
+   (wall-hack-method org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
    (doto (:this bot)
      (.connect (:network bot))
      (.changeNick (:nick bot))
