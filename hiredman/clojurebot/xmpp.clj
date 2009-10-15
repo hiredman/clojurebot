@@ -1,3 +1,4 @@
+;; DEPENDS smack
 (ns hiredman.clojurebot.xmpp
   (:require [hiredman.clojurebot.core :as core])
   (:import (org.jivesoftware.smack XMPPConnection ConnectionConfiguration
