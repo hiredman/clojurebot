@@ -1,3 +1,4 @@
+;; DEPENDS clojure-json
 (ns hiredman.clojurebot.google
   (:use (hiredman.clojurebot core))
   (:use (hiredman utilities))

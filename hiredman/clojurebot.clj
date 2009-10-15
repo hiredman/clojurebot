@@ -1,11 +1,9 @@
 (ns hiredman.clojurebot
   (:use (hiredman.clojurebot core svn))
   (:require (hiredman.clojurebot core dice sb seenx google delicious noise stock-quote
-                                 factoids forget translate code-lookup javadoc ticket
-                                 github xmpp)
-            [hiredman.clojurebot.xmpp :as xmpp]
-            [hiredman.utilities :as util]
-            [hiredman.twitter :as twitter]))
+                                 factoids forget translate javadoc ticket
+                                 github)
+            [hiredman.utilities :as util]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,21 +13,18 @@
                    (proxy [SignalHandler] []
                      (handle [sig] (handler sig)))))
 
-(binding [*ns* (create-ns 'sandbox)]
-  (clojure.core/refer 'clojure.core)
-  (import '(java.util Date)))
-
 (defonce bot-attributes 
-     {:nick "clojurebot"
+     {:nick "cljbot"
       :network "irc.freenode.net"
       :channel "#clojurebot"
-      :tweet true
-      :delicious ["username" "password"]
-      :twitter ["username" "password"]
       :sandbox-ns 'sandbox
       :store (agent {})
-      :xmpp-connection (xmpp/connect "jid@domain" "password")
-      :dict-dir "/home/hiredman/"}) ;; must include final slash
+      :dict-dir (.concat (System/getProperty "user.dir") "/")}) ;; must include final slash
+
+;;set up sandbox namespace for evaling code
+(binding [*ns* (create-ns (:sandbox-ns bot-attributes))]
+  (clojure.core/refer 'clojure.core)
+  (import '(java.util Date)))
 
 (defonce #^{:private true} bot 
      (run-clojurebot mybot bot-attributes
@@ -39,7 +34,4 @@
        (start-dump-thread mybot)
        ((fn [b]
           (install :TERM (fn [s] (.disconnect b) (System/exit 0)))) mybot)
-       (xmpp/setup-listener mybot)
-       (xmpp/connect-to-muc mybot "clojure@conference.thelastcitadel.com")
-       (hiredman.clojurebot.github/start-github-watch mybot "#clojure")
        (println "Done loading!")))

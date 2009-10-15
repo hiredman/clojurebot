@@ -1,3 +1,4 @@
+DEPENDS ON: fnparse, clojure-json, apache-derby, pircbot, (more?)
 Clojurebot, as seen in #clojure
 
 Version 1 is now forgotten! Hooray.
@@ -5,8 +6,9 @@ Version 1 is now forgotten! Hooray.
 Setting up the sandbox can be tricky; Read the example policy file for some info.
 
 included modules: code-lookup, forget, sb, svn, core, google, seenx, tinyurl, dice,
-javadoc, shutup, translate
+javadoc, shutup, translate, xmpp, (more?)
 
+;; moved to git, similar command is "clojurebot: git some-sha1"
 svn looks ups of revisions from the main repo:
  13:38   hiredman : r1006
  13:38  -clojurebot:#clojurebot- r1006 improved UnsupportedOperationException message, patch from Chouser
@@ -20,5 +22,5 @@ google stuff:
 code-lookup:
  13:42   hiredman : clojurebot: def defn
  13:42  -clojurebot:#clojurebot- defn: http://tinyurl.com/bgzldj
+;;now goes to clojure's github repo
 the url goes to the definition of that thing in google code (revision clojurebot is running)
-

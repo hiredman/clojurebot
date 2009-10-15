@@ -14,10 +14,12 @@
 ;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
-    (:use (hiredman sandbox))
+    (:use (hiredman sandbox)
+          [hiredman.clojurebot.storage :only (db-name)])
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
               [hiredman.utilities :as util]
+              [hiredman.triples :as trip]
               [hiredman.words :as w])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
@@ -56,16 +58,9 @@
       []
       (randth befuddl))
 
-;;(defn inits
-;;      "this is Chouser's fault"
-;;      [s]
-;;      (map first
-;;           (take-while second
-;;                       (map split-at
-;;                            (iterate inc 0)
-;;                            (repeat (lazy-cat s [nil]))))))
-
-(defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
+(defn inits "again I blame Chouser" [[f & r :as c]]
+  (when c (lazy-cat (map #(conj % f) 
+                   (inits r)) (inits r) [(list f)])))
 
 (defn strip-is
       "return a string with everything up to the end of the
@@ -161,30 +156,30 @@
       (doseq [c (.getChannels (:this bot))]
              (fn c)))
 
-(defn term-lists
-      "generates permutions of the words in string"
-      [msg words-to-ignore]
-      (let [x (re-seq #"\w+" msg)
-            ignore #(not ((set words-to-ignore) %))]
-        (filter ignore (map #(apply str (interpose " " %)) (mapcat #(reverse (inits (drop % x))) (take (count x) (iterate inc 0)))))))
-
-(defn rlookup
-      "look up terms from a seq until you find a defi"
-      [terms]
-      (when (seq terms)
-      (if (@dict-is (first terms))
-        (first terms)
-        (recur (seq (rest terms))))))
-
-(defn fuzzy-lookup
-      "look up based on permutation"
-      [message words-to-ignore]
-      (rlookup (term-lists message words-to-ignore)))
-
-(defn fuzzy-key-lookup
-      "look up based on match part of a term"
-      [term]
-      (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
+;;(defn term-lists
+;;      "generates permutions of the words in string"
+;;      [msg words-to-ignore]
+;;      (let [x (re-seq #"\w+" msg)
+;;            ignore #(not ((set words-to-ignore) %))]
+;;        (filter ignore (map #(apply str (interpose " " %)) (mapcat #(reverse (inits (drop % x))) (take (count x) (iterate inc 0)))))))
+;;
+;;(defn rlookup
+;;      "look up terms from a seq until you find a defi"
+;;      [terms]
+;;      (when (seq terms)
+;;      (if (@dict-is (first terms))
+;;        (first terms)
+;;        (recur (seq (rest terms))))))
+;;
+;;(defn fuzzy-lookup
+;;      "look up based on permutation"
+;;      [message words-to-ignore]
+;;      (rlookup (term-lists message words-to-ignore)))
+;;
+;;(defn fuzzy-key-lookup
+;;      "look up based on match part of a term"
+;;      [term]
+;;      (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
 
 ;;TODO recognize "clojurebot, blah bleh"
 (defn addressed?
@@ -302,7 +297,7 @@
         [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
-(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
+;(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
 
 (defmacro defresponder [key priority fn & body]
   `(do
@@ -338,52 +333,8 @@
       [bot pojo]
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
-;; (defmethod responder ::define-is [bot pojo]
-;;   (let [a (.trim (extract-message bot pojo))
-;;         term (term a)
-;;         x (strip-is a)
-;;         defi (remove-from-beginning x "also ")]
-;;     (is- bot term defi)
-;;     (try
-;;       (if (re-find #"^also " x)
-;;         (is term defi)
-;;         (is! term defi))
-;;       (send-out :msg bot pojo (ok))
-;;       (catch java.util.prefs.BackingStoreException e
-;;              (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
-
-
-(defn replace-with [str map]
-      (reduce #(.replaceAll % (first %2) (second %2)) str map))
-
-(defn prep-reply
-      "preps a reply, does substituion of stuff like <reply> and #who"
-      [sender term defi bot]
-      (replace-with
-        (if (re-find #"^<reply>" defi)
-          (.trim (remove-from-beginning (str defi) "<reply>"))
-          (str term " is " defi))
-        {"#who" sender "#someone" (random-person bot)}))
-
-(defmethod responder ::lookup [bot pojo]
-  (let [msg (d?op (.trim (extract-message bot pojo)))
-        result (what-is msg)
-        words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
-    (cond
-      result,
-          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) msg result bot))
-      (fuzzy-lookup msg words-to-ignore),
-        (let [term (fuzzy-lookup msg words-to-ignore)
-              defi (what-is term)]
-          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) term defi bot)))
-      (fuzzy-key-lookup msg),
-        (let [term (fuzzy-key-lookup msg)
-              defi (what-is term)]
-          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
-      :else,
-        (send-out :msg bot (who pojo) (befuddled)))))
-
 (defmethod responder ::know [bot pojo]
+  (prn (trip/query ))
   (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
 (defn user-watch [this]
@@ -477,14 +428,14 @@
   (sched/fixedrate {:task #(dump-dict-is config) :start-delay 1 :rate 10 :unit (:minutes sched/unit)}))
 
 (defn wall-hack-method [class-name name- params obj & args]
-  (-> (name class-name) Class/forName (.getDeclaredMethod (name name-) (into-array Class params))
+  (-> class-name (.getDeclaredMethod (name name-) (into-array Class params))
     (doto (.setAccessible true))
     (.invoke obj (into-array Object args))))
 
 (defn start-clojurebot [attrs additional-setup]
  (let [bot (pircbot attrs)]
    (dosync (commute *bots* assoc (:this bot) bot))
-   (wall-hack-method 'org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
+   (wall-hack-method org.jibble.pircbot.PircBot :setName [String] (:this bot) (:nick bot))
    (doto (:this bot)
      (.connect (:network bot))
      (.changeNick (:nick bot))

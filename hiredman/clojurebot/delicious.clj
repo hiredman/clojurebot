@@ -5,7 +5,10 @@
   (:import (java.net URLEncoder URL)))
 
 (def url-reg #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
-(def pastebins #"(gist\.github\.com|paste.lisp.org/display|pastbin\.com)")
+
+(def pastebins
+  #"(gist\.github\.com|paste.lisp.org/display|pastbin\.com|p\.hagelb\.org|pastebin\.org|paste\.pocoo\.org/show|pastie\.org)")
+
 ;;#"(\w+://.*?)[.>]*(?: |$)"
 
 (defn post

@@ -5,7 +5,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'intern 'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod 'hiredman.clojurebot/bot})
+(def *bad-forms* #{'alter-var-root 'alterRoot 'intern 'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod 'hiredman.clojurebot/bot})
 
 (def *default-timeout* 10) ; in seconds
 
@@ -118,6 +118,7 @@
       (let [form #(-> _string StringReader. PushbackReader. read)
             thunk (fn []
                       (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
+                                *read-eval* false
                                  *ns* (find-ns sb-ns) doc (var my-doc) *print-level* 30]
                         (eval-in-box-helper (form))))
             result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
