@@ -114,17 +114,20 @@
 
 ;(core/remove-dispatch-hook ::lookup)
 
+(defmulti #^{:doc "" :private true} befuddled-or-pick-random empty?)
+
+(defmethod befuddled-or-pick-random false [x]
+  (-> x 
+    ((fn [x] (x (rand-int (count x)))))
+    ((fn [{:keys [subject object predicate]}] (prep-reply (:sender msg) subject object bot)))))
+
+(defmethod befuddled-or-pick-random true [x] (core/befuddled))
+
 (core/defresponder ::lookup 20
   (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
   (-> (core/extract-message bot msg)
     fuzzer
     ((partial mapcat #(trip/query (trip/derby (db-name bot)) % "is" :y)))
     vec
-    ((fn [x]
-       (if (empty? x)
-         (core/befuddled)
-         (-> x 
-           ((fn [x] (x (rand-int (count x)))))
-           ((fn [{:keys [subject object predicate]}]
-              (prep-reply (:sender msg) subject object bot)))))))
+    befuddled-or-pick-random
     ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))
