@@ -13,18 +13,18 @@
                    (proxy [SignalHandler] []
                      (handle [sig] (handler sig)))))
 
-(binding [*ns* (create-ns 'sandbox)]
-  (clojure.core/refer 'clojure.core)
-  (import '(java.util Date)))
-
 (defonce bot-attributes 
      {:nick "cljbot"
       :network "irc.freenode.net"
       :channel "#clojurebot"
-      :tweet true
       :sandbox-ns 'sandbox
       :store (agent {})
-      :dict-dir "/home/kpd/"}) ;; must include final slash
+      :dict-dir (.concat (System/getProperty "user.dir") "/")}) ;; must include final slash
+
+;;set up sandbox namespace for evaling code
+(binding [*ns* (create-ns (:sandbox-ns bot-attributes))]
+  (clojure.core/refer 'clojure.core)
+  (import '(java.util Date)))
 
 (defonce #^{:private true} bot 
      (run-clojurebot mybot bot-attributes
