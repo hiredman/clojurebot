@@ -1,4 +1,5 @@
 (ns hiredman.clojurebot.factoids
+  (:use [hiredman.clojurebot.storage :only (db-name)])
   (:require [hiredman.clojurebot.core :as core]
             [hiredman.triples :as trip]
             [name.choi.joshua.fnparse :as fp]))
@@ -70,12 +71,6 @@
                         defi
                      :else
                         (core/befuddled)))))
-
-(defn db-name [bot]
-  (let [name (str (:dict-dir bot) (:nick bot) ".db")]
-    (when-not (.exists (java.io.File. name))
-      (trip/create-store name))
-    name))
 
 (defmethod factoid-command-processor :def [bag]
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
