@@ -64,6 +64,8 @@
 ;;                       (map split-at
 ;;                            (iterate inc 0)
 ;;                            (repeat (lazy-cat s [nil]))))))
+;;,(letfn [(pset [[f & r :as c]] (when c (lazy-cat (map #(conj % f) 
+;;                   (pset r)) (pset r) [#{f}])))] (pset [1 2 3 4]))
 
 (defn inits [x] (seq (map #(take % x) (range 1 (inc (count x))))))
 

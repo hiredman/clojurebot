@@ -5,7 +5,7 @@
 
 ;(def *bad-forms* #{'eval 'catch 'try 'def 'defn 'defmacro 'read 'Thread. 'send 'send-off 'clojure.asm.ClassWriter.})
 
-(def *bad-forms* #{'intern 'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod})
+(def *bad-forms* #{'intern 'eval 'def 'catch 'load-string 'load-reader 'clojure.core/addMethod 'hiredman.clojurebot/bot})
 
 (def *default-timeout* 10) ; in seconds
 
