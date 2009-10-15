@@ -97,26 +97,3 @@
       ((partial map #(doto % prn)))
       ((partial map (partial store-triple db)))
       doall)))
-
-(defn inits "again I blame Chouser" [[f & r :as c]]
-  (when c (lazy-cat (map #(conj % f)
-                   (inits r)) (inits r) [(list f)])))
-
-(def f
-  (comp reverse
-        distinct
-        (partial map #(reduce (fn [a b] (format "%s %s" a b)) %))
-        (partial sort-by count)
-        (partial mapcat inits)
-        inits
-        (partial re-seq #"\w+")))
-
-(def g
-  (comp (partial map string)
-        (partial mapcat #(query (derby "/tmp/triples.db") % :x :y))
-        f))
-
-(defn h [x]
-  (let [y (java.util.ArrayList. x)]
-    (java.util.Collections/shuffle y)
-    (first y)))
