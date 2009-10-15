@@ -69,14 +69,10 @@
 
 (defmethod factoid-command-processor :def [bag]
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
-  (core/is- (:bot (meta bag)) (:term bag) (:definition bag))
-  (core/is!  (:term bag) (:definition bag))
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 (defmethod factoid-command-processor :def-add [bag]
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
-  (core/is- (:bot (meta bag)) (:term bag) (str "also " (:definition bag)))
-  (core/is (:term bag) (:definition bag))
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 (core/defresponder ::factoids 0
@@ -99,7 +95,19 @@
         inits
         (partial re-seq #"\w+")))
 
-(core/remove-dispatch-hook ::lookup)
+(defn replace-with [str map]
+      (reduce #(.replaceAll % (first %2) (second %2)) str map))
+
+(defn prep-reply
+      "preps a reply, does substituion of stuff like <reply> and #who"
+      [sender term defi bot]
+      (replace-with
+        (if (re-find #"^<reply>" defi)
+          (.trim (core/remove-from-beginning (str defi) "<reply>"))
+          (str term " is " defi))
+        {"#who" sender "#someone" (random-person bot)}))
+
+;(core/remove-dispatch-hook ::lookup)
 
 (core/defresponder ::lookup 20
   (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
@@ -113,5 +121,5 @@
          (-> x 
            ((fn [x] (x (rand-int (count x)))))
            ((fn [{:keys [subject object predicate]}]
-              (core/prep-reply (:sender msg) subject object bot)))))))
+              (prep-reply (:sender msg) subject object bot)))))))
     ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))

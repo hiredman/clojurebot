@@ -338,52 +338,6 @@
       [bot pojo]
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
-;; (defmethod responder ::define-is [bot pojo]
-;;   (let [a (.trim (extract-message bot pojo))
-;;         term (term a)
-;;         x (strip-is a)
-;;         defi (remove-from-beginning x "also ")]
-;;     (is- bot term defi)
-;;     (try
-;;       (if (re-find #"^also " x)
-;;         (is term defi)
-;;         (is! term defi))
-;;       (send-out :msg bot pojo (ok))
-;;       (catch java.util.prefs.BackingStoreException e
-;;              (send-out :msg bot pojo (str "sorry, " term " may already be defined"))))))
-
-
-(defn replace-with [str map]
-      (reduce #(.replaceAll % (first %2) (second %2)) str map))
-
-(defn prep-reply
-      "preps a reply, does substituion of stuff like <reply> and #who"
-      [sender term defi bot]
-      (replace-with
-        (if (re-find #"^<reply>" defi)
-          (.trim (remove-from-beginning (str defi) "<reply>"))
-          (str term " is " defi))
-        {"#who" sender "#someone" (random-person bot)}))
-
-;;(defmethod responder ::lookup [bot pojo]
-;;  (let [msg (d?op (.trim (extract-message bot pojo)))
-;;        result (what-is msg)
-;;        words-to-ignore ["a" "where" "what" "is" "who" "are" (:nick bot)]]
-;;    (cond
-;;      result,
-;;          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) msg result bot))
-;;      (fuzzy-lookup msg words-to-ignore),
-;;        (let [term (fuzzy-lookup msg words-to-ignore)
-;;              defi (what-is term)]
-;;          (new-send-out bot :msg (who pojo) (prep-reply (:sender pojo) term defi bot)))
-;;      (fuzzy-key-lookup msg),
-;;        (let [term (fuzzy-key-lookup msg)
-;;              defi (what-is term)]
-;;          (send-out :msg bot (who pojo) (prep-reply (:sender pojo) term defi bot)))
-;;      :else,
-;;        (send-out :msg bot (who pojo) (befuddled)))))
-;;
-
 (defmethod responder ::know [bot pojo]
   (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
 
