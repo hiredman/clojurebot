@@ -53,14 +53,14 @@
                             (long 5)
                             TimeUnit/MINUTES))
 
-(defn clojure-channel-helper-callback
-      [bot revs]
-      (doseq [r revs]
-             (doseq [c (.getChannels (:this bot))]
-                    (core/send-out :notice bot c (str "r" (first r) " " (second r)))
-                    (when (:tweet bot)
-                      (twitter/send (first (:twitter bot)) (second (:twitter bot)) (str "r" (first r) " " (second r))))))
-      (core/is! "latest" (.toString (first (last (sort-by first revs))))))
+;;(defn clojure-channel-helper-callback
+;;      [bot revs]
+;;      (doseq [r revs]
+;;             (doseq [c (.getChannels (:this bot))]
+;;                    (core/send-out :notice bot c (str "r" (first r) " " (second r)))
+;;                    (when (:tweet bot)
+;;                      (twitter/send (first (:twitter bot)) (second (:twitter bot)) (str "r" (first r) " " (second r))))))
+;;      (core/is! "latest" (.toString (first (last (sort-by first revs))))))
 
 (def default-repo (atom ""))
 
