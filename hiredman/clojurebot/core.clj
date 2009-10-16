@@ -336,12 +336,6 @@
 (defmethod responder ::know [bot pojo]
   (new-send-out bot :msg pojo (str "I know "  (count (trip/query (trip/derby (db-name bot)) :y :y :z))" things")))
 
-(defn user-watch [this]
-      (let [cur (count (.getUsers this "#clojure"))
-            pre (Integer/parseInt (what-is "max people"))]
-        (when (> cur pre)
-          (is! "max people" (str cur)))))
-
 (defn handleMessage [this channel sender login hostname message]
       (try 
         (let [bot (get @*bots* this)
