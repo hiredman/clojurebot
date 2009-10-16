@@ -1,9 +1,12 @@
 (ns hiredman.clojurebot
   (:use (hiredman.clojurebot core svn))
-  (:require (hiredman.clojurebot core dice sb seenx google delicious noise stock-quote
-                                 factoids forget translate javadoc ticket
-                                 github)
-            [hiredman.utilities :as util]))
+  (:require (hiredman.clojurebot core dice sb seenx google delicious noise
+                                 stock-quote factoids forget translate
+                                 code-lookup javadoc ticket github xmpp
+                                 simplyscala)
+            [hiredman.clojurebot.xmpp :as xmpp]
+            [hiredman.utilities :as util]
+            [hiredman.twitter :as twitter]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,18 +16,29 @@
                    (proxy [SignalHandler] []
                      (handle [sig] (handler sig)))))
 
-(defonce bot-attributes 
-     {:nick "cljbot"
-      :network "irc.freenode.net"
-      :channel "#clojurebot"
-      :sandbox-ns 'sandbox
-      :store (agent {})
-      :dict-dir (.concat (System/getProperty "user.dir") "/")}) ;; must include final slash
+(let [properties (java.util.Properties.)
+      p (fn [x] (.getProperty properties x))]
+  (with-open [properties-file (-> Class
+                                (.getResourceAsStream
+                                  "/clojurebot.properties"))]
+    (.load properties properties-file)
+    (defonce #^{:private true} bot-attributes
+      {:nick "clojurebot"
+       :network "irc.freenode.net"
+       :channel "#clojurebot"
+       :tweet true
+       :delicious [(p "delicious.user") (p "delicious.password")]
+       :twitter [(p "twitter.user") (p "twitter.password")]
+       :sandbox-ns 'sandbox
+       :store (agent {})
+       :xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
+       :dict-dir (.concat (System/getProperty "user.dir") "/")}))) ;; must include final slash
 
 ;;set up sandbox namespace for evaling code
 (binding [*ns* (create-ns (:sandbox-ns bot-attributes))]
   (clojure.core/refer 'clojure.core)
   (import '(java.util Date)))
+
 
 (defonce #^{:private true} bot 
      (run-clojurebot mybot bot-attributes
@@ -34,4 +48,7 @@
        (start-dump-thread mybot)
        ((fn [b]
           (install :TERM (fn [s] (.disconnect b) (System/exit 0)))) mybot)
+       (xmpp/setup-listener mybot)
+       (xmpp/connect-to-muc mybot "clojure@conference.thelastcitadel.com")
+       (hiredman.clojurebot.github/start-github-watch mybot "#clojure")
        (println "Done loading!")))
