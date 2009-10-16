@@ -32,14 +32,21 @@
 
 ;(remove-dispatch-hook ::seenx)
 
+(defn user-watch [bot]
+      (let [cur (count (.getUsers (:this bot) "#clojure"))
+            pre (Integer/parseInt (:object (first (what-is "max people" bot))))]
+        (when (> cur pre)
+          (store bot "max people" (str cur)))))
 
 (defresponder ::watcher -31
   (dfn (nil? (::watcher (meta msg))))
+  (when (:join msg)
+    (user-watch bot))
   (dosync (commute user-db assoc (:sender msg)
                    (vector
                      (cond
                        (:join msg)
-                        (do (user-watch (:this bot)) :join)
+                        :join
                        (:part msg)
                         :part
                        (:quit msg)
