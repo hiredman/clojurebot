@@ -334,8 +334,7 @@
       (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
 (defmethod responder ::know [bot pojo]
-  (prn (trip/query ))
-  (new-send-out bot :msg pojo (str "I know " (+ (count (deref dict-is)) (count (deref dict-are))) " things")))
+  (new-send-out bot :msg pojo (str "I know "  (count (trip/query (trip/derby (db-name bot)) :y :y :z))" things")))
 
 (defn user-watch [this]
       (let [cur (count (.getUsers this "#clojure"))
