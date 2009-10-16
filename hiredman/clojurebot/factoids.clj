@@ -85,7 +85,7 @@
   (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))
 
 ;(core/remove-dispatch-hook ::factoids)
-;(hiredman.triples/import-file (hiredman.triples/derby db-name) (str (hiredman.clojurebot.core/dict-file bot ".is")))
+;(hiredman.triples/import-file (hiredman.triples/derby (db-name bot)) (str (hiredman.clojurebot.core/dict-file bot ".is")))
 
 (defn inits "again I blame Chouser" [[f & r :as c]]
   (when c (lazy-cat (map #(conj % f)
