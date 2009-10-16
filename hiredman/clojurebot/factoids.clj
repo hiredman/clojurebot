@@ -119,7 +119,7 @@
 (defmethod befuddled-or-pick-random false [x]
   (-> x 
     ((fn [x] (x (rand-int (count x)))))
-    ((fn [{:keys [subject object predicate]}] (prep-reply (:sender msg) subject object bot)))))
+    ((fn [{:keys [subject object predicate]}] (prep-reply (:sender (:msg (meta x))) subject object (:bot (meta x)))))))
 
 (defmethod befuddled-or-pick-random true [x] (core/befuddled))
 
@@ -129,5 +129,6 @@
     fuzzer
     ((partial mapcat #(trip/query (trip/derby (db-name bot)) % "is" :y)))
     vec
+    (vary-meta assoc :msg msg :bot bot)
     befuddled-or-pick-random
     ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))
