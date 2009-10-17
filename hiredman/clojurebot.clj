@@ -1,5 +1,6 @@
 (ns hiredman.clojurebot
-  (:use (hiredman.clojurebot core svn))
+  (:use (hiredman.clojurebot core svn)
+        [hiredman.factoid-server :only (factoid-server)])
   (:require (hiredman.clojurebot core dice sb seenx google delicious noise
                                  stock-quote factoids forget translate
                                  code-lookup javadoc ticket github xmpp
@@ -31,6 +32,7 @@
        :twitter [(p "twitter.user") (p "twitter.password")]
        :sandbox-ns 'sandbox
        :store (agent {})
+       :factoid-server-port 4444
        :xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
        :dict-dir (.concat (System/getProperty "user.dir") "/")}))) ;; must include final slash
 
@@ -51,4 +53,7 @@
        (xmpp/setup-listener mybot)
        (xmpp/connect-to-muc mybot "clojure@conference.thelastcitadel.com")
        (hiredman.clojurebot.github/start-github-watch mybot "#clojure")
+       (factoid-server (:factoid-server-port mybot) mybot)
        (println "Done loading!")))
+
+
