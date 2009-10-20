@@ -5,7 +5,6 @@
 (def running true)
 
 (defn- client-action [fn reader writer]
-  (prn :client-action)
   (let [result (fn reader)]
     (binding [*out* writer]
       (println "HTTP/1.0 " (:status result))
@@ -17,14 +16,12 @@
   (doseq [x [reader writer]] (.close x)))
 
 (defn- handle-client [fn client-socket]
-  (prn :handle-client)
   (future
     (client-action fn
                    (-> client-socket .getInputStream)
                    (-> client-socket .getOutputStream PrintWriter.))))
 
 (defn- server-action [fn server-socket]
-  (prn :server-action)
   (when running (send-off *agent* server-action server-socket))
   (try
     (handle-client fn (.accept server-socket))
