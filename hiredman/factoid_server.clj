@@ -25,7 +25,7 @@
          (catch Exception e
            (print e)))))
     ((fn [x]
-      {:state "200 OK"
+      {:status "200 OK"
        :content-type "application/json"
        :body x}))))
 
