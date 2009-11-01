@@ -99,9 +99,13 @@
 ;;  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
 ;;  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
-(core/defresponder ::factoids 0
-  (core/dfn (and (:addressed? (meta msg)) (not (.endsWith (core/extract-message bot msg) "?")) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
-  (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))
+
+(core/defresponder2
+  {:name ::factoids
+   :priority 0
+   :dispatch (core/dfn (and (:addressed? (meta msg)) (not (.endsWith (core/extract-message bot msg) "?")) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
+   :body (fn [bot msg]
+           (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))})
 
 ;(core/remove-dispatch-hook ::factoids)
 ;(hiredman.triples/import-file (hiredman.triples/derby (db-name bot)) (str (hiredman.clojurebot.core/dict-file bot ".is")))
@@ -112,9 +116,9 @@
 
 (def #^{:doc "gives a bunch of possible permutations of a string"} fuzzer
   (comp reverse
-        distinct
         (partial map #(reduce (fn [a b] (format "%s %s" a b)) %))
         (partial sort-by count)
+        set
         (partial mapcat inits)
         inits
         (partial re-seq #"\w+")))
@@ -150,6 +154,7 @@
            (-> (core/extract-message bot msg)
              ((fn [x]
                 (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
+                  (prn r)
                   (if (> (count r) 0)
                     r
                     (-> x fuzzer
