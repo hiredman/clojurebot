@@ -142,12 +142,19 @@
 
 (defmethod befuddled-or-pick-random true [x] (core/befuddled))
 
-(core/defresponder ::lookup 20
-  (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
-  (-> (core/extract-message bot msg)
-    fuzzer
-    ((partial mapcat #(trip/query (trip/derby (db-name bot)) % :x :y)))
-    vec
-    (vary-meta assoc :msg msg :bot bot)
-    befuddled-or-pick-random
-    ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))
+(core/defresponder2
+  {:priority 20
+   :name ::lookup
+   :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
+   :body (fn [bot msg]
+           (-> (core/extract-message bot msg)
+             ((fn [x]
+                (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
+                  (if (> (count r) 0)
+                    r
+                    (-> x fuzzer
+                      ((partial mapcat #(trip/query (trip/derby (db-name bot)) % :z :y))))))))
+            vec
+            (vary-meta assoc :msg msg :bot bot)
+            befuddled-or-pick-random
+            ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))})
