@@ -279,18 +279,18 @@
 ;;   :dispatch (fn [bot msg])
 ;;   :body (fn [bot msg])})
 
-(defmacro defresponder2 [{:keys [priority body dispatch key]}]
-  `(let [key# ~key
-         priority# priority
-         body# body
-         dispatch# dispatch]
-     (remove-dispatch-hook key#)
-     (defmethod responder key# [bot# msg#]
-       ((:body m#) bot# msg#))
-     (add-dispatch-hook ~priority
-                        (fn [b# m#]
-                          (when (not (key# (meta m#)))
-                            (dispatch# b# m#))))))
+(defmacro defresponder2 [{:keys [priority body dispatch name]}]
+  `(let [priority# ~priority
+         body# ~body
+         dispatch# ~dispatch
+         name# ~name]
+     (remove-dispatch-hook name#)
+     (defmethod responder name# [bot# msg#] (body# bot# msg#))
+     (add-dispatch-hook priority#
+                        (fn [bot# msg#]
+                          (when (not (name# (meta msg#)))
+                            (dispatch# bot# msg#)))
+                        name#)))
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
