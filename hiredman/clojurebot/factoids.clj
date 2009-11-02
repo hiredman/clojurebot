@@ -45,6 +45,10 @@
                                                 #^{:type :predicate-style-definition}
                                                 {:subject subject :object object :predicate predicate})))
 
+(def forget (fp/semantics (fp/conc (string "forget ") predicate-style-definition)
+                          (fn [[_ o]]
+                            (with-meta o {:type :forget}))))
+
 ;;END GARBAGE
 
 ;;parse a string into some kind of factoid related something or other
@@ -94,6 +98,14 @@
 (defmethod factoid-command-processor :predicate-style-definition [bag]
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:subject bag) :o (:object bag) :p (:predicate bag)})
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
+
+(defmethod factoid-command-processor :forget [bag]
+  (trip/delete (trip/derby (db-name (:bot (meta bag)))) (:subject bag) (:predicate bag) (:object bag))
+  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag))
+                     (format "I forgot that %s %s %s"
+                             (:subject bag)
+                             (:predicate bag)
+                             (:object bag))))
 
 ;;(defmethod factoid-command-processor :def-add [bag]
 ;;  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
