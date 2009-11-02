@@ -53,7 +53,7 @@
 
 ;;parse a string into some kind of factoid related something or other
 ;;takes arguments in the style of fnparse {:remainder (seq some-string)}
-(def factoid-command (fp/alt index-count indexed-lookup definition-add definition predicate-style-definition))
+(def factoid-command (fp/alt index-count indexed-lookup definition-add definition forget predicate-style-definition))
 
 ;;this should be ditched
 (defn simple-lookup [term]
