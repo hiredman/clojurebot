@@ -7,10 +7,10 @@
 (defn- client-action [fn reader writer]
   (let [result (fn reader)]
     (binding [*out* writer]
-      (println "HTTP/1.0 " (:status result))
+      (println "HTTP/1.0" (:status result))
       (println "Server: a Simple Server")
-      (println "Content-type: " (:content-type result))
-      (println "Content-length: " (-> result :body .getBytes count))
+      (println "Content-type:" (:content-type result))
+      (println "Content-length:" (-> result :body .getBytes count))
       (println "")
       (println (:body result))))
   (doseq [x [reader writer]] (.close x)))

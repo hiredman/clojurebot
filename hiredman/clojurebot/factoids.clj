@@ -30,11 +30,26 @@
 (def indexed-lookup (fp/semantics (fp/conc literal spaces (fp/lit \[) number (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:number number :term term} assoc :type :indexed-look-up))))
 (def index-count (fp/semantics (fp/conc literal spaces (fp/lit \[) (fp/lit \?) (fp/lit \]) spaces (fp/semantics text (partial apply str))) (fn [[_ _ _ number _ _ term]] (vary-meta {:term term} assoc :type :count))))
 (def index (fp/alt index-count indexed-lookup))
+
+(def predicate (fp/semantics (fp/conc (fp/lit \|) (fp/rep+ (fp/except character (fp/lit \|))) (fp/conc (fp/lit \|)))
+                             (fn [[_ pred _]] (.trim (apply str pred)))))
+
+(def subject (fp/semantics (fp/rep+ (fp/except character (fp/lit \|)))
+                           (fn [d] (.trim (apply str d)))))
+
+(def object (fp/semantics (fp/rep+ character)
+                          (fn [o] (.trim (apply str o)))))
+
+(def predicate-style-definition (fp/semantics (fp/conc subject predicate object)
+                                              (fn [[subject predicate object]]
+                                                #^{:type :predicate-style-definition}
+                                                {:subject subject :object object :predicate predicate})))
+
 ;;END GARBAGE
 
 ;;parse a string into some kind of factoid related something or other
 ;;takes arguments in the style of fnparse {:remainder (seq some-string)}
-(def factoid-command (fp/alt index-count indexed-lookup definition-add definition))
+(def factoid-command (fp/alt index-count indexed-lookup definition-add definition predicate-style-definition))
 
 ;;this should be ditched
 (defn simple-lookup [term]
@@ -76,13 +91,21 @@
   (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
+(defmethod factoid-command-processor :predicate-style-definition [bag]
+  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:subject bag) :o (:object bag) :p (:predicate bag)})
+  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
+
 ;;(defmethod factoid-command-processor :def-add [bag]
 ;;  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
 ;;  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
-(core/defresponder ::factoids 0
-  (core/dfn (and (:addressed? (meta msg)) (not (.endsWith (core/extract-message bot msg) "?")) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
-  (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))
+
+(core/defresponder2
+  {:name ::factoids
+   :priority 0
+   :dispatch (core/dfn (and (:addressed? (meta msg)) (not (.endsWith (core/extract-message bot msg) "?")) (factoid-command {:remainder (seq (core/extract-message bot msg))})))
+   :body (fn [bot msg]
+           (factoid-command-processor (vary-meta (first (factoid-command {:remainder (seq (core/extract-message bot msg) )})) assoc :bot bot :message msg)))})
 
 ;(core/remove-dispatch-hook ::factoids)
 ;(hiredman.triples/import-file (hiredman.triples/derby (db-name bot)) (str (hiredman.clojurebot.core/dict-file bot ".is")))
@@ -93,9 +116,9 @@
 
 (def #^{:doc "gives a bunch of possible permutations of a string"} fuzzer
   (comp reverse
-        distinct
         (partial map #(reduce (fn [a b] (format "%s %s" a b)) %))
         (partial sort-by count)
+        set
         (partial mapcat inits)
         inits
         (partial re-seq #"\w+")))
@@ -105,11 +128,11 @@
 
 (defn prep-reply
       "preps a reply, does substituion of stuff like <reply> and #who"
-      [sender term defi bot]
+      [sender term pred defi bot]
       (replace-with
         (if (re-find #"^<reply>" defi)
           (.trim (core/remove-from-beginning (str defi) "<reply>"))
-          (str term " is " defi))
+          (format "%s %s %s" term pred defi))
         {"#who" sender "#someone" (core/random-person bot)}))
 
 ;(core/remove-dispatch-hook ::lookup)
@@ -119,16 +142,24 @@
 (defmethod befuddled-or-pick-random false [x]
   (-> x 
     ((fn [x] (x (rand-int (count x)))))
-    ((fn [{:keys [subject object predicate]}] (prep-reply (:sender (:msg (meta x))) subject object (:bot (meta x)))))))
+    ((fn [{:keys [subject object predicate]}] (prep-reply (:sender (:msg (meta x))) subject predicate object (:bot (meta x)))))))
 
 (defmethod befuddled-or-pick-random true [x] (core/befuddled))
 
-(core/defresponder ::lookup 20
-  (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
-  (-> (core/extract-message bot msg)
-    fuzzer
-    ((partial mapcat #(trip/query (trip/derby (db-name bot)) % "is" :y)))
-    vec
-    (vary-meta assoc :msg msg :bot bot)
-    befuddled-or-pick-random
-    ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))
+(core/defresponder2
+  {:priority 20
+   :name ::lookup
+   :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
+   :body (fn [bot msg]
+           (-> (core/extract-message bot msg)
+             ((fn [x]
+                (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
+                  (prn r)
+                  (if (> (count r) 0)
+                    r
+                    (-> x fuzzer
+                      ((partial mapcat #(trip/query (trip/derby (db-name bot)) % :z :y))))))))
+            vec
+            (vary-meta assoc :msg msg :bot bot)
+            befuddled-or-pick-random
+            ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))})

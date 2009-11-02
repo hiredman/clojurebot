@@ -192,47 +192,8 @@
               (nil? (:channel msg)))
        msg)))
 
-
-
-;;(defn is
-;;      "add a new definition to a term in dict-is"
-;;      [term defi]
-;;      (if (@dict-is term)
-;;        (let [old (@dict-is term)
-;;              v (if (vector? old)
-;;                  (conj old defi)
-;;                  [old defi])]
-;;          (dosync (commute dict-is assoc term v)))
-;;        (dosync (commute dict-is assoc term defi))))
-;;
-;;(defn is-
-;;      "add a new definition to a term"
-;;      [bot term defi]
-;;      (let [old  (get-in @(:store bot) [:is term])]
-;;           (send-off (:store bot) assoc term
-;;                     (cond
-;;                       (vector? old)
-;;                        (conj old defi)
-;;                       (not (nil? old))
-;;                        [old defi]
-;;                       :else
-;;                        defi))))
-;;
-;;(defn is!
-;;      "define a term in dict-is, overwriting anything that was there"
-;;      [term defi]
-;;      (if (or (= :nope (@dict-is term :nope)) true)
-;;        (dosync (commute dict-is assoc term defi))
-;;        (throw (java.util.prefs.BackingStoreException. "Already Defined"))))
-
 (defn store [bot key value]
   (trip/store-triple (trip/derby (db-name bot)) {:s key :o value :p "is"}))
-
-;;(defn what-is
-;;      "looks up a term in @dict-is"
-;;      [term]
-;;      (when-let [f (@dict-is term)]
-;;        (if (vector? f) (randth f) f)))
 
 (defn what-is [term bot]
   (trip/query (trip/derby (db-name bot)) term :x :y))
@@ -311,6 +272,25 @@
        (let [~'msg (vary-meta ~'msg assoc ~key true)]
          ~@body))
      (add-dispatch-hook ~priority (dfn (when (not (~key (meta ~'msg))) (~fn ~'bot ~'msg))) ~key)))
+
+;;(defresponder2
+;;  {:priority 1
+;;   :key ::dostuff
+;;   :dispatch (fn [bot msg])
+;;   :body (fn [bot msg])})
+
+(defmacro defresponder2 [{:keys [priority body dispatch name]}]
+  `(let [priority# ~priority
+         body# ~body
+         dispatch# ~dispatch
+         name# ~name]
+     (remove-dispatch-hook name#)
+     (defmethod responder name# [bot# msg#] (body# bot# msg#))
+     (add-dispatch-hook priority#
+                        (fn [bot# msg#]
+                          (when (not (name# (meta msg#)))
+                            (dispatch# bot# msg#)))
+                        name#)))
 
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 

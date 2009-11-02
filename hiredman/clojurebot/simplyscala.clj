@@ -1,6 +1,6 @@
 (ns hiredman.clojurebot.simplyscala
-  (:require [hiredman.clojurebot.core :as core]
-            [hiredman.utilities :as util])
+  (:use [hiredman.clojurebot.core :only (defresponder2 new-send-out extract-message)])
+  (:require [hiredman.utilities :as util])
   (:import (java.net URLEncoder )))
 
 
@@ -10,13 +10,16 @@
     (-> code URLEncoder/encode ((partial str scala-the-easy-way))
           util/get-url (.split "res0: ") rest ((partial apply str))))
 
-(core/defresponder ::scala 0
-  (core/dfn (and (:addressed? (meta msg)) (.startsWith (core/extract-message bot msg) "scala")))
-  (core/new-send-out bot :msg msg
-    (scala-eval
-      (let [m (core/extract-message bot msg)]
-        (if (.startsWith m "scala")
-          (.replaceAll m "^scala" "")
-          (.substring m 1))))))
-
-;(core/remove-dispatch-hook ::scala)
+(defresponder2
+  {:priority 0
+   :name ::scala
+   :dispatch (fn [bot msg]
+               (and (:addressed? (meta msg))
+                    (.startsWith (extract-message bot msg) "scala")))
+   :body (fn [bot msg]
+           (new-send-out bot :msg msg
+             (scala-eval
+               (let [m (extract-message bot msg)]
+                 (if (.startsWith m "scala")
+                   (.replaceAll m "^scala" "")
+                   (.substring m 1))))))})
