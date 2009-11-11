@@ -166,7 +166,6 @@
            (-> (core/extract-message bot msg)
              ((fn [x]
                 (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
-                  (prn r)
                   (if (> (count r) 0)
                     r
                     (-> x fuzzer

@@ -10,8 +10,9 @@
   {:name ::noise
    :priority 100
    :dispatch (fn [& _] (= 1 (rand-int wheel)))
-   :body (fn [bot msg](when (not (= (:message msg) ""))
-          (binding [core/befuddled (constantly nil)]
-            (lookup bot msg))))})
+   :body (fn [bot msg]
+           (when (not (= (:message msg) ""))
+            (binding [core/befuddled (constantly nil)]
+              (lookup bot msg))))})
 
 ;(core/remove-dispatch-hook ::noise)

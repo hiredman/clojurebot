@@ -193,6 +193,7 @@
        msg)))
 
 (defn store [bot key value]
+  (trip/delete (trip/derby (db-name bot)) key "is" :y)
   (trip/store-triple (trip/derby (db-name bot)) {:s key :o value :p "is"}))
 
 (defn what-is [term bot]
