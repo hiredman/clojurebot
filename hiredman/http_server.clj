@@ -29,12 +29,17 @@
       (prn e)))
   fn)
 
-(defn http-server [fn portn]
+(defn http-server
+  "fn is a fn that is passed the InputStream from the socket
+  should return a map containing the keys :status :content-type :body"
+  [fn portn]
   (send-off (agent fn)
             server-action
             (ServerSocket. portn)))
 
-(defn put [stuff url]
+(defn put
+  "url is a string url and stuff is stuff to PUT to the url"
+  [stuff url]
   (let [con (doto (.openConnection (URL. url))
               (.setDoInput true)
               (.setDoOutput true))]
