@@ -4,7 +4,7 @@
 
 (def lookup (second (first (filter #(= (first %) :hiredman.clojurebot.factoids/lookup) (.getMethodTable core/responder)))))
 
-(def wheel 100)
+(def wheel 500)
 
 (core/defresponder2
   {:name ::noise
@@ -15,4 +15,16 @@
             (binding [core/befuddled (constantly nil)]
               (lookup bot msg))))})
 
-;(core/remove-dispatch-hook ::noise)
+(core/remove-dispatch-hook ::noise)
+
+(core/defresponder2
+  {:name ::question
+   :priority  80
+   :dispatch (fn [bot msg]
+               (let [m (core/extract-message bot msg)
+                     x (count(.split m " "))]
+                  (and (> 2 x) (.endsWith m "?"))))
+   :body (fn [bot msg]
+           (when (not (= (:message msg) ""))
+            (binding [core/befuddled (constantly nil)]
+              (lookup bot msg))))})
