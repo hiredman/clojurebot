@@ -1,8 +1,8 @@
 (ns hiredman.clojurebot.noise
-    (:require [hiredman.clojurebot.core :as core]
-              [hiredman.utilities :as util]))
+  (:require [hiredman.clojurebot.core :as core]
+	    [hiredman.utilities :as util]))
 
-(def lookup (second (first (filter #(= (first %) :hiredman.clojurebot.factoids/lookup) (.getMethodTable core/responder)))))
+(def lookup #(second (first (filter #(= (first %) :hiredman.clojurebot.factoids/lookup) (.getMethodTable core/responder)))))
 
 (def wheel 500)
 
@@ -12,10 +12,10 @@
    :dispatch (fn [& _] (= 1 (rand-int wheel)))
    :body (fn [bot msg]
            (when (not (= (:message msg) ""))
-            (binding [core/befuddled (constantly nil)]
-              (lookup bot msg))))})
+	     (binding [core/befuddled (constantly nil)]
+	       ((lookup) bot msg))))})
 
-(core/remove-dispatch-hook ::noise)
+#_(core/remove-dispatch-hook ::noise)
 
 (core/defresponder2
   {:name ::question
@@ -23,8 +23,8 @@
    :dispatch (fn [bot msg]
                (let [m (core/extract-message bot msg)
                      x (count(.split m " "))]
-                  (and (> 2 x) (.endsWith m "?"))))
+		 (and (> 2 x) (.endsWith m "?"))))
    :body (fn [bot msg]
            (when (not (= (:message msg) ""))
-            (binding [core/befuddled (constantly nil)]
-              (lookup bot msg))))})
+	     (binding [core/befuddled (constantly nil)]
+	       ((lookup) bot msg))))})
