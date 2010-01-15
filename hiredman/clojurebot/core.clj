@@ -318,7 +318,7 @@
 (defn extract-message
       "removes bot name and/or ~ from the beginning of the msg"
       [bot pojo]
-      (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
+  (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
 (defmethod responder ::know [bot pojo]
   (new-send-out bot :msg pojo (str "I know "  (count (trip/query (trip/derby (db-name bot)) :y :y :z))" things")))
@@ -327,7 +327,7 @@
       (try 
         (let [bot (get @*bots* this)
               msg (struct junks channel sender login hostname message)]
-          (trampoline responder bot (vary-meta msg assoc :addressed? (addressed? bot msg))))
+          (future (trampoline responder bot (vary-meta msg assoc :addressed? (addressed? bot msg)))))
         (catch Exception e (.printStackTrace e))))
 
 (defn handlePrivateMessage [this sender login hostname message]
