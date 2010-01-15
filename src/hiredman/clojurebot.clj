@@ -4,7 +4,7 @@
   (:require (hiredman.clojurebot core dice sb seenx google delicious noise
                                  stock-quote factoids forget translate
                                  code-lookup javadoc ticket github xmpp
-                                 simplyscala)
+                                 simplyscala clojars)
             [hiredman.clojurebot.xmpp :as xmpp]
             [hiredman.utilities :as util]
             [hiredman.twitter :as twitter]))
@@ -55,6 +55,7 @@
        (xmpp/connect-to-muc mybot "clojure@conference.thelastcitadel.com")
        (hiredman.clojurebot.github/start-github-watch mybot "#clojure")
        (factoid-server (:factoid-server-port mybot) mybot)
+                     S
        (println "Done loading!")))
 
 
