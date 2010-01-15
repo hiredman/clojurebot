@@ -123,15 +123,15 @@
 ;(hiredman.triples/import-file (hiredman.triples/derby (db-name bot)) (str (hiredman.clojurebot.core/dict-file bot ".is")))
 
 (defn inits "again I blame Chouser" [[f & r :as c]]
-  (when c (lazy-cat (map #(conj % f)
-                   (inits r)) (inits r) [(list f)])))
+  (when c (lazy-cat (map #(conj % f) (inits r)) (inits r) [(list f)])))
 
 (def #^{:doc "gives a bunch of possible permutations of a string"} fuzzer
   (comp reverse
-        (partial map #(reduce (fn [a b] (format "%s %s" a b)) %))
+        (partial pmap #(reduce (fn [a b] (format "%s %s" a b)) %))
         (partial sort-by count)
         set
-        (partial mapcat inits)
+        (partial apply concat)
+        (partial pmap inits)
         inits
         (partial re-seq #"\w+")))
 
@@ -164,13 +164,20 @@
    :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
    :body (fn [bot msg]
            (-> (core/extract-message bot msg)
-             ((fn [x]
-                (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
-                  (if (> (count r) 0)
-                    r
-                    (-> x fuzzer
-                      ((partial mapcat #(trip/query (trip/derby (db-name bot)) % :z :y))))))))
-            vec
-            (vary-meta assoc :msg msg :bot bot)
-            befuddled-or-pick-random
-            ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))})
+	       (.replaceAll "\\?$" "")
+	       ((fn [x]
+		  (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
+		    (if (> (count r) 0)
+		      r
+		      (-> x fuzzer
+			    ((partial remove #{"what" "who" "why" "you"}))
+                ((partial sort-by count >))
+			    ((partial mapcat
+			          #(trip/query
+			            (trip/derby
+			             (db-name bot)) #_(list (format "%%%s%%" %)) :z :y)))
+                )))))
+	       vec
+	       (vary-meta assoc :msg msg :bot bot)
+	       befuddled-or-pick-random
+	       ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))})
