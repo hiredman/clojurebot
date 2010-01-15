@@ -33,6 +33,8 @@
 (defmulti query
           (fn [db s p o]
             (cond
+              (and (list? s) (keyword? p) (keyword? o))
+                ::like_subject-_-_
               (and (not (keyword? s)) (not (keyword? p)) (keyword? o))
                 ::subject-predicate-_
               (and (keyword? s) (keyword? p) (not (keyword? o)))
@@ -49,6 +51,17 @@
 (defmethod query ::subject-_-_ [db s p o]
   (cql/run [db results]
            (cql/query triples * (= ~(.toUpperCase s) upper_subject))
+           (doall results)))
+
+(defmethod query ::like_subject-_-_ [db s p o]
+  (prn (first s))
+  (cql/run [db results]
+           (cql/query triples * (like ~(.toUpperCase (first s)) upper_subject))
+           (try (doall results) (catch Exception e (prn e)))))
+
+(defmethod query ::like_subject-_-_ [db s p o]
+  (cql/run [db results]
+           (cql/query triples * (like upper_subject ~(.toUpperCase (first s))))
            (doall results)))
 
 (defmethod query ::_-predicate-_ [db s p o]
