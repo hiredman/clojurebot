@@ -11,7 +11,7 @@
 
 (def contrib-url "http://github.com/richhickey/clojure-contrib/raw/gh-pages/api-index.json")
 
-(def contrib (json/decode-from-str (get-url contrib-url)))
+(def contrib (try (json/decode-from-str (get-url contrib-url)) (catch Exception e nil)))
 
 (defn get-rev-number []
       ((comp #(Integer/parseInt %)
@@ -56,7 +56,7 @@
   (-> url
     (.replaceAll "http://code.google.com/p/clojure/source/browse/trunk"
                  (str "http://github.com/richhickey/" project "/blob/" rev))
-    (.replaceAll "\\?r=(.*)#(\\d+)" "#L$2")))
+    (.replaceAll "\\?r=(.*)#(\\d+)" "#LID$2")))
 
 
 (defn get-file-and-ln [string]
@@ -67,7 +67,7 @@
       (let [google (str google-code-url file "?r=" clojurebot-rev "#" line)
             google (google-code->github-url google "clojure" clojurebot-rev)]
         (tinyurl google)))
-(def make-url-cached make-url)
+(def make-url-cached (memoize make-url))
 
 (def java-code-url (memoize (fn [url]
                                 (get-url
