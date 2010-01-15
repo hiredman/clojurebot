@@ -23,7 +23,6 @@
                                 (.getResourceAsStream
                                   "/clojurebot.properties"))]
     (.load properties properties-file)
-    (prn properties)
     (defonce #^{:private true} bot-attributes
       {:nick "clojurebot"
        :network "irc.freenode.net"
