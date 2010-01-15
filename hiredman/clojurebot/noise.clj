@@ -2,7 +2,7 @@
   (:require [hiredman.clojurebot.core :as core]
 	    [hiredman.utilities :as util]))
 
-(def lookup #(second (first (filter #(= (first %) :hiredman.clojurebot.factoids/lookup) (.getMethodTable core/responder)))))
+(def lookup (fn [] (second (first (filter #(= (first %) :hiredman.clojurebot.factoids/lookup) (.getMethodTable core/responder))))))
 
 (def wheel 500)
 
