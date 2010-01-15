@@ -33,7 +33,7 @@
        :sandbox-ns 'sandbox
        :store (agent {})
        :factoid-server-port 4444
-       :xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
+       ;:xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
        :dict-dir (.concat (System/getProperty "user.dir") "/")}))) ;; must include final slash
 
 ;;set up sandbox namespace for evaling code
