@@ -19,7 +19,7 @@
 
 (let [properties (java.util.Properties.)
       p (fn [x] (.getProperty properties x))]
-  (with-open [properties-file (-> Class
+  (with-open [properties-file (-> (fn []) class
                                 (.getResourceAsStream
                                   "/clojurebot.properties"))]
     (.load properties properties-file)
