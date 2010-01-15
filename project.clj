@@ -7,7 +7,7 @@
                  [pircbot/pircbot "1.4.2"]
                  [org.danlarkin/clojure-json "1.1-SNAPSHOT"]
                  [org.ccil.cowan.tagsoup/tagsoup "1.2"]
-                 [jivesoftware/smack "3.1.0"]
+                 [jivesoftware/smack "3.0.4"]
                  [org.clojars.hiredman/fnparse "2.2.4"]
-                 [jivesoftware/smackx "3.1.0"]]
+                 [jivesoftware/smackx "3.0.4"]]
   :dev-dependencies [[leiningen/lein-swank "1.0.0-SNAPSHOT"]])

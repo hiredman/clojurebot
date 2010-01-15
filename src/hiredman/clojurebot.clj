@@ -19,10 +19,11 @@
 
 (let [properties (java.util.Properties.)
       p (fn [x] (.getProperty properties x))]
-  (with-open [properties-file (-> Class
+  (with-open [properties-file (-> (fn []) class
                                 (.getResourceAsStream
                                   "/clojurebot.properties"))]
     (.load properties properties-file)
+    (prn properties)
     (defonce #^{:private true} bot-attributes
       {:nick "clojurebot"
        :network "irc.freenode.net"
@@ -33,7 +34,7 @@
        :sandbox-ns 'sandbox
        :store (agent {})
        :factoid-server-port 4444
-       ;:xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
+       :xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
        :dict-dir (.concat (System/getProperty "user.dir") "/")}))) ;; must include final slash
 
 ;;set up sandbox namespace for evaling code
