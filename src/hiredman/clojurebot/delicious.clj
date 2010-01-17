@@ -8,7 +8,7 @@
 (def url-reg #"[A-Za-z]+://[^  ^/]+\.[^  ^/]+[^ ]+")
 
 (def pastebins
-  #"(dpaste\.de|gist\.github\.com|paste.lisp.org/display|.*pastebin\.com|p\.hagelb\.org|pastebin\.org|paste\.pocoo\.org/show|pastie\.org)")
+  #"(dpaste\.de|gist\.github\.com|paste.lisp.org/display|.*pastebin\.com|p\.hagelb\.org|pastebin\.org|paste\.pocoo\.org/show|pastie\.org|sprunge\.us)")
 
 ;;#"(\w+://.*?)[.>]*(?: |$)"
 
