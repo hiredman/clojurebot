@@ -166,17 +166,17 @@
            (-> (core/extract-message bot msg)
 	       (.replaceAll "\\?$" "")
 	       ((fn [x]
-		  (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
-		    (if (> (count r) 0)
-		      r
-		      (-> x fuzzer
-			    ((partial remove #{"what" "who" "why" "you"}))
-                ((partial sort-by count >))
-			    ((partial mapcat
-			          #(trip/query
-			            (trip/derby
-			             (db-name bot)) #_(list (format "%%%s%%" %)) :z :y)))
-                )))))
+		    (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
+		      (if (> (count r) 0)
+		        r
+		        (-> x fuzzer
+			      ((partial remove #{"what" "who" "why" "you"}))
+                  ((partial remove (comp (partial > 2) count)))
+                  ((partial sort-by count >))
+			      ((partial mapcat
+			            #(trip/query
+			              (trip/derby (db-name bot))
+                          (list (format "%%%s%%" %)) :z :y))))))))
 	       vec
 	       (vary-meta assoc :msg msg :bot bot)
 	       befuddled-or-pick-random
