@@ -7,7 +7,7 @@
         (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
 (defmethod responder ::code-sandbox [bot pojo]
-  (println (str (:sender pojo "") " " (:message pojo)))
+  (log (select-keys pojo [:sender :message]))
   (if (not (naughty-forms? (:message pojo)))
     (let [result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
                               (:sandbox-ns bot 'sandbox))
