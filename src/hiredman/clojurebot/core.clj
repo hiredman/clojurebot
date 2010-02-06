@@ -23,7 +23,8 @@
               [hiredman.words :as w])
     (:import (org.jibble.pircbot PircBot)
              (java.util Date Timer TimerTask)
-             (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)))
+             (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)
+             (java.util.logging Logger)))
 
 (defonce *bots* (ref {})) ; This will hold bot objects
 (defonce start-date (Date.))
@@ -37,6 +38,11 @@
 
 ;; this struct is used to pass around messages
 (defstruct junks :channel :sender :login :hostname :message)
+
+(def logger (Logger/getLogger "clojurebot"))
+
+(defn log [x]
+  (.info logger (pr-str x)))
 
 (defn randth
       "random item from sequence"
