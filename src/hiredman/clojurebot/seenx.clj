@@ -34,7 +34,7 @@
 
 (defn user-watch [bot]
       (let [cur (count (.getUsers (:this bot) "#clojure"))
-            pre (Integer/parseInt (:object (first (what-is "max people" bot))))]
+            pre (Integer/parseInt (:object (first (what-is "max people" bot)) "0"))]
         (when (> cur pre)
           (store bot "max people" (str cur)))))
 
