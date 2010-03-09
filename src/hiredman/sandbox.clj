@@ -57,15 +57,17 @@
       (doto (-> "foo.txt" File. FileWriter.) (.write "foo") .close))
 
 (defn de-fang
-      "looks through the macroexpand of a form for things I don't allow"
-      [form notallowed]
-      (if (list? form)
-          (when (not (some notallowed
-                           (tree-seq seq?
-                                     #(let [a (macroexpand %)] (or (and (seq? a) a) (list a)))
-                                     form)))
-              form)
-          form))
+  "looks through the macroexpand of a form for things I don't allow"
+  [form notallowed]
+  (if (coll? form)
+    (when (not
+            (some notallowed
+              (tree-seq coll?
+                #(let [a (macroexpand %)]
+                   (or (and (coll? a) (seq a)) (list a)))
+                form)))
+      form)
+    form))
 
 (defn cond-eval [pred form]
       (if (pred form)
@@ -114,13 +116,15 @@
                             [o e (when (or result (.equals o "")) r)])))
 
 (defn eval-in-box [_string sb-ns]
-  (println _string)
-      (let [form #(-> _string StringReader. PushbackReader. read)
-            thunk (fn []
-                      (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
-                                *read-eval* false
-                                 *ns* (find-ns sb-ns) doc (var my-doc) *print-level* 30]
-                        (eval-in-box-helper (form))))
-            result (thunk-timeout #(sandbox (fn [] (wrap-exceptions thunk))
-                                            (context (domain (empty-perms-list)))) *default-timeout*)]
-        result))
+  (let [form #(-> _string StringReader. PushbackReader. read)
+        thunk (fn []
+                (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
+                          *read-eval* false
+                          *ns* (find-ns sb-ns) doc (var my-doc) *print-level* 30]
+                  (eval-in-box-helper (form))))
+        result (thunk-timeout
+                 #(sandbox
+                    (fn [] (wrap-exceptions thunk))
+                    (context (domain (empty-perms-list))))
+                 *default-timeout*)]
+        (doto result core/log)))
