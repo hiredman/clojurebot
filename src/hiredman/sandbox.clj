@@ -64,7 +64,9 @@
             (some notallowed
               (tree-seq coll?
                 #(let [a (macroexpand %)]
-                   (or (and (coll? a) (seq a)) (list a)))
+                   (if (coll? a)
+                     (seq a)
+                     (list a)))
                 form)))
       form)
     form))
