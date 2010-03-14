@@ -2,7 +2,8 @@
   (:use [hiredman.clojurebot.storage :only (db-name)])
   (:require [hiredman.clojurebot.core :as core]
             [hiredman.triples :as trip]
-            [name.choi.joshua.fnparse :as fp]))
+            [name.choi.joshua.fnparse :as fp]
+            [opennlp.nlp :as nlp]))
 
 ;;BEGIN GARBAGE
 (defmacro string [str] (cons 'fp/conc (map #(list 'fp/lit %) str)))
@@ -100,6 +101,7 @@
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 (defmethod factoid-command-processor :forget [bag]
+  (prn :forget)
   (trip/delete (trip/derby (db-name (:bot (meta bag)))) (:subject bag) (:predicate bag) (:object bag))
   (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag))
                      (format "I forgot that %s %s %s"
@@ -158,26 +160,66 @@
 
 (defmethod befuddled-or-pick-random true [x] (core/befuddled))
 
+(defn mutli-query [bot pos form]
+  (with-meta ((partial mapcat
+    #(trip/query
+      (trip/derby (db-name bot))
+      (list (format form %)) :z :y)) pos)
+             (meta pos)))
+
+(def get-sentences (nlp/make-sentence-detector "EnglishSD.bin.gz"))
+(def tokenize (nlp/make-tokenizer "EnglishTok.bin.gz"))
+(def pos-tag (nlp/make-pos-tagger "tag.bin.gz"))
+
+(def tag (comp pos-tag tokenize))
+
+(def noun-filter (partial filter #(.startsWith (second %) "N")))
+
+(defn foo [x]
+  (try (->> x tokenize pos-tag vec print with-out-str core/log)
+    (catch Exception e
+      (core/log (str e)))))
+
 (core/defresponder2
   {:priority 20
    :name ::lookup
    :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
    :body (fn [bot msg]
            (-> (core/extract-message bot msg)
-	       (.replaceAll "\\?$" "")
-	       ((fn [x]
-		    (let [r (trip/query (trip/derby (db-name bot)) x :y :z)]
-		      (if (> (count r) 0)
-		        r
-		        (-> x fuzzer
-			      ((partial remove #{"what" "who" "why" "you"}))
-                  ((partial remove (comp (partial > 2) count)))
-                  ((partial sort-by count >))
-			      ((partial mapcat
-			            #(trip/query
-			              (trip/derby (db-name bot))
-                          (list (format "%%%s%%" %)) :z :y))))))))
-	       vec
-	       (vary-meta assoc :msg msg :bot bot)
-	       befuddled-or-pick-random
-	       ((fn [x] (core/new-send-out bot :msg (core/who msg) x) x))))})
+	         (.replaceAll "\\?$" "")
+             ((fn [input]
+                (if-let [result (seq (trip/query (trip/derby (db-name bot)) input :y :z))]
+                  result
+                  (-> input
+                    tag
+                    (doto core/log)
+                    noun-filter
+                    ((partial map first))
+                    (#(mutli-query bot % "%%%s%%"))))))
+             vec
+             (vary-meta assoc :msg msg :bot bot)
+             befuddled-or-pick-random
+             ((fn [reply] (core/new-send-out bot :msg (core/who msg) reply) reply))))})
+
+#_(core/defresponder2
+  {:priority 20
+   :name ::lookup
+   :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
+   :body (fn [bot msg]
+           (-> (core/extract-message bot msg)
+             (doto core/log)
+             (doto foo)
+	         (.replaceAll "\\?$" "")
+             ((fn [input]
+                (if-let [result (seq (trip/query (trip/derby (db-name bot)) input :y :z))]
+                  result
+                  (-> input fuzzer set
+                    ((partial remove #{"I"}))
+                    ((fn [possibles]
+                       (if-let [results (seq (mutli-query bot possibles "%% %s %%"))]
+                         results
+                         (mutli-query bot possibles "%%%s%%"))))))))
+             vec
+             (vary-meta assoc :msg msg :bot bot)
+             befuddled-or-pick-random
+             ((fn [reply] (core/new-send-out bot :msg (core/who msg) reply) reply))))})
