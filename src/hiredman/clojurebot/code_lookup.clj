@@ -60,7 +60,8 @@
 
 
 (defn get-file-and-ln [string]
-      (let [a (meta (resolve (symbol string)))]
+      (let [a (meta (try (resolve (symbol string))
+                      (catch Exception _ nil)))]
         [(:line a) (:file a)]))
 
 (defn make-url [[line file]]
