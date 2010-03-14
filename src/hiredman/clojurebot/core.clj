@@ -14,8 +14,7 @@
 ;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
-    (:use (hiredman sandbox)
-          [hiredman.clojurebot.storage :only (db-name)])
+    (:use [hiredman.clojurebot.storage :only (db-name)])
     (:require [hiredman.pqueue :as pq]
               [hiredman.schedule :as sched]
               [hiredman.utilities :as util]
