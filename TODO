@@ -9,3 +9,4 @@
 * s/// factoid editing
 * logging
 * clojars search
+* pointfree transforms
