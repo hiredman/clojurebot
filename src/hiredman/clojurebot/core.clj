@@ -385,7 +385,7 @@
                  a))))))
 
 (defn dump-dict-is [config]
-      (println "Dumping dictionaries")
+      (log "Dumping dictionaries")
       (binding [*out* (-> (dict-file config ".is")
                           java.io.FileWriter.)]
                (prn @dict-is)
@@ -394,7 +394,7 @@
 (defn load-store [bot]
       (send (:store bot)
             (fn [& _]
-              (println "Reading store")
+              (log "Reading store")
               (binding [*in* (-> (dict-file bot ".store") java.io.FileReader. java.io.PushbackReader.)]
                 (with-open [i *in*]
                   (try (read)
@@ -405,7 +405,7 @@
       (add-watch (:store bot)
                  :writer
                  (fn [key ref old-state new-state]
-                   (println "Writing store")
+                   (log "Writing store")
                    (binding [*out* (-> (dict-file bot ".store") java.io.FileWriter.)]
                      (with-open [o *out*] (prn new-state))))))
 
