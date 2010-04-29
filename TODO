@@ -10,3 +10,4 @@
 * logging
 * clojars search
 * pointfree transforms
+* use clj-sandbox
