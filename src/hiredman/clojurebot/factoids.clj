@@ -94,9 +94,9 @@
 (def factoid-command
      (fp/alt index-count
              indexed-lookup
+             forget
              definition-add
              definition
-             forget
              predicate-style-definition))
 
 ;;this should be ditched
