@@ -76,7 +76,7 @@
         (eval form)
         (throw (java.lang.Exception. "DENIED"))))
 
-;(enable-security-manager) ; This doesn't need to be enabled by default
+(enable-security-manager) ; This doesn't need to be enabled by default
 
 (defn killall-thrdgrp [thg]
       (let [a (make-array Thread (.activeCount thg))
