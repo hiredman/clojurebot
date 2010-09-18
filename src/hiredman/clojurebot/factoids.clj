@@ -223,18 +223,20 @@
                          (list (format form %)) :z :y)) pos)
     (meta pos)))
 
-(def get-sentences (nlp/make-sentence-detector "EnglishSD.bin.gz"))
-(def tokenize (nlp/make-tokenizer "EnglishTok.bin.gz"))
-(def pos-tag (nlp/make-pos-tagger "tag.bin.gz"))
+(def get-sentences (delay (nlp/make-sentence-detector "EnglishSD.bin.gz")))
+(def tokenize (delay (nlp/make-tokenizer "EnglishTok.bin.gz")))
+(def pos-tag (delay (nlp/make-pos-tagger "tag.bin.gz")))
 
 (def tag (comp pos-tag tokenize))
 
 (def noun-filter (partial filter #(.startsWith (second %) "N")))
 
 (defn foo [x]
-  (try (->> x tokenize pos-tag vec print with-out-str core/log)
-       (catch Exception e
-         (core/log (str e)))))
+  (let [pos-tag @pos-tag
+        tokenize @tokenize]
+    (try (->> x tokenize pos-tag vec print with-out-str core/log)
+         (catch Exception e
+           (core/log (str e))))))
 
 (core/defresponder2
   {:priority 20
