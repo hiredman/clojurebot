@@ -39,7 +39,9 @@
 ;;set up sandbox namespace for evaling code
 (binding [*ns* (create-ns (:sandbox-ns bot-attributes))]
   (clojure.core/refer 'clojure.core)
-  (import '(java.util Date)))
+  (import '(java.util Date))
+  (intern *ns* 'Thread (fn [& _] (throw (Exception. "DENIED"))))
+  (intern *ns* 'java.lang.Thread (fn [& _] (throw (Exception. "DENIED")))))
 
 
 (defonce #^{:private true} bot 

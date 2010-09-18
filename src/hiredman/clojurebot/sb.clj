@@ -3,16 +3,19 @@
         (hiredman sandbox)))
 
 (defn naughty-forms? [strang]
-      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"}]
+      (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot" "java.lang.Thread."}]
         (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
 (defmethod responder ::code-sandbox [bot pojo]
   (log (select-keys pojo [:sender :message]))
-  (if (not (naughty-forms? (:message pojo)))
+  (if (and (not (naughty-forms? (:message pojo)))
+           (not= (:sender pojo) "itistoday")
+           (not= (:sender pojo) "Lajla"))
     (let [result (try (eval-in-box (.replaceAll (:message pojo) "^," "")
                               (:sandbox-ns bot 'sandbox))
                       (catch Exception e
-                             (str "Eval-in-box threw an exception:" (.getMessage e))))]
+                        (str "Eval-in-box threw an exception:"
+                             (.getMessage e))))]
       (if (vector? result)
         (doseq [i (reverse result)]
           (new-send-out bot :msg pojo (str i)))
