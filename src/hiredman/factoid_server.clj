@@ -46,4 +46,5 @@
   (fn [r] (f r bot)))
 
 (defn factoid-server [port bot]
-  (http-server (factoid-server-fn bot) port))
+  (http-server (factoid-server-fn bot) port)
+  bot)

@@ -69,11 +69,13 @@
 ;(def chat (muc con "clojure@conference.thelastcitadel.com"))
 
 (defn connect-to-muc [bot mu]
-  (muc (:xmpp-connection bot) mu))
+  (muc (:xmpp-connection bot) mu)
+  bot)
 
 (defn setup-listener [bot]
   (.addPacketListener (:xmpp-connection bot)
                       (packet-listener #^{:type :xmpp} {:con (:xmpp-connection bot) :nick "clojurebot"})
                       (OrFilter.
                         (MessageTypeFilter. (Message$Type/fromString "groupchat"))
-                        (MessageTypeFilter. (Message$Type/fromString "chat")))))
+                        (MessageTypeFilter. (Message$Type/fromString "chat"))))
+  bot)

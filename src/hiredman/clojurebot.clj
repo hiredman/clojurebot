@@ -12,29 +12,19 @@
 (set! *warn-on-reflection* true)
 
 (import '(sun.misc Signal SignalHandler))
-(defn install [sig handler]
-    (Signal/handle (Signal. (name sig))
-                   (proxy [SignalHandler] []
-                     (handle [sig] (handler sig)))))
 
-(let [properties (java.util.Properties.)
-      p (fn [x] (.getProperty properties x))]
-  (with-open [properties-file (-> (fn []) class
-                                (.getResourceAsStream
-                                  "/clojurebot.properties"))]
-    (.load properties properties-file)
-    (defonce #^{:private true} bot-attributes
-      {:nick "clojurebot"
-       :network "irc.freenode.net"
-       :channel "#clojurebot"
-       :tweet true
-       :delicious [(p "delicious.user") (p "delicious.password")]
-       :twitter [(p "twitter.user") (p "twitter.password")]
-       :sandbox-ns 'sandbox
-       :store (agent {})
-       :factoid-server-port 4444
-       :xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
-       :dict-dir (.concat (System/getProperty "user.dir") "/")}))) ;; must include final slash
+(defn install [sig handler]
+  (Signal/handle (Signal. (name sig))
+                 (proxy [SignalHandler] []
+                   (handle [sig] (handler sig)))))
+
+(defn props []
+  (let [properties (java.util.Properties.)]
+    (with-open [properties-file (-> (fn []) class
+                                    (.getResourceAsStream
+                                     "/clojurebot.properties"))]
+      (.load properties properties-file)
+      (into {} properties))))
 
 ;;set up sandbox namespace for evaling code
 (binding [*ns* (create-ns (:sandbox-ns bot-attributes))]
@@ -43,20 +33,44 @@
   (intern *ns* 'Thread (fn [& _] (throw (Exception. "DENIED"))))
   (intern *ns* 'java.lang.Thread (fn [& _] (throw (Exception. "DENIED")))))
 
+(defn connect [bot]
+  (.connect (:this bot) (:network bot))
+  bot)
 
-(defonce #^{:private true} bot 
-     (run-clojurebot mybot bot-attributes
-       (load-dicts mybot)
-       (load-store mybot)
-       (watch-store mybot)
-       (start-dump-thread mybot)
-       ((fn [b]
-          (install :TERM (fn [s] (.disconnect b) (System/exit 0)))) mybot)
-       (xmpp/setup-listener mybot)
-       (xmpp/connect-to-muc mybot "clojure@conference.thelastcitadel.com")
-       (hiredman.clojurebot.github/start-github-watch mybot "#clojure")
-       (factoid-server (:factoid-server-port mybot) mybot)
-       (hiredman.clojurebot.clojars/go mybot)
-       (println "Done loading!")))
+(defn join [bot]
+  (doseq [channel (cons (:channel bot) (:channels bot))]
+    (.joinChannel (:this bot) channel))
+  bot)
 
-
+(defn -main []
+  (-> (let [p (props)]
+        {:nick "clojurebot"
+         :network "irc.freenode.net"
+         :channel "#clojurebot"
+         :tweet true
+         :delicious [(p "delicious.user") (p "delicious.password")]
+         :twitter [(p "twitter.user") (p "twitter.password")]
+         :sandbox-ns 'sandbox
+         :store (agent {})
+         :factoid-server-port 4444
+         :xmpp-connection (xmpp/connect (p "xmpp.jid") (p "xmpp.password"))
+         ;; must include final slash
+         :dict-dir (.concat (System/getProperty "user.dir") "/")})
+      ((fn [attrs]
+         (let [bot (pircbot attrs)]
+           (wall-hack-method
+            PircBot :setName [String] (:this bot) (:nick bot))
+           bot)))
+      connect
+      join
+      load-dicts
+      load-store
+      watch-store
+      start-dump-thread
+      xmpp/setup-listener
+      xmpp/connect-to-muc
+      ((partial factoid-server (:factoid-server-port mybot)))
+      hiredman.clojurebot.clojars/go
+      ((fn [bot]
+         (intern *ns* (with-meta 'bot {:private true}) b))))
+  (println "Done loading!"))

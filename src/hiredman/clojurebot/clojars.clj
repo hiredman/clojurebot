@@ -37,4 +37,5 @@
      :task #(task bot "#clojure")
      :start-delay 0
      :rate 30
-     :unit (:minutes sched/unit)}))
+     :unit (:minutes sched/unit)})
+  bot)

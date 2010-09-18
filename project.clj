@@ -11,8 +11,5 @@
                  [jivesoftware/smack "3.0.4"]
                  [org.clojars.hiredman/fnparse "2.2.4"]
                  [org.clojars.thnetos/opennlp "0.0.3"]
-                 [org.hornetq/hornetq-core-client "2.0.0.GA"]
-                 [org.hornetq/hornetq-transports "2.0.0.GA"]
-                 [org.jboss.netty/netty "3.1.0.GA"]
                  [jivesoftware/smackx "3.0.4"]]
-  :dev-dependencies [[leiningen/lein-swank "1.0.0-SNAPSHOT"]])
+  :dev-dependencies [[swank-clojure "1.2.1"]])
