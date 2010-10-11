@@ -9,7 +9,7 @@
 (def google-java-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/jvm/")
 ;;http://code.google.com/p/clojure/source/browse/trunk/src/jvm/clojure/lang/Cons.java?r=1334
 
-(def contrib-url "http://github.com/richhickey/clojure-contrib/raw/gh-pages/api-index.json")
+(def contrib-url "http://github.com/clojure/clojure-contrib/raw/gh-pages/api-index.json")
 
 (def contrib (try (json/decode-from-str (get-url contrib-url)) (catch Exception e nil)))
 
@@ -47,7 +47,7 @@
 
 (def clojurebot-rev (get-sha-number))
 
-(def foo "http://github.com/richhickey/clojure-contrib/blob/7ea70da82e42416864e2f97e3d314aced34af682/src/clojure/contrib/")
+(def foo "http://github.com/clojure/clojure-contrib/blob/7ea70da82e42416864e2f97e3d314aced34af682/src/clojure/contrib/")
 (def bar "http://code.google.com/p/clojure-contrib/source/browse/trunk/src/clojure/contrib/")
 
 (defn google-code->github-url
@@ -55,7 +55,7 @@
   [url project rev]
   (-> url
     (.replaceAll "http://code.google.com/p/clojure/source/browse/trunk"
-                 (str "http://github.com/richhickey/" project "/blob/" rev))
+                 (str "http://github.com/clojure/" project "/blob/" rev))
     (.replaceAll "\\?r=(.*)#(\\d+)" "#LID$2")))
 
 
