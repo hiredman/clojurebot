@@ -7,7 +7,8 @@
                                  simplyscala clojars tao)
             [hiredman.clojurebot.xmpp :as xmpp]
             [hiredman.utilities :as util]
-            [hiredman.twitter :as twitter]))
+            [hiredman.twitter :as twitter])
+  (:import (org.jibble.pircbot PircBot)))
 
 (set! *warn-on-reflection* true)
 
