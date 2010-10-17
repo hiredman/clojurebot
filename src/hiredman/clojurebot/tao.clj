@@ -8,8 +8,6 @@
 
 (def thetao "https://twitter.com/statuses/user_timeline/200313960.rss")
 
-(def seen-entries (atom #{}))
-
 (defn get-entries []
   (->> thetao util/get-url .getBytes ByteArrayInputStream. clojure.xml/parse
        (tree-seq map? (comp seq :content))
@@ -21,35 +19,34 @@
        (map first)
        (map #(.replaceAll % "^WonderTao: " ""))))
 
-(def Q (ref PersistentQueue/EMPTY))
-
-(defn enqueue [string]
-  (dosync (alter Q conj string)))
-
-(defn de-enqueue []
-  (dosync
-   (let [item (peek (ensure Q))]
-     (alter Q pop)
-     item)))
-
 (defn go [bot channel]
-  (sched/fixedrate
-   {:task (fn []
-            (let [entries (get-entries)
-                  new-entries (difference (set entries) @seen-entries)
-                  ordered-new-entries (filter new-entries entries)]
-              (reset! seen-entries (set new-entries))
-              (doseq [i ordered-new-entries]
-                (enqueue i))))
-    :start-delay 1
-    :rate 60
-    :unit (:minutes sched/unit)})
-  (sched/fixedrate
-   {:task (fn []
-            (when-let [msg (de-enqueue)]
-              (.sendMessage (:this bot) channel msg)))
-    :start-delay 1
-    :rate 5
-    :unit (:minutes sched/unit)}))
+  (let [seen-entries (atom #{})
+        Q (ref PersistentQueue/EMPTY)]
+    (letfn [(enqueue [string]
+              (dosync (alter Q conj string)))
+            (de-enqueue []
+              (dosync
+               (let [item (peek (ensure Q))]
+                 (alter Q pop)
+                 item)))]
+      (sched/fixedrate
+       {:task (fn []
+                (let [entries (get-entries)
+                      new-entries (difference (set entries) @seen-entries)
+                      ordered-new-entries (reverse (filter new-entries entries))]
+                  (reset! seen-entries (set new-entries))
+                  (doseq [i ordered-new-entries]
+                    (enqueue i))))
+        :start-delay 1
+        :rate 60
+        :unit (:minutes sched/unit)})
+      (sched/fixedrate
+       {:task (fn []
+                (Thread/sleep (* (rand-int 3) 1000 60 (rand-int 5)))
+                (when-let [msg (de-enqueue)]
+                  (.sendMessage (:this bot) channel msg)))
+        :start-delay 1
+        :rate 5
+        :unit (:minutes sched/unit)}))))
 
 
