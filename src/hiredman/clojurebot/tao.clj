@@ -19,7 +19,7 @@
        (map first)
        (map #(.replaceAll % "^WonderTao: " ""))))
 
-(defn go [bot channel]
+(defn go [bot channel n]
   (let [seen-entries (atom #{})
         Q (ref PersistentQueue/EMPTY)]
     (letfn [(enqueue [string]
@@ -46,7 +46,7 @@
                 (when-let [msg (de-enqueue)]
                   (.sendMessage (:this bot) channel msg)))
         :start-delay 1
-        :rate 5
+        :rate n
         :unit (:minutes sched/unit)}))))
 
 

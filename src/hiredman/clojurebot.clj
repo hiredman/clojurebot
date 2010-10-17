@@ -4,7 +4,7 @@
   (:require (hiredman.clojurebot core dice sb seenx google delicious noise
                                  stock-quote factoids translate
                                  code-lookup javadoc ticket github xmpp
-                                 simplyscala clojars)
+                                 simplyscala clojars tao)
             [hiredman.clojurebot.xmpp :as xmpp]
             [hiredman.utilities :as util]
             [hiredman.twitter :as twitter]))
@@ -71,6 +71,7 @@
       xmpp/connect-to-muc
       ((partial factoid-server (:factoid-server-port mybot)))
       hiredman.clojurebot.clojars/go
+      (hiredman.clojurebot.tao/go "#clojurebot" 5)
       ((fn [bot]
          (intern *ns* (with-meta 'bot {:private true}) b))))
   (println "Done loading!"))
