@@ -330,7 +330,7 @@
 
 (defn handleMessage [this channel sender login hostname message]
   (try
-    (let [bot (get @*bots* this)
+    (let [bot this
           msg (struct junks channel sender login hostname message)]
       (future (trampoline responder bot (vary-meta msg assoc :addressed? (addressed? bot msg)))))
     (catch Exception e (.printStackTrace e))))
@@ -340,24 +340,27 @@
 
 (defn join-or-part [this event channel sender login hostname]
   (try
-    (trampoline responder (get @*bots* this)
+    (trampoline responder this
                 (assoc (struct junks channel sender login hostname "") event true))
     (catch Exception e (.printStackTrace e))))
 
 (defn pircbot [bot-config]
-  (let [bot-obj
+  (let [x (promise)
+        bot-obj
         (proxy [PircBot] []
           (onJoin [channel sender login hostname]
-                  (join-or-part this :join channel sender login hostname))
+            (join-or-part @x :join channel sender login hostname))
           (onPart [channel sender login hostname]
-                  (join-or-part this :part channel sender login hostname))
+            (join-or-part @x :part channel sender login hostname))
           (onQuit [nick login hostname reason]
-                  (join-or-part this :quit nil nick login hostname))
+            (join-or-part @x :quit nil nick login hostname))
           (onMessage [channel sender login hostname message]
-                     (handleMessage this channel sender login hostname message))
+            (handleMessage @x channel sender login hostname message))
           (onPrivateMessage [sender login hostname message]
-                            (handlePrivateMessage this sender login hostname message)))]
-    (merge bot-config {:this bot-obj})))
+            (handlePrivateMessage @x sender login hostname message)))]
+    (let [w (merge bot-config {:this bot-obj})]
+      (x w)
+      w)))
 
 (defn dict-file [config suffix]
   (let [file (-> (str (:dict-dir config "./") (:dict-basename config (:nick config)) suffix)
