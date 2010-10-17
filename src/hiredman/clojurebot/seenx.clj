@@ -33,6 +33,7 @@
                                         ;(remove-dispatch-hook ::seenx)
 
 (defn user-watch [bot]
+  (println bot)
   (let [cur (count (or (.getUsers (:this bot) "#clojure") 0))
         pre (Integer/parseInt (:object (first (what-is "max people" bot)) "0"))]
     (when (> cur pre)

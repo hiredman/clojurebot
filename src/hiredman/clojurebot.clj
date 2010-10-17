@@ -75,5 +75,7 @@
            hiredman.clojurebot.clojars/go
            (hiredman.clojurebot.tao/go "#clojurebot" 5))))
       ((fn [bot]
-         (intern *ns* (with-meta 'bot {:private true}) bot))))
+         (intern (create-ns 'hiredman.clojurebot)
+                 (with-meta 'bot {:private true})
+                 bot))))
   (println "Done loading!"))
