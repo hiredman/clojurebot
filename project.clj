@@ -11,5 +11,6 @@
                  [jivesoftware/smack "3.0.4"]
                  [org.clojars.hiredman/fnparse "2.2.4"]
                  [org.clojars.thnetos/opennlp "0.0.3"]
-                 [jivesoftware/smackx "3.0.4"]]
+                 [jivesoftware/smackx "3.0.4"]
+                 [org.danlarkin/clojure-json "1.1"]]
   :dev-dependencies [[swank-clojure "1.2.1"]])
