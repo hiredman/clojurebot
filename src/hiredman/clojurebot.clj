@@ -59,20 +59,21 @@
          :dict-dir (.concat (System/getProperty "user.dir") "/")})
       ((fn [attrs]
          (let [bot (pircbot attrs)]
-           (wall-hack-method
-            PircBot :setName [String] (:this bot) (:nick bot))
+           (wall-hack-method PircBot :setName [String] (:this bot) (:nick bot))
            bot)))
       connect
       join
-      load-dicts
-      load-store
-      watch-store
-      start-dump-thread
-      xmpp/setup-listener
-      xmpp/connect-to-muc
-      ((fn [bot] (factoid-server (:factoid-server-port bot) bot)))
-      hiredman.clojurebot.clojars/go
-      (hiredman.clojurebot.tao/go "#clojurebot" 5)
+      ((fn [bot]
+         (doto bot
+           load-dicts
+           load-store
+           watch-store
+           start-dump-thread
+           xmpp/setup-listener
+           xmpp/connect-to-muc
+           ((fn [bot] (factoid-server (:factoid-server-port bot) bot)))
+           hiredman.clojurebot.clojars/go
+           (hiredman.clojurebot.tao/go "#clojurebot" 5))))
       ((fn [bot]
          (intern *ns* (with-meta 'bot {:private true}) bot))))
   (println "Done loading!"))
