@@ -69,7 +69,7 @@
       start-dump-thread
       xmpp/setup-listener
       xmpp/connect-to-muc
-      ((partial factoid-server (:factoid-server-port mybot)))
+      ((fn [bot] (factoid-server (:factoid-server-port bot) bot)))
       hiredman.clojurebot.clojars/go
       (hiredman.clojurebot.tao/go "#clojurebot" 5)
       ((fn [bot]
