@@ -27,7 +27,7 @@
       (into {} properties))))
 
 ;;set up sandbox namespace for evaling code
-(binding [*ns* (create-ns (:sandbox-ns bot-attributes))]
+(binding [*ns* (create-ns 'sandbox)]
   (clojure.core/refer 'clojure.core)
   (import '(java.util Date))
   (intern *ns* 'Thread (fn [& _] (throw (Exception. "DENIED"))))
@@ -73,5 +73,5 @@
       hiredman.clojurebot.clojars/go
       (hiredman.clojurebot.tao/go "#clojurebot" 5)
       ((fn [bot]
-         (intern *ns* (with-meta 'bot {:private true}) b))))
+         (intern *ns* (with-meta 'bot {:private true}) bot))))
   (println "Done loading!"))
