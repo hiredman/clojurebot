@@ -1,3 +1,4 @@
 {:nick "clojurebotIII"
  :channels ["#clojurebot"]
- :server "irc.freenode.net"}
+ :server "irc.freenode.net"
+ :database "/tmp/bot.db"}
