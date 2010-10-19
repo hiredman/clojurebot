@@ -1,6 +1,7 @@
 (ns clojurebot.core
   (:use [conduit.irc :only [a-irc irc-run]]
         [conduit.core]
+        [clojurebot.conduit :only [a-deref]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
                                              factoid-command?
                                              factoid-command-run]])
@@ -42,21 +43,24 @@
           consequent
           pass-through)))
 
+(def-proc null [x]
+  (println "Bit Bucket:" x)
+  [])
+
+(def pipeline (a-if addressed?
+                    (a-comp remove-nick-prefix
+                            (a-deref (a-if (comp factoid-command? :message)
+                                           factoid-command-run
+                                           (a-arr factoid-lookup))))
+                    null))
+
 (defn clojurebot [config]
   (a-irc
    (:server config)
    (:nick config)
    (a-comp
     (a-arr (fn [[type bag]] (assoc bag :type type :config config)))
-    (a-if addressed?
-          (a-comp remove-nick-prefix
-                  (a-cond
-                   (comp factoid-command? :message)
-                   factoid-command-run
-                   
-                   (constantly true)
-                   (a-arr factoid-lookup)))
-          pass-through))))
+    (a-deref #'pipeline))))
 
 (defn -main [& [config-file]]
   (let [config (read-string (slurp config-file))]
