@@ -1,10 +1,15 @@
 (ns clojurebot.core
   (:use [conduit.irc :only [a-irc irc-run]]
         [conduit.core]
-        [clojurebot.conduit :only [a-indirect]]
+        [clojurebot.conduit :only [a-indirect a-if a-cond]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
                                              factoid-command?
                                              factoid-command-run]]
+        [hiredman.clojurebot.ticket :only [ticket-search?
+                                           search-tickets
+                                           ticket-search?
+                                           ticket-query?
+                                           get-ticket-n]]
         [clojure.contrib.logging :only [info]])
   (:gen-class))
 
@@ -17,45 +22,34 @@
            (re-find (re-pattern (str "^" (.getNick bot) ",")) message)
            (nil? (:channel bag)))))
 
-(defn a-if [a b c]
-  (a-comp (a-all (a-arr (comp boolean a))
-                 pass-through)
-          (a-select
-           true b
-           false c)))
-
 (def-arr remove-nick-prefix [{:keys [bot] :as bag}]
   (update-in bag [:message]
              (fn [message]
                (let [prefixes [(str (.getNick bot) ":")
                                (str (.getNick bot) ",")
                                "~"]]
-                 (reduce
-                  #(.replaceAll %1 (str (re-pattern %2)) "")
-                  message
-                  prefixes)))))
-
-(defn a-cond [predicate consequent & more]
-  (if (seq more)
-    (a-if predicate
-          consequent
-          (apply a-cond more))
-    (a-if predicate
-          consequent
-          pass-through)))
+                 (.trim (reduce
+                         #(.replaceAll %1 (str (re-pattern %2)) "")
+                         message
+                         prefixes))))))
 
 (def-proc null [x]
   (println "Bit Bucket:" x)
   [])
 
-(def factoid-pipeline
+(def addressed-pipeline
   (a-comp remove-nick-prefix
-          (a-cond
-           (comp factoid-command? :message)
-           (a-arr factoid-command-run)
+          (a-cond ticket-query?
+                  (a-arr get-ticket-n)
 
-           (constantly true)
-           (a-arr factoid-lookup))))
+                  ticket-search?
+                  (a-arr search-tickets)
+
+                  (comp factoid-command? :message)
+                  (a-arr factoid-command-run)
+
+                  (constantly true)
+                  (a-arr factoid-lookup))))
 
 (defn question? [{:keys [message]}]
   (and message
@@ -63,16 +57,16 @@
        (.endsWith message "?")))
 
 (def pipeline
-  (a-except (a-cond
-             addressed?
-             factoid-pipeline
+  (a-except
+   (a-cond addressed?
+           addressed-pipeline
 
-             question?
-             (a-arr factoid-lookup)
+           question?
+           (a-arr factoid-lookup)
 
-             (constantly true)
-             null)
-            (a-arr (comp #(.printStackTrace %) first))))
+           (constantly true)
+           null)
+   (a-arr (comp #(.printStackTrace %) first))))
 
 (defn clojurebot [config]
   (a-irc

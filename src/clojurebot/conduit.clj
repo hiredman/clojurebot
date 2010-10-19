@@ -14,3 +14,19 @@
                       (fn []
                         (let [[new-value new-fn] (((:scatter-gather @proc-ref) x))]
                           [new-value this-fn])))))
+
+(defn a-if [a b c]
+  (a-comp (a-all (a-arr (comp boolean a))
+                 pass-through)
+          (a-select
+           true b
+           false c)))
+
+(defn a-cond [predicate consequent & more]
+  (if (seq more)
+    (a-if predicate
+          consequent
+          (apply a-cond more))
+    (a-if predicate
+          consequent
+          pass-through)))
