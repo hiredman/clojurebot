@@ -216,8 +216,8 @@
   "returns seq like ([\"#clojure\" (\"somenick\" \"someothernicl\")])
       for ever channel the bot is in"
   [bot]
-  (for [channel (.getChannels (:this bot))]
-    [channel (map (comp :nick bean) (.getUsers (:this bot) channel))]))
+  (for [channel (.getChannels bot)]
+    [channel (map (comp :nick bean) (.getUsers bot channel))]))
 
 (defn see-nick?
   "do I see someone with the nickname nick? returns nil or a seq of channels where I see him"

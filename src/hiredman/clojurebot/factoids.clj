@@ -160,17 +160,17 @@
 
 
 (defn factoid-command? [message]
-  (and (not (.endsWith  message "?"))
-       (factoid-command {:remainder (seq message)})))
+  (and (not (.endsWith message "?"))
+       (doto (factoid-command {:remainder (seq message)})
+         println)))
 
 (defn factoid-command-run [{:keys [config message]}]
+  (println "@factoid-command-run" config message)
   (factoid-command-processor
    config
-   (doto
-       (first
-        (factoid-command
-         {:remainder (seq message)}))
-     (-> meta println))))
+   (first
+    (factoid-command
+     {:remainder (seq message)}))))
 
 
                                         ;(core/remove-dispatch-hook ::factoids)
@@ -201,15 +201,19 @@
      (format "%s %s %s" term pred defi))
    {"#who" sender "#someone" (core/random-person bot)}))
 
-                                        ;(core/remove-dispatch-hook ::lookup)
 
-(defmulti #^{:doc "" :private true} befuddled-or-pick-random empty?)
+(defmulti #^{:doc "" :private true} befuddled-or-pick-random (comp empty? first list))
 
-(defmethod befuddled-or-pick-random false [x]
+(defmethod befuddled-or-pick-random false [x bag]
+  (println x bag)
   (-> x
       ((fn [x] (x (rand-int (count x)))))
       ((fn [{:keys [subject object predicate]}]
-         (prep-reply (:sender (:msg (meta x))) subject predicate object (:bot (meta x)))))))
+         (prep-reply (:sender bag)
+                     subject
+                     predicate
+                     object
+                     (:bot bag))))))
 
 (defmethod befuddled-or-pick-random true [x] (core/befuddled))
 
@@ -237,10 +241,12 @@
          (catch Exception e
            (core/log (str e))))))
 
-(defn factoid-lookup [{:keys [message config]}]
-  (-> message
+(defn factoid-lookup [{:keys [message config] :as bag}]
+  (println "@factoid-lookup")
+  (-> (.trim message)
       (.replaceAll "\\?$" "")
       ((fn [input]
+         (println "input:" input)
          (if-let [result (seq (trip/query (trip/derby (db-name config)) input :y :z))]
            result
            (-> input
@@ -249,7 +255,7 @@
                ((partial map first))
                (#(mutli-query config % "%%%s%%"))))))
       vec
-      befuddled-or-pick-random))
+      (befuddled-or-pick-random bag)))
 
 (core/defresponder2
   {:priority 20
