@@ -215,7 +215,7 @@
                      object
                      (:bot bag))))))
 
-(defmethod befuddled-or-pick-random true [x] (core/befuddled))
+(defmethod befuddled-or-pick-random true [x bag] (core/befuddled))
 
 (defn mutli-query [config pos form]
   (with-meta ((partial mapcat
@@ -241,19 +241,19 @@
          (catch Exception e
            (core/log (str e))))))
 
+(defn qw [input config]
+  (if-let [result (seq (trip/query (trip/derby (db-name config))
+                                   input :y :z))]
+    (do (println result) result)
+    (-> input
+        tag
+        noun-filter
+        ((partial map first))
+        (#(mutli-query config % "%%%s%%")))))
+
 (defn factoid-lookup [{:keys [message config] :as bag}]
-  (println "@factoid-lookup")
-  (-> (.trim message)
-      (.replaceAll "\\?$" "")
-      ((fn [input]
-         (println "input:" input)
-         (if-let [result (seq (trip/query (trip/derby (db-name config)) input :y :z))]
-           result
-           (-> input
-               tag
-               noun-filter
-               ((partial map first))
-               (#(mutli-query config % "%%%s%%"))))))
+  (-> (.replaceAll (.trim message) "\\?$" "")
+      (qw config)
       vec
       (befuddled-or-pick-random bag)))
 

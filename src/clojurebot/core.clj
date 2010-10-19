@@ -4,7 +4,8 @@
         [clojurebot.conduit :only [a-indirect]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
                                              factoid-command?
-                                             factoid-command-run]])
+                                             factoid-command-run]]
+        [clojure.contrib.logging :only [info]])
   (:gen-class))
 
 (defn addressed?
@@ -47,12 +48,31 @@
   (println "Bit Bucket:" x)
   [])
 
-(def pipeline (a-if addressed?
-                    (a-comp remove-nick-prefix
-                            (a-if (comp factoid-command? :message)
-                                  (a-arr factoid-command-run)
-                                  (a-arr factoid-lookup)))
-                    null))
+(def factoid-pipeline
+  (a-comp remove-nick-prefix
+          (a-cond
+           (comp factoid-command? :message)
+           (a-arr factoid-command-run)
+
+           (constantly true)
+           (a-arr factoid-lookup))))
+
+(defn question? [{:keys [message]}]
+  (and message
+       (= 1 (count (.split message " ")))
+       (.endsWith message "?")))
+
+(def pipeline
+  (a-except (a-cond
+             addressed?
+             factoid-pipeline
+
+             question?
+             (a-arr factoid-lookup)
+
+             (constantly true)
+             null)
+            (a-arr (comp #(.printStackTrace %) first))))
 
 (defn clojurebot [config]
   (a-irc
