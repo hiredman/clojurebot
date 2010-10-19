@@ -1,6 +1,4 @@
 (ns hiredman.clojurebot
-  (:use (hiredman.clojurebot core svn)
-        [hiredman.factoid-server :only (factoid-server)])
   (:require (hiredman.clojurebot core dice sb seenx google delicious noise
                                  stock-quote factoids translate
                                  code-lookup javadoc ticket github xmpp
@@ -70,7 +68,7 @@
            watch-store
            start-dump-thread
            xmpp/setup-listener
-           xmpp/connect-to-muc
+           (xmpp/connect-to-muc "clojure@thelastcitadel.com")
            ((fn [bot] (factoid-server (:factoid-server-port bot) bot)))
            hiredman.clojurebot.clojars/go
            (hiredman.clojurebot.tao/go "#clojurebot" 5))))
