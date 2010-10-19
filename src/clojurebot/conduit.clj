@@ -1,7 +1,7 @@
 (ns clojurebot.conduit
   (:use [conduit.core]))
 
-(defn a-deref [proc-ref]
+(defn a-indirect [proc-ref]
   (assoc pass-through
     :type :deref
     :reply (fn this-fn [x]
