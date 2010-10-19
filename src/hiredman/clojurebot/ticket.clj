@@ -38,12 +38,12 @@
 
 (declare search-tickets-for)
 
-(core/defresponder ::contrib-ticket-n 0
-  (core/dfn (and (re-find contrib-ticket (core/extract-message bot msg))
-                 (:addressed? (meta msg)))) ;;
-  (let [m (core/extract-message bot msg)
-        n (.replaceAll m (.toString contrib-ticket) "$1")]
-    (core/new-send-out bot :msg msg (str (prn-str (assoc (binding [url contrib-url] (ticket-nth n)) :url (symbol (util/tinyurl (str contrib-url n)))))))))
+(defn contrib-ticket-query? [{:keys [message]}]
+  (re-find contrib-ticket message))
+
+(defn get-contrib-ticket-n [{:keys [message]}]
+  (let [n (.replaceAll message (.toString contrib-ticket) "$1")]
+    (prn-str (assoc (binding [url contrib-url] (ticket-nth n)) :url (symbol (util/tinyurl (str contrib-url n)))))))
 
 (defn startparse-tagsoup [s ch]
   (let [p (org.ccil.cowan.tagsoup.Parser.)]

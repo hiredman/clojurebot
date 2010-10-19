@@ -9,7 +9,9 @@
                                            search-tickets
                                            ticket-search?
                                            ticket-query?
-                                           get-ticket-n]]
+                                           get-ticket-n
+                                           contrib-ticket-query?
+                                           get-contrib-ticket-n]]
         [clojure.contrib.logging :only [info]])
   (:gen-class))
 
@@ -34,13 +36,16 @@
                          prefixes))))))
 
 (def-proc null [x]
-  (println "Bit Bucket:" x)
+  (info (str "Bit Bucket:" x))
   [])
 
 (def addressed-pipeline
   (a-comp remove-nick-prefix
           (a-cond ticket-query?
                   (a-arr get-ticket-n)
+
+                  contrib-ticket-query?
+                  (a-arr get-contrib-ticket-n)
 
                   ticket-search?
                   (a-arr search-tickets)
@@ -61,12 +66,12 @@
    (a-cond addressed?
            addressed-pipeline
 
-           question?
+           question? ;ping? => PONG!
            (a-arr factoid-lookup)
 
            (constantly true)
            null)
-   (a-arr (comp #(.printStackTrace %) first))))
+   (a-arr (comp #(doto % .printStackTrace) first))))
 
 (defn clojurebot [config]
   (a-irc
