@@ -127,7 +127,7 @@
   (let [config (read-string (slurp config-file))]
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
-    (dotimes [_ 4]
+    (dotimes [_ (:threads config)]
       (future
         (apply irc-run
                (clojurebot config)
