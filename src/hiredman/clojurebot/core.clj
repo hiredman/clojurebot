@@ -4,14 +4,7 @@
 ;;   maintained."
 ;;
 ;;
-;; [01:30] <uhelp> lexxan: Since Mon May  2 17:22:46 2005
-;;                 there have been 0 modifications and 0 questions.
-;;                 I have been awake for 7 minutes and 36 seconds
-;;                 this session, and currently reference 19
-;;                 factoids. Addressing is in optional mode.
-
-
-                                        ;java -server -ms16m -mx64m -Xss128m
+;;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
   (:use [hiredman.clojurebot.storage :only (db-name)])
@@ -25,7 +18,6 @@
            (java.util.concurrent ScheduledThreadPoolExecutor TimeUnit)
            (java.util.logging Logger)))
 
-(defonce *bots* (ref {})) ; This will hold bot objects
 (defonce start-date (Date.))
 
 (defonce task-runner sched/task-runner)
@@ -161,42 +153,6 @@
   (doseq [c (.getChannels (:this bot))]
     (fn c)))
 
-;;(defn term-lists
-;;      "generates permutions of the words in string"
-;;      [msg words-to-ignore]
-;;      (let [x (re-seq #"\w+" msg)
-;;            ignore #(not ((set words-to-ignore) %))]
-;;        (filter ignore (map #(apply str (interpose " " %)) (mapcat #(reverse (inits (drop % x))) (take (count x) (iterate inc 0)))))))
-;;
-;;(defn rlookup
-;;      "look up terms from a seq until you find a defi"
-;;      [terms]
-;;      (when (seq terms)
-;;      (if (@dict-is (first terms))
-;;        (first terms)
-;;        (recur (seq (rest terms))))))
-;;
-;;(defn fuzzy-lookup
-;;      "look up based on permutation"
-;;      [message words-to-ignore]
-;;      (rlookup (term-lists message words-to-ignore)))
-;;
-;;(defn fuzzy-key-lookup
-;;      "look up based on match part of a term"
-;;      [term]
-;;      (randth (filter #(when (> (.lastIndexOf % term) -1) true) (keys @dict-is))))
-
-;;TODO recognize "clojurebot, blah bleh"
-(defn addressed?
-  "is this message prefixed with clojurebot: "
-  [bot msg]
-  (if-let [m (:addressed? (meta msg))]
-    m
-    (when (or (re-find #"^~" (:message msg))
-              (re-find (re-pattern (str "^" (:nick bot) ":")) (:message msg))
-              (nil? (:channel msg)))
-      msg)))
-
 (defn store [bot key value]
   (trip/delete (trip/derby (db-name bot)) key "is" :y)
   (trip/store-triple (trip/derby (db-name bot)) {:s key :o value :p "is"}))
@@ -301,18 +257,6 @@
 (defmulti #^{:doc "currently all messages are routed though this function"} responder dispatch)
 
 (defmethod responder nil [& _])
-
-(defmethod responder ::math [bot pojo]
-  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" (:message pojo))
-        nums (map #(Integer/parseInt %) num-strings)]
-    (send-out :msg bot pojo
-              (let [out (apply  (find-var (symbol "clojure.core" op)) nums)]
-                (if (> out 4)
-                  "*suffusion of yellow*"
-                  out)))))
-
-(defmethod responder ::doc-lookup [bot pojo]
-  #(responder bot (update-in pojo [:message] (fn [x] (str "," x)))))
 
 (defn remove-from-beginning
   "return a string with the concatenation of the given chunks removed if it is
