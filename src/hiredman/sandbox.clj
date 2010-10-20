@@ -15,16 +15,16 @@
   (let [task (FutureTask. thunk)
         thr (Thread. task)]
     (try
-     (.start thr)
-     (.get task seconds TimeUnit/SECONDS)
-     (catch TimeoutException e
-       (.cancel task true)
-       (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out"))))
+      (.start thr)
+      (.get task seconds TimeUnit/SECONDS)
+      (catch TimeoutException e
+        (.cancel task true)
+        (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out"))))
 
 (defn wrap-exceptions
   ([f]
      (wrap-exceptions f #(do
-                           (println (.printStackTrace %))
+                           (.printStackTrace %)
                            (.getMessage %))))
   ([f exception-handler]
      (try (f) (catch Exception e (exception-handler e)))))
@@ -106,14 +106,16 @@
   [s]
   (or (and (instance? clojure.lang.LazySeq s) (doall s)) s))
 
-(defn eval-in-box-helper [form]
+(defn eval-in-box-helper [form {:keys [print-length print-level]}]
   (let [result (cond-eval #(de-fang % *bad-forms*) form)]
     (.close *out*)
     (.close *err*)
-    (let [o (str *out*)
-          e (str *err*)
-          r (prn-str (force-lazy-seq result))]
-      [o e (when (or result (.equals o "")) r)])))
+    (binding [*print-length* print-length
+              *print-level* print-level]
+      (let [o (print-str (.toString *out*))
+            e (print-str (.toString *err*))
+            r (prn-str (force-lazy-seq result))]
+        [o e (when (or result (.equals o "")) r)]))))
 
 (defn eval-in-box [_string sb-ns]
   (let [form #(-> _string StringReader. PushbackReader. read)
@@ -121,10 +123,12 @@
                 (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
                           *read-eval* false
                           *ns* (find-ns sb-ns) doc (var my-doc) *print-level* 30]
-                  (eval-in-box-helper (form))))
+                  (eval-in-box-helper (form)
+                                      {:print-length 10
+                                       :print-level 5})))
         result (thunk-timeout
                 #(sandbox
                   (fn [] (wrap-exceptions thunk))
                   (context (domain (empty-perms-list))))
                 *default-timeout*)]
-    (doto result core/log)))
+    result))

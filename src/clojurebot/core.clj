@@ -12,6 +12,8 @@
                                            get-ticket-n
                                            contrib-ticket-query?
                                            get-contrib-ticket-n]]
+        [hiredman.clojurebot.sb :only [eval-request?
+                                       eval-message]]
         [clojure.contrib.logging :only [info]])
   (:gen-class))
 
@@ -39,6 +41,26 @@
   (info (str "Bit Bucket:" x))
   [])
 
+(defn question? [{:keys [message]}]
+  (and message
+       (= 1 (count (.split message " ")))
+       (.endsWith message "?")))
+
+(def-arr limit-length [x]
+  (let [y (print-str x)
+        out (apply str (take 200 y))]
+    (if (> (count y) 200)
+      (str out "...")
+      out)))
+
+(def clojurebot-eval
+  (a-comp (a-arr eval-message)
+          (a-if vector?
+                (a-arr
+                 (fn [x]
+                   (reduce #(str %1 %2 "\n") x)))
+                pass-through)))
+
 (def addressed-pipeline
   (a-comp remove-nick-prefix
           (a-cond ticket-query?
@@ -56,21 +78,27 @@
                   (constantly true)
                   (a-arr factoid-lookup))))
 
-(defn question? [{:keys [message]}]
-  (and message
-       (= 1 (count (.split message " ")))
-       (.endsWith message "?")))
-
 (def pipeline
   (a-except
-   (a-cond addressed?
-           addressed-pipeline
+   (a-comp (a-cond (fn [{:keys [message]}]
+                     (and message
+                          (or (.startsWith message ",(doc ")
+                              (.startsWith message "(doc "))))
+                   (a-comp (a-arr (fn [_] (info "doc request")))
+                           null)
+            
+                   eval-request?
+                   clojurebot-eval
 
-           question? ;ping? => PONG!
-           (a-arr factoid-lookup)
+                   addressed?
+                   addressed-pipeline
 
-           (constantly true)
-           null)
+                   question?            ;ping? => PONG!
+                   (a-arr factoid-lookup)
+
+                   (constantly true)
+                   null)
+           limit-length)
    (a-arr (comp #(doto % .printStackTrace) first))))
 
 (defn clojurebot [config]
@@ -83,6 +111,8 @@
 
 (defn -main [& [config-file]]
   (let [config (read-string (slurp config-file))]
+    (binding [*ns* (create-ns 'sandbox)]
+      (refer 'clojure.core))
     (dotimes [_ 4]
       (future
         (apply irc-run
