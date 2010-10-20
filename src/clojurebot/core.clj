@@ -86,7 +86,21 @@
                               (.startsWith message "(doc "))))
                    (a-comp (a-arr (fn [_] (info "doc request")))
                            null)
-            
+
+                   (comp #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" %)
+                         str
+                         :message)
+                   (a-arr
+                    (fn [{:keys [message]}]
+                      (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" message)
+                            nums (map #(Integer/parseInt %) num-strings)]
+                        (let [out (-> (symbol "clojure.core" op)
+                                      (find-var)
+                                      (apply nums))]
+                          (if (> out 4)
+                            "*suffusion of yellow*"
+                            out)))))
+
                    eval-request?
                    clojurebot-eval
 
