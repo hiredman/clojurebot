@@ -61,6 +61,33 @@
                    (reduce #(str %1 %2 "\n") x)))
                 pass-through)))
 
+(def-arr reconnect [{:keys [server bot config]}]
+  (info "reconnecting")
+  (.connect bot server))
+
+(def-arr rejoin [{:keys [message bot config]}]
+  (doseq [c (:channels config)]
+    (.joinChannel bot c)))
+
+(defn doc-lookup? [{:keys [message]}]
+  (and message
+       (or (.startsWith message ",(doc ")
+           (.startsWith message "(doc "))))
+
+(def math? (comp #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" %)
+                 str
+                 :message))
+
+(def-arr da-math [{:keys [message]}]
+  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" message)
+        nums (map #(Integer/parseInt %) num-strings)]
+    (let [out (-> (symbol "clojure.core" op)
+                  (find-var)
+                  (apply nums))]
+      (if (> out 4)
+        "*suffusion of yellow*"
+        out))))
+
 (def addressed-pipeline
   (a-comp remove-nick-prefix
           (a-cond ticket-query?
@@ -80,26 +107,12 @@
 
 (def pipeline
   (a-except
-   (a-comp (a-cond (fn [{:keys [message]}]
-                     (and message
-                          (or (.startsWith message ",(doc ")
-                              (.startsWith message "(doc "))))
+   (a-comp (a-cond doc-lookup?
                    (a-comp (a-arr (fn [_] (info "doc request")))
                            null)
 
-                   (comp #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" %)
-                         str
-                         :message)
-                   (a-arr
-                    (fn [{:keys [message]}]
-                      (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" message)
-                            nums (map #(Integer/parseInt %) num-strings)]
-                        (let [out (-> (symbol "clojure.core" op)
-                                      (find-var)
-                                      (apply nums))]
-                          (if (> out 4)
-                            "*suffusion of yellow*"
-                            out)))))
+                   math?
+                   da-math
 
                    eval-request?
                    clojurebot-eval
@@ -109,6 +122,12 @@
 
                    question?            ;ping? => PONG!
                    (a-arr factoid-lookup)
+
+                   (comp (partial = :disconnect) :type)
+                   reconnect
+
+                   (comp (partial = :connect) :type)
+                   rejoin
 
                    (constantly true)
                    null)
