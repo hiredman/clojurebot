@@ -32,6 +32,8 @@
 
 (def logger (Logger/getLogger "clojurebot"))
 
+(declare addressed? *bots*)
+
 (defn log [x]
   (.info logger (pr-str x)))
 
@@ -221,9 +223,7 @@
 (dorun
  (map #(add-dispatch-hook 0 (first %) (second %))
       [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
-       [(dfn (and (addressed? bot msg)
-                  (re-find #"how much do you know?" (:message msg)))) ::know]
-       [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
+              [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
                                         ;(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
