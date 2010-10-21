@@ -1,5 +1,6 @@
 (ns clojurebot.conduit
-  (:use [conduit.core]))
+  (:use [conduit.core]
+        [clojure.contrib.logging :only [info]]))
 
 (defn a-indirect [proc-ref]
   (assoc pass-through
@@ -30,3 +31,7 @@
     (a-if predicate
           consequent
           pass-through)))
+
+(def-proc null [x]
+  (info (str "Bit Bucket: " x))
+  [])
