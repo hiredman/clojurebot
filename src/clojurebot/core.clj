@@ -1,7 +1,7 @@
 (ns clojurebot.core
   (:use [conduit.irc :only [a-irc irc-run]]
         [conduit.core]
-        [clojurebot.conduit :only [a-indirect a-if a-cond]]
+        [clojurebot.conduit :only [a-indirect a-if a-cond null]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
                                              factoid-command?
                                              factoid-command-run]]
@@ -14,6 +14,8 @@
                                            get-contrib-ticket-n]]
         [hiredman.clojurebot.sb :only [eval-request?
                                        eval-message]]
+        [hiredman.clojurebot.code-lookup :only [code-lookup?
+                                                do-code-lookup]]
         [clojure.contrib.logging :only [info]])
   (:gen-class))
 
@@ -37,21 +39,18 @@
                          message
                          prefixes))))))
 
-(def-proc null [x]
-  (info (str "Bit Bucket:" x))
-  [])
-
 (defn question? [{:keys [message]}]
   (and message
        (= 1 (count (.split message " ")))
        (.endsWith message "?")))
 
 (def-arr limit-length [x]
-  (let [y (print-str x)
-        out (apply str (take 200 y))]
-    (if (> (count y) 200)
-      (str out "...")
-      out)))
+  (if (string? x)
+    (let [out (apply str (take 200 x))]
+      (if (> (count x) 200)
+        (str out "...")
+        out))
+    x))
 
 (def clojurebot-eval
   (a-comp (a-arr eval-message)
@@ -62,8 +61,17 @@
                 pass-through)))
 
 (def-arr reconnect [{:keys [server bot config]}]
-  (info "reconnecting")
-  (.connect bot server))
+  (letfn [(reconnect-fn []
+            (try
+              (when-not (.isConnected bot)
+                (info "reconnecting")
+                (.connect bot server))
+              (catch Exception e
+                (info "Failed to reconnect" e)
+                (info "retrying in 60 seconds")
+                (Thread/sleep (* 60 1000))
+                reconnect-fn)))]
+    (trampoline reconnect-fn)))
 
 (def-arr rejoin [{:keys [message bot config]}]
   (doseq [c (:channels config)]
@@ -88,6 +96,7 @@
         "*suffusion of yellow*"
         out))))
 
+;; pipelines
 (def addressed-pipeline
   (a-comp remove-nick-prefix
           (a-cond ticket-query?
@@ -99,6 +108,9 @@
                   ticket-search?
                   (a-arr search-tickets)
 
+                  code-lookup?
+                  (debug-proc "code-lookup" (a-arr do-code-lookup))
+
                   (comp factoid-command? :message)
                   (a-arr factoid-command-run)
 
@@ -107,9 +119,13 @@
 
 (def pipeline
   (a-except
-   (a-comp (a-cond doc-lookup?
-                   (a-comp (a-arr (fn [_] (info "doc request")))
-                           null)
+   (a-comp (a-all pass-through ;;put user watching stuff here
+                  pass-through)
+           (a-arr last)
+
+           (a-cond #_doc-lookup?
+                   #_(a-comp (a-arr (fn [_] (info "doc request")))
+                             null)
 
                    math?
                    da-math
@@ -133,6 +149,8 @@
                    null)
            limit-length)
    (a-arr (comp #(doto % .printStackTrace) first))))
+
+;;/pipelines
 
 (defn clojurebot [config]
   (a-irc
