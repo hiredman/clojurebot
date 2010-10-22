@@ -3,3 +3,4 @@ classes/
 lib/
 *.jar
 derby.log
+checkouts/
