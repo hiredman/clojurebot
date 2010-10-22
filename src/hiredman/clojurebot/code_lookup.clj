@@ -119,4 +119,4 @@
 
 (defn do-code-lookup [{:keys [message channel sender bot]}]
   (let [thing (.replaceAll message "^(def|source) " "")]
-    [:notice (lookup message thing)]))
+    (lookup message thing)))

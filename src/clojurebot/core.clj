@@ -16,7 +16,9 @@
                                        eval-message]]
         [hiredman.clojurebot.code-lookup :only [code-lookup?
                                                 do-code-lookup]]
-        [clojure.contrib.logging :only [info]])
+        [clojure.contrib.logging :only [info]]
+        [clojurebot.seenx :only [log-user seenx-query?
+                                 seen-user]])
   (:gen-class))
 
 (defn addressed?
@@ -79,8 +81,7 @@
 
 (defn doc-lookup? [{:keys [message]}]
   (and message
-       (or (.startsWith message ",(doc ")
-           (.startsWith message "(doc "))))
+       (.startsWith message "(doc ")))
 
 (def math? (comp #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" %)
                  str
@@ -96,6 +97,8 @@
         "*suffusion of yellow*"
         out))))
 
+(def notice (a-arr (partial vector :notice)))
+
 ;; pipelines
 (def addressed-pipeline
   (a-comp remove-nick-prefix
@@ -109,7 +112,11 @@
                   (a-arr search-tickets)
 
                   code-lookup?
-                  (debug-proc "code-lookup" (a-arr do-code-lookup))
+                  (a-comp (a-arr do-code-lookup)
+                          notice)
+
+                  seenx-query?
+                  (a-arr seen-user)
 
                   (comp factoid-command? :message)
                   (a-arr factoid-command-run)
@@ -119,13 +126,14 @@
 
 (def pipeline
   (a-except
-   (a-comp (a-all pass-through ;;put user watching stuff here
+   (a-comp (a-all (a-arr log-user)
                   pass-through)
+
            (a-arr last)
 
-           (a-cond #_doc-lookup?
-                   #_(a-comp (a-arr (fn [_] (info "doc request")))
-                             null)
+           (a-cond doc-lookup?
+                   (a-comp (a-arr #(update-in % [:message] (fn [x] (str "," x))))
+                           (a-indirect #'pipeline))
 
                    math?
                    da-math
@@ -166,8 +174,15 @@
       (refer 'clojure.core))
     (dotimes [_ (:threads config)]
       (future
-        (apply irc-run
-               (clojurebot config)
-               (:server config)
-               (:nick config)
-               (:channels config))))))
+        (letfn [(connect []
+                  (try
+                    (apply irc-run
+                           (clojurebot config)
+                           (:server config)
+                           (:nick config)
+                           (:channels config))
+                    (catch java.net.SocketException e
+                      (info "Connection failed" e)
+                      (Thread/sleep (* 60 1000))
+                      connect)))]
+          (trampoline connect))))))
