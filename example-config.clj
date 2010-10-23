@@ -2,4 +2,7 @@
  :channels ["#clojurebot"]
  :server "irc.freenode.net"
  :database "/tmp/bot.db"
- :threads 4}
+ :threads 4
+ #_ :delicious #_ ["user" "password"]}
+
+
