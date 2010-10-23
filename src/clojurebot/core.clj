@@ -79,6 +79,10 @@
   (doseq [c (:channels config)]
     (.joinChannel bot c)))
 
+(def-arr nickserv-id [{:keys [bot config]}]
+  (when (:nickserv-password config)
+    (.sendMessage bot "nickserv" (str "identify " (:nickserv-password config)))))
+
 (defn doc-lookup? [{:keys [message]}]
   (and message
        (.startsWith message "(doc ")))
@@ -151,7 +155,8 @@
                    reconnect
 
                    (comp (partial = :connect) :type)
-                   rejoin
+                   (a-all rejoin
+                          nickserv-id)
 
                    (constantly true)
                    null)
@@ -181,8 +186,8 @@
                            (:server config)
                            (:nick config)
                            (:channels config))
-                    (catch java.net.SocketException e
-                      (info "Connection failed" e)
+                    (catch Exception e
+                      (info "Connection failed sleeping 1 minute" e)
                       (Thread/sleep (* 60 1000))
                       connect)))]
           (trampoline connect))))))
