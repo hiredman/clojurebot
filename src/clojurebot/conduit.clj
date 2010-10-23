@@ -21,7 +21,8 @@
                  pass-through)
           (a-select
            true b
-           false c)))
+           false c)
+          pass-through))
 
 (defn a-cond [predicate consequent & more]
   (if (seq more)
