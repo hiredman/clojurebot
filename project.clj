@@ -10,6 +10,7 @@
                  [org.clojars.thnetos/opennlp "0.0.3"]
                  [org.ccil.cowan.tagsoup/tagsoup "1.2"]
                  [log4j "1.2.16"]
-                 [org.danlarkin/clojure-json "1.1"]]
+                 [org.danlarkin/clojure-json "1.1"]
+                 [clj-http "0.1.1"]]
   :dev-dependencies [[swank-clojure "1.2.1"]]
   :main clojurebot.core)

@@ -24,6 +24,11 @@
            false c)
           pass-through))
 
+(defn a-when [a b]
+  (a-if a
+        b
+        pass-through))
+
 (defn a-cond [predicate consequent & more]
   (if (seq more)
     (a-if predicate

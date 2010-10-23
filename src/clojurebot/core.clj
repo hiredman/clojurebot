@@ -1,7 +1,7 @@
 (ns clojurebot.core
   (:use [conduit.irc :only [a-irc irc-run]]
         [conduit.core]
-        [clojurebot.conduit :only [a-indirect a-if a-cond null]]
+        [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
                                              factoid-command?
                                              factoid-command-run]]
@@ -19,7 +19,8 @@
         [clojure.contrib.logging :only [info]]
         [clojurebot.seenx :only [log-user seenx-query?
                                  seen-user]]
-        [clojurebot.delicious :only [contains-url?]])
+        [clojurebot.delicious :only [contains-url?
+                                     delicious]])
   (:gen-class))
 
 (defn addressed?
@@ -133,9 +134,8 @@
   (a-except
    (a-comp (a-all (a-arr log-user)
 
-                  (a-if contains-url?
-                        (a-arr (fn [x] (info (str x)) x))
-                        pass-through)
+                  (a-when contains-url?
+                          (a-arr delicious))
 
                   pass-through)
 
