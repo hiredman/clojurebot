@@ -4,7 +4,8 @@
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
                                              factoid-command?
-                                             factoid-command-run]]
+                                             factoid-command-run
+                                             factoid-lookup-no-fall-back]]
         [hiredman.clojurebot.ticket :only [ticket-search?
                                            search-tickets
                                            ticket-search?
@@ -22,7 +23,8 @@
         [clojurebot.delicious :only [contains-url?
                                      delicious]]
         [clojurebot.dice :only [roll-some-dice
-                                dice-roll?]])
+                                dice-roll?]]
+        [swank.swank :only [start-repl]])
   (:gen-class))
 
 (defn addressed?
@@ -160,7 +162,10 @@
                    addressed-pipeline
 
                    question?            ;ping? => PONG!
-                   (a-arr factoid-lookup)
+                   (a-comp (a-arr factoid-lookup-no-fall-back)
+                           (a-if nil?
+                                 null
+                                 pass-through))
 
                    (comp (partial = :disconnect) :type)
                    reconnect
@@ -188,6 +193,9 @@
   (let [config (read-string (slurp config-file))]
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
+    (when (:swank config)
+      (future
+        (start-repl (:swank config))))
     (dotimes [_ (:threads config)]
       (future
         (letfn [(connect []

@@ -257,6 +257,19 @@
       vec
       (befuddled-or-pick-random bag)))
 
+(defn factoid-lookup-no-fall-back [{:keys [message config] :as bag}]
+  (let [x (-> (.replaceAll (.trim message) "\\?$" "")
+              (qw config)
+              vec)]
+    (if (empty? x)
+      nil
+      (let [{:keys [subject predicate object]} (first (shuffle x))]
+        (prep-reply (:sender bag)
+                    subject
+                    predicate
+                    object
+                    (:bot bag))))))
+
 (core/defresponder2
   {:priority 20
    :name ::lookup
