@@ -18,7 +18,8 @@
                                                 do-code-lookup]]
         [clojure.contrib.logging :only [info]]
         [clojurebot.seenx :only [log-user seenx-query?
-                                 seen-user]])
+                                 seen-user]]
+        [clojurebot.delicious :only [contains-url?]])
   (:gen-class))
 
 (defn addressed?
@@ -131,6 +132,11 @@
 (def pipeline
   (a-except
    (a-comp (a-all (a-arr log-user)
+
+                  (a-if contains-url?
+                        (a-arr (fn [x] (info (str x)) x))
+                        pass-through)
+
                   pass-through)
 
            (a-arr last)
