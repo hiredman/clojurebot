@@ -1,7 +1,7 @@
 (ns clojurebot.dice)
 
 (defn roll-die [sides]
-  (randth (range 1 (inc sides))))
+  (first (shuffle (range 1 (inc sides)))))
 
 (defn dice-roll? [{:keys [message]}]
   (and message
