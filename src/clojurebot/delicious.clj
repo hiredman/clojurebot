@@ -9,11 +9,6 @@
 
 ;;#"(\w+://.*?)[.>]*(?: |$)"
 
-#_(defn post
-    "posts a url to the delicious account of [user pass]"
-    [[user pass] url descr tag]
-    (util/shell (str "fetch -o /dev/null https://" user ":" pass "@api.del.icio.us/v1/posts/add?url=" (URLEncoder/encode url) "&description=" (URLEncoder/encode descr) "&tags=" (URLEncoder/encode tag))))
-
 (defn post
   "posts a url to the delicious account of [user pass]"
   [[user pass] url descr tag]
