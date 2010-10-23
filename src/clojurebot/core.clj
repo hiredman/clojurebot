@@ -20,7 +20,9 @@
         [clojurebot.seenx :only [log-user seenx-query?
                                  seen-user]]
         [clojurebot.delicious :only [contains-url?
-                                     delicious]])
+                                     delicious]]
+        [clojurebot.dice :only [roll-some-dice
+                                dice-roll?]])
   (:gen-class))
 
 (defn addressed?
@@ -132,14 +134,14 @@
 
 (def pipeline
   (a-except
-   (a-comp (a-all (a-arr log-user)
+   (a-comp (a-all (a-arr log-user) ;enable "~seen foo" stuff
 
                   (a-when contains-url?
                           (a-arr delicious))
 
                   pass-through)
 
-           (a-arr last)
+           (a-arr last) ;we only want the passed through value
 
            (a-cond doc-lookup?
                    (a-comp (a-arr #(update-in % [:message] (fn [x] (str "," x))))
@@ -150,6 +152,9 @@
 
                    eval-request?
                    clojurebot-eval
+
+                   dice-roll?
+                   (a-arr roll-some-dice)
 
                    addressed?
                    addressed-pipeline
