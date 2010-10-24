@@ -27,7 +27,7 @@
 
 (defn delicious [{:keys [message channel sender config]}]
   (let [url (re-find url-reg message)
-        desc channel
+        desc message
         tag (str sender " " channel
                  (when (re-find #"lisppaste" sender)
                    (str " " (first (.split desc " ")))))
