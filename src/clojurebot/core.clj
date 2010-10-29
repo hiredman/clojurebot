@@ -169,6 +169,9 @@
                                  null
                                  pass-through))
 
+                   (fn [x] (= 1 (rand-int 200)))
+                   addressed-pipeline
+
                    (comp (partial = :disconnect) :type)
                    reconnect
 
