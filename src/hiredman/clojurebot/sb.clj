@@ -10,7 +10,6 @@
   (and message (re-find #"^," message)))
 
 (defn eval-message [{:keys [message sender config] :as bag}]
-  (println message)
   (if (and (not (naughty-forms? message))
            (not= sender "itistoday")
            (not= sender "Lajla"))
