@@ -153,7 +153,9 @@
                    da-math
 
                    eval-request?
-                   clojurebot-eval
+                   (a-comp (a-arr (fn [x] (info (str "evaling " (:message x))) x))
+                           clojurebot-eval
+                           limit-length)
 
                    dice-roll?
                    (a-arr roll-some-dice)
