@@ -180,8 +180,8 @@
                           nickserv-id)
 
                    (constantly true)
-                   null)
-           limit-length)
+                   (a-comp (a-arr #(dissoc % :config :bot))
+                           null)))
    (a-arr (comp #(doto % .printStackTrace) first))))
 
 ;;/pipelines
@@ -201,17 +201,16 @@
     (when (:swank config)
       (future
         (start-repl (:swank config))))
-    (dotimes [_ (:threads config)]
-      (future
-        (letfn [(connect []
-                  (try
-                    (apply irc-run
-                           (clojurebot config)
-                           (:server config)
-                           (:nick config)
-                           (:channels config))
-                    (catch Exception e
-                      (info "Connection failed sleeping 1 minute" e)
-                      (Thread/sleep (* 60 1000))
-                      connect)))]
-          (trampoline connect))))))
+    (letfn [(connect []
+              (try
+                (apply irc-run
+                       (clojurebot config)
+                       (:server config)
+                       (:nick config)
+                       (:threads config)
+                       (:channels config))
+                (catch Exception e
+                  (info "Connection failed sleeping 1 minute" e)
+                  (Thread/sleep (* 60 1000))
+                  connect)))]
+      (trampoline connect))))
