@@ -49,6 +49,7 @@
 
 (defn question? [{:keys [message]}]
   (and message
+       (> (count (.trim message)) 1)
        (= 1 (count (.split message " ")))
        (.endsWith message "?")))
 
