@@ -24,6 +24,8 @@
                                      delicious]]
         [clojurebot.dice :only [roll-some-dice
                                 dice-roll?]]
+        [hiredman.clojurebot.google :only [google-search?
+                                           google-search]]
         [swank.swank :only [start-repl]])
   (:gen-class))
 
@@ -125,6 +127,9 @@
                   code-lookup?
                   (a-comp (a-arr do-code-lookup)
                           notice)
+
+                  google-search?
+                  (a-arr google-search)
 
                   seenx-query?
                   (a-arr seen-user)
