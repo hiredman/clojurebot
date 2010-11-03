@@ -205,7 +205,6 @@
 (defmulti #^{:doc "" :private true} befuddled-or-pick-random (comp empty? first list))
 
 (defmethod befuddled-or-pick-random false [x bag]
-  (println x bag)
   (-> x
       ((fn [x] (x (rand-int (count x)))))
       ((fn [{:keys [subject object predicate]}]
@@ -244,7 +243,7 @@
 (defn qw [input config]
   (if-let [result (seq (trip/query (trip/derby (db-name config))
                                    input :y :z))]
-    (do (println result) result)
+    result
     (-> input
         tag
         noun-filter
