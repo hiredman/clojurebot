@@ -22,20 +22,9 @@
     ((partial map (comp first :content first :content))) set))
 
 
-(defn task [bot chan]
+(defn go []
   (let [r (get-recent)
         new (difference r @recent)]
+    (dosync (ref-set recent r))
     (when (not (empty? new))
-      (core/new-send-out bot :notice
-                        chan
-                        (str "recently on clojars.org: "(pr-str new))))
-    (dosync (ref-set recent r))))
-
-(defn go [bot]
-  (sched/fixedrate
-    {:name ::clojars
-     :task #(task bot "#clojure")
-     :start-delay 0
-     :rate 30
-     :unit (:minutes sched/unit)})
-  bot)
+      (str "recently on clojars.org: " (pr-str new)))))
