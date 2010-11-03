@@ -27,6 +27,8 @@
         [hiredman.clojurebot.google :only [google-search?
                                            google-search]]
         [swank.swank :only [start-repl]])
+  (:require [hiredman.schedule :as sched]
+            [hiredman.clojurebot.clojars])
   (:gen-class))
 
 (defn addressed?
@@ -153,7 +155,7 @@
 
            (a-cond doc-lookup?
                    (a-comp (a-arr #(update-in % [:message] (fn [x] (str "," x))))
-                           (a-indirect #'pipeline))
+                           clojurebot-eval)
 
                    math?
                    da-math
@@ -200,6 +202,25 @@
     (a-arr (fn [[type bag]] (assoc bag :type type :config config)))
     (a-indirect #'pipeline))))
 
+(defmulti target first)
+
+(defmethod target :irc [[_ nick server target]]
+  (a-comp (a-arr (fn [x] (info (str x)) x))
+          (a-if nil?
+                null
+                (a-comp (a-all (a-arr (constantly target))
+                               (a-arr (partial vector :notice)))
+                        (a-irc server nick)))))
+
+(defn setup-crons [config]
+  (doseq [{:keys [task rate targets]} (:cron config)
+          :let [out (apply a-all (map target targets))]]
+    (sched/fixedrate
+     {:task #(conduit-map out [(@(resolve task))])
+      :start-delay 1
+      :rate rate
+      :unit (:seconds sched/unit)})))
+
 (defn -main [& [config-file]]
   (let [config (read-string (slurp config-file))]
     (binding [*ns* (create-ns 'sandbox)]
@@ -207,6 +228,7 @@
     (when (:swank config)
       (future
         (start-repl (:swank config))))
+    (setup-crons config)
     (letfn [(connect []
               (try
                 (apply irc-run
@@ -220,3 +242,4 @@
                   (Thread/sleep (* 60 1000))
                   connect)))]
       (trampoline connect))))
+
