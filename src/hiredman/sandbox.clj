@@ -74,8 +74,6 @@
     (eval form)
     (throw (java.lang.Exception. "DENIED"))))
 
-(enable-security-manager) ; This doesn't need to be enabled by default
-
 (defn killall-thrdgrp [thg]
   (let [a (make-array Thread (.activeCount thg))
         _ (.enumerate thg a true)]
@@ -118,6 +116,7 @@
         [o e (when (or result (.equals o "")) r)]))))
 
 (defn eval-in-box [_string sb-ns]
+  (enable-security-manager)
   (let [form #(-> _string StringReader. PushbackReader. read)
         thunk (fn []
                 (binding [*out* (java.io.StringWriter.) *err* (java.io.StringWriter.)
