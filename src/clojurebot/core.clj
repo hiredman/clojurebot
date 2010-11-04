@@ -1,5 +1,5 @@
 (ns clojurebot.core
-  (:use [conduit.irc :only [a-irc irc-run]]
+  (:use [conduit.irc :only [irc-run a-irc]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [hiredman.clojurebot.factoids :only [factoid-lookup
@@ -13,10 +13,9 @@
                                            get-ticket-n
                                            contrib-ticket-query?
                                            get-contrib-ticket-n]]
-        [hiredman.clojurebot.sb :only [eval-request?
-                                       eval-message]]
         [hiredman.clojurebot.code-lookup :only [code-lookup?
                                                 do-code-lookup]]
+        [hiredman.clojurebot.sb :only [eval-request?]]
         [clojure.contrib.logging :only [info]]
         [clojurebot.seenx :only [log-user seenx-query?
                                  seen-user]]
@@ -26,93 +25,12 @@
                                 dice-roll?]]
         [hiredman.clojurebot.google :only [google-search?
                                            google-search]]
-        [swank.swank :only [start-repl]])
-  (:require [hiredman.schedule :as sched]
-            [hiredman.clojurebot.clojars])
+        [swank.swank :only [start-repl]]
+        [clojurebot.coreII :only [addressed? remove-nick-prefix question?
+                                  limit-length clojurebot-eval reconnect
+                                  rejoin nickserv-id doc-lookup? math? da-math
+                                  notice target setup-crons]])
   (:gen-class))
-
-(defn addressed?
-  [{:keys [bot config message type] :as bag}]
-  (and (or (= type :message)
-           (= type :private-message))
-       (or (re-find #"^~" message)
-           (re-find (re-pattern (str "^" (.getNick bot) ":")) message)
-           (re-find (re-pattern (str "^" (.getNick bot) ",")) message)
-           (nil? (:channel bag)))))
-
-(def-arr remove-nick-prefix [{:keys [bot] :as bag}]
-  (update-in bag [:message]
-             (fn [message]
-               (let [prefixes [(str (.getNick bot) ":")
-                               (str (.getNick bot) ",")
-                               "~"]]
-                 (.trim (reduce
-                         #(.replaceAll %1 (str (re-pattern %2)) "")
-                         message
-                         prefixes))))))
-
-(defn question? [{:keys [message]}]
-  (and message
-       (> (count (.trim message)) 1)
-       (= 1 (count (.split message " ")))
-       (.endsWith message "?")))
-
-(def-arr limit-length [x]
-  (if (string? x)
-    (let [out (apply str (take 200 x))]
-      (if (> (count x) 200)
-        (str out "...")
-        out))
-    x))
-
-(def clojurebot-eval
-  (a-comp (a-arr eval-message)
-          (a-if vector?
-                (a-arr
-                 (fn [x]
-                   (reduce #(str %1 %2 "\n") x)))
-                pass-through)))
-
-(def-arr reconnect [{:keys [server bot config]}]
-  (letfn [(reconnect-fn []
-            (try
-              (when-not (.isConnected bot)
-                (info "reconnecting")
-                (.connect bot server))
-              (catch Exception e
-                (info "Failed to reconnect" e)
-                (info "retrying in 60 seconds")
-                (Thread/sleep (* 60 1000))
-                reconnect-fn)))]
-    (trampoline reconnect-fn)))
-
-(def-arr rejoin [{:keys [message bot config]}]
-  (doseq [c (:channels config)]
-    (.joinChannel bot c)))
-
-(def-arr nickserv-id [{:keys [bot config]}]
-  (when (:nickserv-password config)
-    (.sendMessage bot "nickserv" (str "identify " (:nickserv-password config)))))
-
-(defn doc-lookup? [{:keys [message]}]
-  (and message
-       (.startsWith message "(doc ")))
-
-(def math? (comp #(re-find #"^\([\+ / \- \*] [ 0-9]+\)" %)
-                 str
-                 :message))
-
-(def-arr da-math [{:keys [message]}]
-  (let [[op & num-strings] (re-seq #"[\+\/\*\-0-9]+" message)
-        nums (map #(Integer/parseInt %) num-strings)]
-    (let [out (-> (symbol "clojure.core" op)
-                  (find-var)
-                  (apply nums))]
-      (if (> out 4)
-        "*suffusion of yellow*"
-        out))))
-
-(def notice (a-arr (partial vector :notice)))
 
 ;; pipelines
 (def addressed-pipeline
@@ -187,6 +105,12 @@
                    (a-all rejoin
                           nickserv-id)
 
+                   (comp (partial = :invite) :type)
+                   (a-comp (a-arr (fn [{:keys [bot channel config]}]
+                                    (when (:on-invite config)
+                                      (.joinChannel bot channel))))
+                           null)
+                   
                    (constantly true)
                    (a-comp (a-arr #(dissoc % :config :bot))
                            null)))
@@ -201,25 +125,6 @@
    (a-comp
     (a-arr (fn [[type bag]] (assoc bag :type type :config config)))
     (a-indirect #'pipeline))))
-
-(defmulti target first)
-
-(defmethod target :irc [[_ nick server target]]
-  (a-comp (a-arr (fn [x] (info (str x)) x))
-          (a-if nil?
-                null
-                (a-comp (a-all (a-arr (constantly target))
-                               (a-arr (partial vector :notice)))
-                        (a-irc server nick)))))
-
-(defn setup-crons [config]
-  (doseq [{:keys [task rate targets]} (:cron config)
-          :let [out (apply a-all (map target targets))]]
-    (sched/fixedrate
-     {:task #(conduit-map out [(@(resolve task))])
-      :start-delay 1
-      :rate rate
-      :unit (:seconds sched/unit)})))
 
 (defn -main [& [config-file]]
   (let [config (read-string (slurp config-file))]
@@ -242,4 +147,3 @@
                   (Thread/sleep (* 60 1000))
                   connect)))]
       (trampoline connect))))
-

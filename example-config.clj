@@ -5,7 +5,14 @@
  :threads 4
  :cron [{:task hiredman.clojurebot.clojars/go
          :rate 3600
-         :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]}]
- #_ :delicious #_ ["user" "password"]}
-
-
+         :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]}
+        {:task clojurebot.github/commits
+         :rate 300
+         :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
+         :arguments ["clojure/clojure"]}
+        {:task clojurebot.github/commits
+         :rate 300
+         :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
+         :arguments ["clojure/clojure-contrib"]}]
+ #_ :delicious #_ ["user" "password"]
+ :on-invite :join}
