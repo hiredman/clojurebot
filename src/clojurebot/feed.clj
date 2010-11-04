@@ -43,14 +43,17 @@
      (atom-pull* url url))
   ([url key]
      (info (format "atom-pull %s %s" url key))
-     (let [seen-ids (set (get @entry-cache key))
+     (let [ids (get @entry-cache key)
+           seen-ids (set ids)
            latest-entries (stage2 (stage1 url))
            new-ids (set/difference (set (map :id latest-entries))
                                    seen-ids)
-           new-entries (filter (comp new-ids :id) latest-entries)]
+           new-entries (reverse (filter (comp new-ids :id) latest-entries))]
        (swap! entry-cache
               update-in [key] (comp set #(take 100 %) #(into % new-ids) set))
-       new-entries)))
+       (if ids
+         (first new-entries)
+         new-entries))))
 
 (defn atom-pull
   ([url]
