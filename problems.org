@@ -1,0 +1,3 @@
+* Nov 3 2010
+  - need a xmpp conduit to re-enable xmpp support
+  - will have to unify xmpp and irc pipelines
