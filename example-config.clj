@@ -7,11 +7,11 @@
          :rate 3600
          :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]}
         {:task clojurebot.github/commits
-         :rate 300
+         :rate 3000
          :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
          :arguments ["clojure/clojure"]}
         {:task clojurebot.github/commits
-         :rate 300
+         :rate 3000
          :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
          :arguments ["clojure/clojure-contrib"]}]
  #_ :delicious #_ ["user" "password"]
