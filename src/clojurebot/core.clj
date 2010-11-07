@@ -2,29 +2,20 @@
   (:use [conduit.irc :only [irc-run a-irc]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
-        [hiredman.clojurebot.factoids :only [factoid-lookup
-                                             factoid-command?
+        [hiredman.clojurebot.factoids :only [factoid-lookup factoid-command?
                                              factoid-command-run
                                              factoid-lookup-no-fall-back]]
-        [hiredman.clojurebot.ticket :only [ticket-search?
-                                           search-tickets
-                                           ticket-search?
-                                           ticket-query?
-                                           get-ticket-n
-                                           contrib-ticket-query?
+        [hiredman.clojurebot.ticket :only [ticket-search? search-tickets
+                                           ticket-search? ticket-query?
+                                           get-ticket-n contrib-ticket-query?
                                            get-contrib-ticket-n]]
-        [hiredman.clojurebot.code-lookup :only [code-lookup?
-                                                do-code-lookup]]
+        [hiredman.clojurebot.code-lookup :only [code-lookup? do-code-lookup]]
         [hiredman.clojurebot.sb :only [eval-request?]]
         [clojure.contrib.logging :only [info]]
-        [clojurebot.seenx :only [log-user seenx-query?
-                                 seen-user]]
-        [clojurebot.delicious :only [contains-url?
-                                     delicious]]
-        [clojurebot.dice :only [roll-some-dice
-                                dice-roll?]]
-        [hiredman.clojurebot.google :only [google-search?
-                                           google-search]]
+        [clojurebot.seenx :only [log-user seenx-query? seen-user]]
+        [clojurebot.delicious :only [contains-url? delicious]]
+        [clojurebot.dice :only [roll-some-dice dice-roll?]]
+        [hiredman.clojurebot.google :only [google-search? google-search]]
         [swank.swank :only [start-repl]]
         [clojurebot.epigrams :only [epigram-query? lookup-epigram]]
         [clojurebot.coreII :only [addressed? remove-nick-prefix question?
