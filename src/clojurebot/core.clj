@@ -26,6 +26,7 @@
         [hiredman.clojurebot.google :only [google-search?
                                            google-search]]
         [swank.swank :only [start-repl]]
+        [clojurebot.epigrams :only [epigram-query? lookup-epigram]]
         [clojurebot.coreII :only [addressed? remove-nick-prefix question?
                                   limit-length clojurebot-eval reconnect
                                   rejoin nickserv-id doc-lookup? math? da-math
@@ -53,6 +54,9 @@
 
                   seenx-query?
                   (a-arr seen-user)
+
+                  clojurebot.epigrams/epigram-query?
+                  (a-arr clojurebot.epigrams/lookup-epigram)
 
                   (comp factoid-command? :message)
                   (a-arr factoid-command-run)
@@ -95,7 +99,8 @@
                                  null
                                  pass-through))
 
-                   (fn [x] (= 1 (rand-int 200)))
+                   #(and (= 1 (rand-int 1000))
+                         (= (:type %) :message))
                    addressed-pipeline
 
                    (comp (partial = :disconnect) :type)
