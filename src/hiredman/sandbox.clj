@@ -110,9 +110,9 @@
     (.close *err*)
     (binding [*print-length* print-length
               *print-level* print-level]
-      (let [o (print-str (.toString *out*))
-            e (print-str (.toString *err*))
-            r (prn-str (force-lazy-seq result))]
+      (let [r (prn-str (force-lazy-seq result))
+            o (print-str (.toString *out*))
+            e (print-str (.toString *err*))]
         [o e (when (or result (.equals o "")) r)]))))
 
 (defn eval-in-box [_string sb-ns]
