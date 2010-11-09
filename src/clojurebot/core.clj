@@ -126,11 +126,14 @@
     (a-arr (fn [[type bag]] (assoc bag :type type :config config)))
     (a-indirect #'pipeline))))
 
-(defn -main [& [config-file]]
+(defn set-properties! []
   (System/setProperty "java.security.policy"
                       (str (.getResource (class clojurebot) "/example.policy")))
   (System/setProperty "file.encoding" "utf8")
-  (System/setProperty "swank.encoding" "utf8")
+  (System/setProperty "swank.encoding" "utf8"))
+
+(defn -main [& [config-file]]
+  (set-properties!)  
   (let [config (read-string (slurp config-file))]
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
