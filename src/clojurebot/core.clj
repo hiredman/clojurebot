@@ -46,8 +46,8 @@
                   seenx-query?
                   (a-arr seen-user)
 
-                  clojurebot.epigrams/epigram-query?
-                  (a-arr clojurebot.epigrams/lookup-epigram)
+                  epigram-query?
+                  (a-arr lookup-epigram)
 
                   (comp factoid-command? :message)
                   (a-arr factoid-command-run)
@@ -74,7 +74,11 @@
                    da-math
 
                    eval-request?
-                   (a-comp (a-arr (fn [x] (info (str "evaling " (:message x))) x))
+                   (a-comp (a-arr (fn [x]
+                                    (info (format "evaling %s for %s"
+                                                  (:message x)
+                                                  (:sender x)))
+                                    x))
                            clojurebot-eval
                            limit-length)
 
