@@ -2,11 +2,21 @@
   (:use [clojure.contrib.logging :only [info]])
   (:require [clojure.xml :as xml]
             [hiredman.utilities :as util]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [clj-http.client :as http]))
 
 (defn stage1 [url]
   (filter #(= :entry (:tag %))
           (tree-seq map? (comp seq :content) (xml/parse url))))
+
+(defn stage1* [url & [username password]]
+  (->> (http/get url {:basic-auth [username password]})
+       :body
+       .getBytes
+       (java.io.ByteArrayInputStream.)
+       (xml/parse)
+       (tree-seq map? (comp seq :content))))
+
 
 (defn find-tag [tag top]
   (->> top :content (filter #(= tag (:tag %))) first))
@@ -36,6 +46,11 @@
 (defn stage2 [entries]
   (map entry->map entries))
 
+(defn rss-entries [url & [username password]]
+  (->> (stage1* url username password)
+       (filter #(= :entry (:tag %)))
+       (map entry->map)))
+
 (defonce ^{:private true} entry-cache (atom {}))
 
 (defn atom-pull*
@@ -60,3 +75,17 @@
      (atom-pull url url))
   ([url key]
      (reduce #(str %1 %2 "\n") nil (take 5 (atom-pull* url key)))))
+
+(defn rss-pull [url & [username password]]
+  (info (format "rss-pull %s" url))
+  (let [ids (get @entry-cache url)
+           seen-ids (set ids)
+           latest-entries (rss-entries url username password)
+           new-ids (set/difference (set (map :id latest-entries))
+                                   seen-ids)
+           new-entries (reverse (filter (comp new-ids :id) latest-entries))]
+       (swap! entry-cache
+              update-in [url] (comp set #(take 100 %) #(into % new-ids) set))
+       (if ids
+         (first new-entries)
+         (reduce #(str %1 %2 "\n") nil (take 5 new-entries)))))
