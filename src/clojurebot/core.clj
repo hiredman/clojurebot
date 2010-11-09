@@ -127,6 +127,10 @@
     (a-indirect #'pipeline))))
 
 (defn -main [& [config-file]]
+  (System/setProperty "java.security.policy"
+                      (str (.getResource (class clojurebot) "/example.policy")))
+  (System/setProperty "file.encoding" "utf8")
+  (System/setProperty "swank.encoding" "utf8")
   (let [config (read-string (slurp config-file))]
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
