@@ -14,5 +14,8 @@
          :rate 3000
          :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
          :arguments ["clojure/clojure-contrib"]}]
+ :plugin-directory "/Users/hiredman/src/clojurebot/checkouts/"
+ #_:addressed-plugins [[clojurebot.hudson build? do-a-build]]
+ #_ :hudson "http://example.com/"
  #_ :delicious #_ ["user" "password"]
  :on-invite :join}
