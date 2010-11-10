@@ -4,13 +4,12 @@
            [clojure.lang Compiler]))
 
 (defn load-from [directory namespaces]
+  (push-thread-bindings {Compiler/LOADER (URLClassLoader.
+                                          (into-array
+                                           (map
+                                            #(.toURL %)
+                                            (file-seq (file directory)))))})
   (try
-    (push-thread-bindings {Compiler/LOADER (URLClassLoader.
-                                            (into-array
-                                             (map
-                                              #(.toURl
-                                                (file-seq
-                                                 (file directory))))))})
     (doseq [namespace namespaces]
       (require namespace))
     (finally
