@@ -21,39 +21,58 @@
         [clojurebot.coreII :only [addressed? remove-nick-prefix question?
                                   limit-length clojurebot-eval reconnect
                                   rejoin nickserv-id doc-lookup? math? da-math
-                                  notice target setup-crons]])
+                                  notice target setup-crons]]
+        [clojurebot.plugin :only [load-from]])
   (:gen-class))
 
 ;; pipelines
 (def addressed-pipeline
   (a-comp remove-nick-prefix
-          (a-cond ticket-query?
-                  (a-arr get-ticket-n)
+          (a-all (a-arr
+                  (fn [{:keys [config] :as a-map}]
+                    ((comp boolean first filter)
+                     (fn [[ns query action]]
+                       (let [query (ns-resolve ns query)]
+                         (query a-map)))
+                     (:addressed-plugins config))))
+                 pass-through)
+          (a-select
+           true (a-arr
+                  (fn [{:keys [config] :as a-map}]
+                    (let [[ns query action] ((comp first filter)
+                                                  (fn [[ns query action]]
+                                                    (let [query (ns-resolve
+                                                                 ns query)]
+                                                      (query a-map)))
+                                                  (:addressed-plugins config))]
+                      (@(ns-resolve ns action) a-map))))
+           false (a-cond ticket-query?
+                         (a-arr get-ticket-n)
 
-                  contrib-ticket-query?
-                  (a-arr get-contrib-ticket-n)
+                         contrib-ticket-query?
+                         (a-arr get-contrib-ticket-n)
 
-                  ticket-search?
-                  (a-arr search-tickets)
+                         ticket-search?
+                         (a-arr search-tickets)
 
-                  code-lookup?
-                  (a-comp (a-arr do-code-lookup)
-                          notice)
+                         code-lookup?
+                         (a-comp (a-arr do-code-lookup)
+                                 notice)
 
-                  google-search?
-                  (a-arr google-search)
+                         google-search?
+                         (a-arr google-search)
 
-                  seenx-query?
-                  (a-arr seen-user)
+                         seenx-query?
+                         (a-arr seen-user)
 
-                  epigram-query?
-                  (a-arr lookup-epigram)
+                         epigram-query?
+                         (a-arr lookup-epigram)
 
-                  (comp factoid-command? :message)
-                  (a-arr factoid-command-run)
+                         (comp factoid-command? :message)
+                         (a-arr factoid-command-run)
 
-                  (constantly true)
-                  (a-arr factoid-lookup))))
+                         (constantly true)
+                         (a-arr factoid-lookup)))))
 
 (def pipeline
   (a-except
@@ -110,7 +129,7 @@
                                     (when (:on-invite config)
                                       (.joinChannel bot channel))))
                            null)
-                   
+
                    (constantly true)
                    (a-comp (a-arr #(dissoc % :config :bot))
                            null)))
@@ -133,8 +152,11 @@
   (System/setProperty "swank.encoding" "utf8"))
 
 (defn -main [& [config-file]]
-  (set-properties!)  
+  (set-properties!)
   (let [config (read-string (slurp config-file))]
+    (when (:addressed-plugins config)
+      (load-from (:plugin-directory config)
+                 (map first (:addressed-plugins config))))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (when (:swank config)
