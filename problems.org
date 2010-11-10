@@ -1,3 +1,21 @@
 * Nov 3 2010
   - need a xmpp conduit to re-enable xmpp support
   - will have to unify xmpp and irc pipelines
+* Nov 8 2010
+  - real plugins, not developed in clojurebot
+    - first attempt maybe agilezen (nice to have for work)
+      - acutally maybe google plugin, since I have one in the
+        clojurebot tree that works and it is super simple.
+    - plugins need to be able to plugin into pipelines somehow
+      - maybe a pipeline element that examines config and builds
+        plugin pipes
+    - how to load? if plugins live in a jar on the classpath, then not
+      so nice for uberjar, can't just java -jar clojurebot.jar
+      - maybe give path in config, and use urlclassloader to load.
+      - look in jars, or ??
+      - what about plugin's dependencies
+* Nov 9 2010
+  - put all jars in plugin directory in URLClassLoader, then load
+    plugin namespaces from that.
+  - actually, maybe first try at a new plugin will be a hudson BUILD
+    IT NOW plugin
