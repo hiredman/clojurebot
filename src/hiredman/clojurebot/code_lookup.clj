@@ -57,7 +57,7 @@
   [url project rev]
   (-> url
       (.replaceAll "http://code.google.com/p/clojure/source/browse/trunk"
-                   (str "http://github.com/clojure/" project "/blob/" rev))
+                   (str "https://github.com/clojure/" project "/blob/" rev))
       (.replaceAll "\\?r=(.*)#(\\d+)" "#LID$2")))
 
 
@@ -107,16 +107,17 @@
        (filter #(= (:name %) thing) (:vars @contrib))))
 
 (defmethod lookup :clojure [msg thing]
-  (let [[file line] (get-file-and-ln thing)]
+  (println msg thing)
+  (let [[line file] (get-file-and-ln thing)]
     (if (or (nil? file) (nil? line))
       (if-let [results (seq (contrib-lookup thing))]
         (reduce #(str % " " %2) (str thing ":") results)
         (befuddled))
-      (str thing ": " (make-url-cached [file line])))))
+      (str thing ": " (make-url-cached [line file])))))
 
 (defn code-lookup? [{:keys [message]}]
   (re-find #"^(def|source) " message))
 
 (defn do-code-lookup [{:keys [message channel sender bot]}]
-  (let [thing (.replaceAll message "^(def|source) " "")]
+  (let [thing (.replaceAl message "^(def|source) " "")]
     (lookup message thing)))
