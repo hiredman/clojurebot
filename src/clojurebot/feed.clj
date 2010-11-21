@@ -17,7 +17,6 @@
        (xml/parse)
        (tree-seq map? (comp seq :content))))
 
-
 (defn find-tag [tag top]
   (->> top :content (filter #(= tag (:tag %))) first))
 
@@ -51,6 +50,8 @@
        (filter #(= :entry (:tag %)))
        (map entry->map)))
 
+(def last-seen 500)
+
 (defonce ^{:private true} entry-cache (atom {}))
 
 (defn atom-pull*
@@ -65,7 +66,7 @@
                                    seen-ids)
            new-entries (reverse (filter (comp new-ids :id) latest-entries))]
        (swap! entry-cache
-              update-in [key] (comp set #(take 100 %) #(into % new-ids) set))
+              update-in [key] (comp set #(take last-seen %) #(into % new-ids) set))
        (if ids
          (first new-entries)
          new-entries))))
@@ -85,7 +86,7 @@
                                    seen-ids)
            new-entries (reverse (filter (comp new-ids :id) latest-entries))]
        (swap! entry-cache
-              update-in [url] (comp set #(take 100 %) #(into % new-ids) set))
+              update-in [url] (comp set #(take last-seen %) #(into % new-ids) set))
        (if ids
          (first new-entries)
          (reduce #(str %1 %2 "\n") nil (take 5 new-entries)))))

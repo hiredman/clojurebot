@@ -19,3 +19,5 @@
     plugin namespaces from that.
   - actually, maybe first try at a new plugin will be a hudson BUILD
     IT NOW plugin
+  - build it now plugin for hudson done
+
