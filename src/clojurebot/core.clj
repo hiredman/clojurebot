@@ -86,7 +86,8 @@
            (a-arr last) ;we only want the passed through value
 
            (a-cond doc-lookup?
-                   (a-comp (a-arr #(update-in % [:message] (fn [x] (str "," x))))
+                   (a-comp (a-arr
+                            #(update-in % [:message] (fn [x] (str "," x))))
                            clojurebot-eval)
 
                    math?
@@ -154,9 +155,13 @@
 (defn -main [& [config-file]]
   (set-properties!)
   (let [config (read-string (slurp config-file))]
-    (when (:addressed-plugins config)
+    (when (:plugin-directory config)
       (load-from (:plugin-directory config)
-                 (map first (:addressed-plugins config))))
+                 (concat (map first (:addressed-plugins config))
+                         (->> (:cron config)
+                              (map :task)
+                              (map namespace))
+                         (:plugins config))))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (when (:swank config)
