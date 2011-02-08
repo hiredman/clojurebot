@@ -65,8 +65,9 @@
            new-ids (set/difference (set (map :id latest-entries))
                                    seen-ids)
            new-entries (reverse (filter (comp new-ids :id) latest-entries))]
-       (swap! entry-cache
-              update-in [key] (comp set #(take last-seen %) #(into % new-ids) set))
+       (swap! entry-cache update-in [key]
+              (comp set #(take last-seen %) #(into % new-ids) set))
+       (println new-entries)
        (if ids
          (first new-entries)
          new-entries))))
@@ -77,16 +78,20 @@
   ([url key]
      (reduce #(str %1 %2 "\n") nil (take 5 (atom-pull* url key)))))
 
-(defn rss-pull [url & [username password]]
+(defn rss-pull* [url & [username password]]
   (info (format "rss-pull %s" url))
   (let [ids (get @entry-cache url)
-           seen-ids (set ids)
-           latest-entries (rss-entries url username password)
-           new-ids (set/difference (set (map :id latest-entries))
-                                   seen-ids)
-           new-entries (reverse (filter (comp new-ids :id) latest-entries))]
-       (swap! entry-cache
-              update-in [url] (comp set #(take last-seen %) #(into % new-ids) set))
-       (if ids
-         (first new-entries)
-         (reduce #(str %1 %2 "\n") nil (take 5 new-entries)))))
+        seen-ids (set ids)
+        latest-entries (rss-entries url username password)
+        new-ids (set/difference (set (map :id latest-entries))
+                                seen-ids)
+        new-entries (reverse (filter (comp new-ids :id) latest-entries))]
+    (swap! entry-cache update-in [url]
+           (comp set #(take last-seen %) #(into % new-ids) set))
+    (if ids
+      (first new-entries)
+      new-entries)))
+
+(defn rss-pull [url & [username password]]
+  (reduce #(str %1 %2 "\n") nil (take 5 (rss-pull* url username password))))
+
