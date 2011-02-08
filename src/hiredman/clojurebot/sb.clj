@@ -12,7 +12,8 @@
 (defn eval-message [{:keys [message sender config] :as bag}]
   (if (and (not (naughty-forms? message))
            (not= sender "itistoday")
-           (not= sender "Lajla"))
+           (not= sender "Lajla")
+           (not= sender "LauJensen"))
     (let [result (eval-in-box (.replaceAll message "^," "")
                               (:sandbox-ns config 'sandbox))]
       (if (vector? result)
