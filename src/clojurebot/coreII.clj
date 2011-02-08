@@ -34,8 +34,8 @@
 
 (def-arr limit-length [x]
   (if (string? x)
-    (let [out (apply str (take 200 x))]
-      (if (> (count x) 200)
+    (let [out (apply str (take 400 x))]
+      (if (> (count x) 400)
         (str out "...")
         out))
     x))
