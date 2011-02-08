@@ -196,8 +196,12 @@
   "preps a reply, does substituion of stuff like <reply> and #who"
   [sender term pred defi bot]
   (replace-with
-   (if (re-find #"^<reply>" defi)
-     (.trim (core/remove-from-beginning (str defi) "<reply>"))
+   (if (or (re-find #"^<reply>" defi)
+           (re-find #"^<REPLY>" defi))
+     (.trim
+      (core/remove-from-beginning
+       (core/remove-from-beginning (str defi) "<reply>")
+       "<REPLY>"))
      (format "%s %s %s" term pred defi))
    {"#who" sender "#someone" (core/random-person bot)}))
 
