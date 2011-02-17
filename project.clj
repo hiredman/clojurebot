@@ -1,5 +1,5 @@
 (defproject
-  clojurebot "0.2.0-SNAPSHOT"
+  clojurebot "0.2.0"
   :repositories {"jboss" "http://repository.jboss.com/maven2/"}
   :description "An IRC bot written in Clojure"
   :dependencies [[org.clojure/clojure "1.2.0"]
@@ -13,4 +13,5 @@
                  [org.danlarkin/clojure-json "1.1"]
                  [clj-http "0.1.1"]
                  [swank-clojure "1.2.1"]]
-  :main clojurebot.core)
+  :main clojurebot.core
+  :clean-non-project-classes false)
