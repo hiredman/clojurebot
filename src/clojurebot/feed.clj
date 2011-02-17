@@ -68,9 +68,7 @@
        (swap! entry-cache update-in [key]
               (comp set #(take last-seen %) #(into % new-ids) set))
        (println new-entries)
-       (if ids
-         (first new-entries)
-         new-entries))))
+       new-entries)))
 
 (defn atom-pull
   ([url]
@@ -88,9 +86,7 @@
         new-entries (reverse (filter (comp new-ids :id) latest-entries))]
     (swap! entry-cache update-in [url]
            (comp set #(take last-seen %) #(into % new-ids) set))
-    (if ids
-      (first new-entries)
-      new-entries)))
+    new-entries))
 
 (defn rss-pull [url & [username password]]
   (reduce #(str %1 %2 "\n") nil (take 5 (rss-pull* url username password))))
