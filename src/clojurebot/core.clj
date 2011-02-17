@@ -160,24 +160,31 @@
                  (concat (map first (:addressed-plugins config))
                          (->> (:cron config)
                               (map :task)
-                              (map namespace))
-                         (:plugins config))))
+                              (map namespace)
+                              (map symbol)))))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (when (:swank config)
       (future
         (start-repl (:swank config))))
     (setup-crons config)
-    (letfn [(connect []
-              (try
-                (apply irc-run
-                       (clojurebot config)
-                       (:server config)
-                       (:nick config)
-                       (:threads config)
-                       (:channels config))
-                (catch Exception e
-                  (info "Connection failed sleeping 1 minute" e)
-                  (Thread/sleep (* 60 1000))
-                  connect)))]
-      (trampoline connect))))
+    (doseq [[server channels] (:irc config)]
+      (let [out *out*]
+        (future
+          (binding [*out* out]
+            (letfn [(connect []
+                      (try
+                        (apply irc-run
+                               (assoc (clojurebot config)
+                                 :server server
+                                 :channels channels)
+                               server
+                               (:nick config)
+                               (:threads config)
+                               channels)
+                        (catch Exception e
+                          (info "Connection failed sleeping 1 minute" e)
+                          (Thread/sleep (* 60 1000))
+                          connect)))]
+              (trampoline connect))))))
+    @(promise)))

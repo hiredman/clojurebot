@@ -1,6 +1,5 @@
 {:nick "clojurebotIII"
- :channels ["#clojurebot"]
- :server "irc.freenode.net"
+ :irc {"irc.freenode.net" ["#clojurebot"]}
  :database "/tmp/bot.db"
  :threads 4
  :cron [{:task hiredman.clojurebot.clojars/go
