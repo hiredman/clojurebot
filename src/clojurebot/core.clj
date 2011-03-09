@@ -174,15 +174,16 @@
         (start-repl (:swank config))))
     (setup-crons config)
     (doseq [[server channels] (:irc config)]
-      (let [out *out*]
+      (let [out *out*
+            config (assoc config
+                     :server server
+                     :channels channels)]
         (future
           (binding [*out* out]
             (letfn [(connect []
                       (try
                         (apply irc-run
-                               (assoc (clojurebot config)
-                                 :server server
-                                 :channels channels)
+                               (clojurebot config)
                                server
                                (:nick config)
                                (:threads config)
