@@ -147,7 +147,11 @@
    (:server config)
    (:nick config)
    (a-comp
-    (a-arr (fn [[type bag]] (assoc bag :type type :config config)))
+    (a-arr (fn [[type bag]]
+             (assoc bag
+               :type type
+               :config config
+               :time (System/currentTimeMillis))))
     (a-indirect #'pipeline))))
 
 (defn set-properties! []
