@@ -76,12 +76,16 @@
 
 (def pipeline
   (a-except
-   (a-comp (a-all (a-arr log-user) ;enable "~seen foo" stuff
-
-                  (a-when contains-url?
-                          (a-arr delicious))
-
-                  pass-through)
+   (a-comp (a-all
+            (a-except
+             (a-all (a-arr log-user) ;enable "~seen foo" stuff
+                    (a-when contains-url?
+                            (a-arr delicious))
+                    (a-arr (fn [{:keys [config] :as msg}]
+                             (doseq [name (:logging-plugins config)]
+                               ((resolve name) msg)))))
+             null)
+            pass-through)
 
            (a-arr last) ;we only want the passed through value
 
@@ -161,7 +165,8 @@
                          (->> (:cron config)
                               (map :task)
                               (map namespace)
-                              (map symbol)))))
+                              (map symbol))
+                         (map namespace (:logging-plugins config)))))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (when (:swank config)
