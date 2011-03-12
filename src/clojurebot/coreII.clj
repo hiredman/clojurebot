@@ -15,16 +15,18 @@
            (re-find (re-pattern (str "^" (.getNick bot) ",")) message)
            (nil? (:channel bag)))))
 
+(defn remove-nick-prefix-fn [bot message]
+  (let [prefixes [(str (.getNick bot) ":")
+                  (str (.getNick bot) ",")
+                  "~"]]
+    (->> prefixes
+         (reduce (fn [message prefix]
+                   (.replaceFirst message prefix ""))
+                 (.trim message))
+         .trim)))
+
 (def-arr remove-nick-prefix [{:keys [bot] :as bag}]
-  (update-in bag [:message]
-             (fn [message]
-               (let [prefixes [(str (.getNick bot) ":")
-                               (str (.getNick bot) ",")
-                               "~"]]
-                 (.trim (reduce
-                         #(.replaceAll %1 (str (re-pattern %2)) "")
-                         message
-                         prefixes))))))
+  (update-in bag [:message] (partial remove-nick-prefix-fn bot)))
 
 (defn question? [{:keys [message]}]
   (and message
