@@ -14,7 +14,7 @@
          :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
          :arguments ["clojure/clojure-contrib"]}]
  :plugin-directory "/Users/hiredman/src/clojurebot/checkouts/"
- #_:addressed-plugins [[clojurebot.hudson build? do-a-build]]
- #_ :hudson "http://example.com/"
- #_ :delicious #_ ["user" "password"]
- :on-invite :join}
+ :addressed-plugins [[clojurebot.indexing search? search]]
+ :logging-plugins #{clojurebot.indexing/index}
+ :on-invite :join
+ :swank 8888}
