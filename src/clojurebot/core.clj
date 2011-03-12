@@ -38,14 +38,14 @@
                  pass-through)
           (a-select
            true (a-arr
-                  (fn [{:keys [config] :as a-map}]
-                    (let [[ns query action] ((comp first filter)
-                                                  (fn [[ns query action]]
-                                                    (let [query (ns-resolve
-                                                                 ns query)]
-                                                      (query a-map)))
-                                                  (:addressed-plugins config))]
-                      (@(ns-resolve ns action) a-map))))
+                 (fn [{:keys [config] :as a-map}]
+                   (let [[ns query action] ((comp first filter)
+                                            (fn [[ns query action]]
+                                              (let [query (ns-resolve
+                                                           ns query)]
+                                                (query a-map)))
+                                            (:addressed-plugins config))]
+                     (@(ns-resolve ns action) a-map))))
            false (a-cond ticket-query?
                          (a-arr get-ticket-n)
 
@@ -76,68 +76,70 @@
 
 (def pipeline
   (a-except
-   (a-comp (a-all
-            (a-except
-             (a-all (a-arr log-user) ;enable "~seen foo" stuff
-                    (a-when contains-url?
-                            (a-arr delicious))
-                    (a-arr (fn [{:keys [config] :as msg}]
-                             (doseq [name (:logging-plugins config)]
-                               ((resolve name) msg)))))
-             null)
-            pass-through)
+   (a-comp
+    (a-all
+     (a-arr log-user) ;enable "~seen foo" stuff
+     (a-when contains-url?
+             (a-arr delicious))
+     (a-arr (fn [{:keys [config] :as msg}]
+              (doseq [name (:logging-plugins config)]
+                (try
+                  ((resolve name) msg)
+                  (catch Exception e
+                    (.printStackTrace e))))))
+     pass-through)
 
-           (a-arr last) ;we only want the passed through value
+    (a-arr last) ;we only want the passed through value
 
-           (a-cond doc-lookup?
-                   (a-comp (a-arr
-                            #(update-in % [:message] (fn [x] (str "," x))))
-                           clojurebot-eval)
+    (a-cond doc-lookup?
+            (a-comp (a-arr
+                     #(update-in % [:message] (fn [x] (str "," x))))
+                    clojurebot-eval)
 
-                   math?
-                   da-math
+            math?
+            da-math
 
-                   eval-request?
-                   (a-comp (a-arr (fn [x]
-                                    (info (format "evaling %s for %s"
-                                                  (:message x)
-                                                  (:sender x)))
-                                    x))
-                           clojurebot-eval
-                           limit-length)
+            eval-request?
+            (a-comp (a-arr (fn [x]
+                             (info (format "evaling %s for %s"
+                                           (:message x)
+                                           (:sender x)))
+                             x))
+                    clojurebot-eval
+                    limit-length)
 
-                   dice-roll?
-                   (a-arr roll-some-dice)
+            dice-roll?
+            (a-arr roll-some-dice)
 
-                   addressed?
-                   addressed-pipeline
+            addressed?
+            addressed-pipeline
 
-                   question?            ;ping? => PONG!
-                   (a-comp (a-arr factoid-lookup-no-fall-back)
-                           (a-if nil?
-                                 null
-                                 pass-through))
+            question?            ;ping? => PONG!
+            (a-comp (a-arr factoid-lookup-no-fall-back)
+                    (a-if nil?
+                          null
+                          pass-through))
 
-                   #(and (= 1 (rand-int 1000))
-                         (= (:type %) :message))
-                   addressed-pipeline
+            #(and (= 1 (rand-int 1000))
+                  (= (:type %) :message))
+            addressed-pipeline
 
-                   (comp (partial = :disconnect) :type)
-                   reconnect
+            (comp (partial = :disconnect) :type)
+            reconnect
 
-                   (comp (partial = :connect) :type)
-                   (a-all rejoin
-                          nickserv-id)
+            (comp (partial = :connect) :type)
+            (a-all rejoin
+                   nickserv-id)
 
-                   (comp (partial = :invite) :type)
-                   (a-comp (a-arr (fn [{:keys [bot channel config]}]
-                                    (when (:on-invite config)
-                                      (.joinChannel bot channel))))
-                           null)
+            (comp (partial = :invite) :type)
+            (a-comp (a-arr (fn [{:keys [bot channel config]}]
+                             (when (:on-invite config)
+                               (.joinChannel bot channel))))
+                    null)
 
-                   (constantly true)
-                   (a-comp (a-arr #(dissoc % :config :bot))
-                           null)))
+            (constantly true)
+            (a-comp (a-arr #(dissoc % :config :bot))
+                    null)))
    (a-arr (comp #(doto % .printStackTrace) first))))
 
 ;;/pipelines
