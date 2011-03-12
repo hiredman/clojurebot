@@ -10,7 +10,10 @@
                                             #(.toURL %)
                                             (file-seq (file directory)))))})
   (try
-    (doseq [namespace namespaces]
-      (require namespace))
+    (doseq [namespace (set namespaces)]
+      (try
+        (require namespace)
+        (catch Exception e
+          (.printStackTrace e))))
     (finally
      (pop-thread-bindings))))
