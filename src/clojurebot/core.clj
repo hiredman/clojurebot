@@ -128,8 +128,8 @@
             reconnect
 
             (comp (partial = :connect) :type)
-            (a-all rejoin
-                   nickserv-id)
+            (a-all nickserv-id
+                   rejoin)
 
             (comp (partial = :invite) :type)
             (a-comp (a-arr (fn [{:keys [bot channel config]}]
