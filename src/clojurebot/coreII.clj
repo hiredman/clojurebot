@@ -69,7 +69,8 @@
 
 (def-arr nickserv-id [{:keys [bot config]}]
   (when (:nickserv-password config)
-    (.sendMessage bot "nickserv" (str "identify " (:nickserv-password config)))))
+    (.sendMessage bot
+                  "nickserv" (str "identify " (:nickserv-password config)))))
 
 (defn doc-lookup? [{:keys [message]}]
   (and message
