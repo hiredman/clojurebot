@@ -46,8 +46,14 @@
   (a-comp (a-arr eval-message)
           (a-if vector?
                 (a-arr
-                 (fn [x]
-                   (reduce #(str %1 %2 "\n") x)))
+                 (fn [[stdout stderr result]]
+                   (let [stdout (if (empty? stdout)
+                                  ""
+                                  (str stdout "\n"))
+                         stderr (if (empty? stderr)
+                                  ""
+                                  (str stderr "\n"))]
+                     (str stdout stderr result))))
                 pass-through)))
 
 (def-arr reconnect [{:keys [server bot config]}]
