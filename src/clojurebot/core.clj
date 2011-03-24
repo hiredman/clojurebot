@@ -176,6 +176,12 @@
                           (map namespace)
                           (map symbol))
                      (map (comp symbol namespace) (:logging-plugins config)))))
+
+(defn start-swank [config]
+  (when (:swank config)
+    (future
+      (start-repl (:swank config)))))
+
 (defn -main [& [config-file]]
   (set-properties!)
   (let [config (read-string (slurp config-file))]
@@ -184,10 +190,9 @@
       (load-plugins config))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
-    (when (:swank config)
-      (future
-        (start-repl (:swank config))))
+    (start-swank config)
     (setup-crons config)
+    ;; for each server run irc-run
     (doseq [[server channels] (:irc config)]
       (let [out *out*
             config (assoc config
