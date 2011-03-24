@@ -26,8 +26,12 @@
   (:gen-class))
 
 ;; pipelines
+;; addressed pipelines are run when a message has been determined to
+;; have been addressed specificly at the bot
 (def addressed-pipeline
   (a-comp remove-nick-prefix
+          ;; stupid implemention looking for config defined
+          ;; addressed-plugins ends up search through the list twice
           (a-all (a-arr
                   (fn [{:keys [config] :as a-map}]
                     ((comp boolean first filter)
@@ -81,6 +85,7 @@
      (a-arr log-user) ;enable "~seen foo" stuff
      (a-when contains-url?
              (a-arr delicious))
+     ;; run logging plugins
      (a-arr (fn [{:keys [config] :as msg}]
               (doseq [name (:logging-plugins config)]
                 (try
@@ -162,17 +167,21 @@
   (System/setProperty "file.encoding" "utf8")
   (System/setProperty "swank.encoding" "utf8"))
 
+
+(defn load-plugins [config]
+  (load-from (:plugin-directory config)
+             (concat (map first (:addressed-plugins config))
+                     (->> (:cron config)
+                          (map :task)
+                          (map namespace)
+                          (map symbol))
+                     (map (comp symbol namespace) (:logging-plugins config)))))
 (defn -main [& [config-file]]
   (set-properties!)
   (let [config (read-string (slurp config-file))]
+    ;; load the namespaces for different kinds of plugins
     (when (:plugin-directory config)
-      (load-from (:plugin-directory config)
-                 (concat (map first (:addressed-plugins config))
-                         (->> (:cron config)
-                              (map :task)
-                              (map namespace)
-                              (map symbol))
-                         (map namespace (:logging-plugins config)))))
+      (load-plugins config))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (when (:swank config)
