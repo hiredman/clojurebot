@@ -13,7 +13,7 @@
          :rate 3000
          :targets [[:irc "clojurebotIII" "irc.freenode.net" "#clojurebot"]]
          :arguments ["clojure/clojure-contrib"]}]
- :plugin-directory "/Users/hiredman/src/clojurebot/checkouts/"
+ :plugin-directory "/Users/hiredman/src/clojurebot/"
  :addressed-plugins [[clojurebot.indexing search? search]]
  :logging-plugins #{clojurebot.indexing/index}
  :on-invite :join
