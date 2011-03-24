@@ -11,13 +11,13 @@
   (and (or (= type :message)
            (= type :private-message))
        (or (re-find #"^~" message)
-           (re-find (re-pattern (str "^" (.getNick bot) ":")) message)
-           (re-find (re-pattern (str "^" (.getNick bot) ",")) message)
+           (re-find (re-pattern (str "^" (:nick config) ":")) message)
+           (re-find (re-pattern (str "^" (:nick config) ",")) message)
            (nil? (:channel bag)))))
 
-(defn remove-nick-prefix-fn [bot message]
-  (let [prefixes [(str (.getNick bot) ":")
-                  (str (.getNick bot) ",")
+(defn remove-nick-prefix-fn [message nick]
+  (let [prefixes [(str nick ":")
+                  (str nick ",")
                   "~"]]
     (->> prefixes
          (reduce (fn [message prefix]
@@ -25,8 +25,9 @@
                  (.trim message))
          .trim)))
 
-(def-arr remove-nick-prefix [{:keys [bot] :as bag}]
-  (update-in bag [:message] (partial remove-nick-prefix-fn bot)))
+(def-arr remove-nick-prefix [bag]
+  (prn bag)
+  (update-in bag [:message] remove-nick-prefix-fn (:nick (:config bag))))
 
 (defn question? [{:keys [message]}]
   (and message
