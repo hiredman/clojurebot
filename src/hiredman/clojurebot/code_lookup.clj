@@ -119,5 +119,5 @@
   (re-find #"^(def|source) " message))
 
 (defn do-code-lookup [{:keys [message channel sender bot]}]
-  (let [thing (.replaceAl message "^(def|source) " "")]
+  (let [thing (.replaceAll message "^(def|source) " "")]
     (lookup message thing)))
