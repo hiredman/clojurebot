@@ -198,19 +198,20 @@
             config (assoc config
                      :server server
                      :channels channels)]
-        (future
-          (binding [*out* out]
-            (letfn [(connect []
-                      (try
-                        (apply irc-run
-                               (clojurebot config)
-                               server
-                               (:nick config)
-                               (:threads config)
-                               channels)
-                        (catch Exception e
-                          (info "Connection failed sleeping 1 minute" e)
-                          (Thread/sleep (* 60 1000))
-                          connect)))]
-              (trampoline connect))))))
+        (dotimes [_ (:threads config)]
+          (future
+            (binding [*out* out]
+              (letfn [(connect []
+                        (try
+                          (apply irc-run
+                                 (clojurebot config)
+                                 server
+                                 (:nick config)
+                                 1
+                                 channels)
+                          (catch Exception e
+                            (info "Connection failed sleeping 1 minute" e)
+                            (Thread/sleep (* 60 1000))
+                            connect)))]
+                (trampoline connect)))))))
     @(promise)))
