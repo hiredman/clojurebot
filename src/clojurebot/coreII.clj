@@ -16,14 +16,21 @@
            (nil? (:channel bag)))))
 
 (defn remove-nick-prefix-fn [message nick]
-  (let [prefixes [(str nick ":")
-                  (str nick ",")
-                  "~"]]
-    (->> prefixes
-         (reduce (fn [message prefix]
-                   (.replaceFirst message prefix ""))
-                 (.trim message))
-         .trim)))
+  (when message
+    (let [message (.trim message)]
+      (.trim
+       (cond
+        (.startsWith message (str nick ":"))
+        (.replaceFirst message (str nick ":") "")
+
+        (.startsWith message (str nick ","))
+        (.replaceFirst message (str nick ",") "")
+
+        (.startsWith message "~")
+        (.replaceFirst message "~" "")
+
+        :else
+        message)))))
 
 (def-arr remove-nick-prefix [bag]
   (prn bag)
