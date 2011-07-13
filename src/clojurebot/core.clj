@@ -22,7 +22,8 @@
                                   limit-length clojurebot-eval reconnect
                                   rejoin nickserv-id doc-lookup? math? da-math
                                   notice target setup-crons]]
-        [clojurebot.plugin :only [load-from]])
+        [clojurebot.plugin :only [load-from]]
+        [hiredman.clojurebot.simplyscala :only [scala-eval]])
   (:gen-class))
 
 ;; pipelines
@@ -103,6 +104,11 @@
 
             math?
             da-math
+
+            (fn [{:keys [message]}]
+              (.startsWith message ",scala"))
+            (a-arr (fn [{:keys [message]}]
+                     (scala-eval (.replaceFirst message ",scala" ""))))
 
             eval-request?
             (a-comp (a-arr (fn [x]
