@@ -12,6 +12,7 @@
                  [log4j "1.2.16"]
                  [org.danlarkin/clojure-json "1.1"]
                  [clj-http "0.1.1"]
-                 [swank-clojure "1.2.1"]]
+                 [swank-clojure "1.3.2"]
+                 [conduit-xmpp "1.0.0-SNAPSHOT"]]
   :main clojurebot.core
   :clean-non-project-classes false)
