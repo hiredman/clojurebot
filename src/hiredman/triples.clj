@@ -1,34 +1,56 @@
-;; DEPENDS clojureql apache-derby
 (ns hiredman.triples
-  (:require [dk.bestinclass.clojureql :as cql]  
-            [dk.bestinclass.clojureql.backend.derby :as cql-derby]
-            [clojure.contrib.sql :as sql]))
+  (:require [clojure.java.jdbc :as sql]))
 
 (defn derby [name]
-  (assoc (cql/make-connection-info "derby" name nil nil)
+  (assoc {} #_(cql/make-connection-info "derby" name nil nil)
          :classname "org.apache.derby.jdbc.EmbeddedDriver"
          :create true
          :subname name
          :subprotocol "derby"))
 
 (defn create-store
-    [name]
+  [name]
   (sql/with-connection (derby name)
     (sql/create-table
-          :triples
-          [:id :int "PRIMARY KEY" "GENERATED ALWAYS AS IDENTITY"]
-          [:subject "varchar(32670)"]
-          [:predicate "varchar(32670)"]
-          [:object "varchar(32670)"]
-          [:upper_subject "varchar(32670)"]
-          [:created_at :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"])))
+     :triples
+     [:id :int "PRIMARY KEY" "GENERATED ALWAYS AS IDENTITY"]
+     [:subject "varchar(32670)"]
+     [:predicate "varchar(32670)"]
+     [:object "varchar(32670)"]
+     [:upper_subject "varchar(32670)"]
+     [:created_at :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"])))
+
+;; TODO: remove this hack once this is fixed upstream
+(in-ns 'clojure.java.jdbc.internal)
+
+(defn do-prepared-return-keys*
+  "Executes an (optionally parameterized) SQL prepared statement on the
+  open database connection. Each param-group is a seq of values for all of
+  the parameters.
+  Return the generated keys for the (single) update/insert."
+  [^String sql & param-groups]
+  (with-open [^PreparedStatement stmt (prepare-statement* (connection*) sql :return-keys true)]
+    (doseq [param-group param-groups]
+      (set-parameters stmt param-group)
+      (.addBatch stmt))
+    (transaction* (fn []
+                    (let [counts (.executeBatch stmt)]
+                      (try
+                        (first (resultset-seq* (.getGeneratedKeys stmt)))
+                        (catch Exception _
+                          ;; assume generated keys is unsupported and return counts instead: 
+                          counts)))))))
+
+(in-ns 'hiredman.triples)
 
 (defn store-triple [db {:keys [s p o]}]
-  (cql/run [db results]
-           (cql/insert-into triples
-                            [:subject ~(.trim (.toString s)) :predicate ~(.trim (.toString p)) :object ~(.trim (.toString o))
-                             :upper_subject ~(.toUpperCase (.trim (.toString s)))])
-           results))
+  (sql/with-connection db
+    (sql/transaction
+     (sql/insert-values
+      :triples
+      [:subject :predicate :object :upper_subject]
+      [(.trim (str s)) (.trim (str p)) (.trim (str o))
+       (.toUpperCase (.trim (str s)))]))))
 
 (defmulti query
           (fn [db s p o]
@@ -49,49 +71,53 @@
                 ::subject-predicate-object)))
 
 (defmethod query ::subject-_-_ [db s p o]
-  (cql/run [db results]
-           (cql/query triples * (= ~(.toUpperCase s) upper_subject))
-           (doall results)))
+  (sql/with-connection db
+    (sql/with-query-results res
+      ["SELECT * FROM triples WHERE upper_subject = ?" (.toUpperCase s)]
+      (doall res))))
 
 (defmethod query ::like_subject-_-_ [db s p o]
-  (prn (first s))
-  (cql/run [db results]
-           (cql/query triples * (like ~(.toUpperCase (first s)) upper_subject))
-           (try (doall results) (catch Exception e (prn e)))))
-
-(defmethod query ::like_subject-_-_ [db s p o]
-  (cql/run [db results]
-           (cql/query triples * (like upper_subject ~(.toUpperCase (first s))))
-           (doall results)))
+  (sql/with-connection db
+    (sql/with-query-results res
+      ["SELECT * FROM triples WHERE upper_subject LIKE ?"
+       (.toUpperCase (first s))]
+      (doall res))))
 
 (defmethod query ::_-predicate-_ [db s p o]
-  (cql/run [db results]
-           (cql/query triples * (= ~p predicate))
-           (doall results)))
+  (sql/with-connection db
+    (sql/with-query-results res
+      ["SELECT * FROM triples WHERE predicate = ?" p]
+      (doall res))))
 
 (defmethod query ::subject-predicate-object [db s p o]
-  (cql/run [db results]
-           (cql/query triples * (and (= ~(.toUpperCase s) upper_subject)
-                                     (= ~p predicate)
-                                     (= ~o object)))
-           (doall results)))
+  (sql/with-connection db
+    (sql/with-query-results res
+      [(str "SELECT * FROM triples WHERE"
+            "predicate = ? AND"
+            "upper_subject = ? AND"
+            "object = ?")
+       p (.toUpperCase s) o]
+      (doall res))))
 
 (defmethod query ::subject-predicate-_ [db s p o]
-  (cql/run [db results]
-           (cql/query triples * (and (= ~(.toUpperCase s) upper_subject)
-                                     (= ~p predicate)))
-           (doall results)))
+  (sql/with-connection db
+    (sql/with-query-results res
+      [(str "SELECT * FROM triples WHERE"
+            "predicate = ? AND"
+            "upper_subject = ? AND")
+       p (.toUpperCase s)]
+      (doall res))))
 
 (defmethod query ::_-_-_ [db s p o]
-  (cql/run [db results]
-           (cql/query triples *)
-           (doall results)))
+  (sql/with-connection db
+    (sql/with-query-results res
+      ["SELECT * FROM triples"]
+      (doall res))))
 
 (defn delete [db s p o]
   (doseq [id (map :id (query db s p o))]
-    (cql/run [db results]
-             (cql/delete-from triples (= id ~id))
-             results)))
+    (sql/with-connection db
+      (sql/delete-rows :triples ["id = ?" id]))))
 
 (defn string [{:keys [subject predicate object]}]
   (if (.startsWith object "<reply>")
