@@ -1,5 +1,5 @@
 (ns clojurebot.core
-  (:use [conduit.irc :only [irc-run a-irc]]
+  (:use [conduit.irc :only [irc-run a-irc *pircbot* pircbot]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [hiredman.clojurebot.factoids :only [factoid-lookup factoid-command?
@@ -106,7 +106,7 @@
             da-math
 
             (fn [{:keys [message]}]
-              (.startsWith message ",scala"))
+              (and message (.startsWith message ",scala")))
             (a-arr (fn [{:keys [message]}]
                      (scala-eval (.replaceFirst message ",scala" ""))))
 
@@ -150,14 +150,14 @@
 
             (constantly true)
             (a-comp (a-arr #(dissoc % :config :bot))
-                    null)))
+                    null)
+            ))
    (a-arr (comp #(doto % .printStackTrace) first))))
 
 ;;/pipelines
 
 (defn clojurebot [config]
   (a-irc
-   (:server config)
    (:nick config)
    (a-comp
     (a-arr (fn [[type bag]]
@@ -203,21 +203,16 @@
       (let [out *out*
             config (assoc config
                      :server server
-                     :channels channels)]
+                     :channels channels)
+            p (pircbot (:server config) (:nick config))]
         (dotimes [_ (:threads config)]
           (future
-            (binding [*out* out]
-              (letfn [(connect []
-                        (try
-                          (apply irc-run
-                                 (clojurebot config)
-                                 server
-                                 (:nick config)
-                                 1
-                                 channels)
-                          (catch Exception e
-                            (info "Connection failed sleeping 1 minute" e)
-                            (Thread/sleep (* 60 1000))
-                            connect)))]
-                (trampoline connect)))))))
+            (binding [*out* out
+                      *pircbot* p]
+              (try
+                (apply irc-run
+                       (clojurebot config)
+                       channels)
+                (catch Exception e
+                  (info "Connection failed" e))))))))
     @(promise)))

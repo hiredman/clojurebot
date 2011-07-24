@@ -3,7 +3,8 @@
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [clojure.contrib.logging :only [info]]
-        [conduit.irc :only [a-irc]])
+        [conduit.irc :only [send-notice]]
+        [conduit.xmpp :only [new-message *xmpp-connection*]])
   (:require [hiredman.schedule :as sched]))
 
 (defn addressed?
@@ -109,12 +110,24 @@
 (defmulti target first)
 
 (defmethod target :irc [[_ nick server target]]
-  (a-comp (a-arr (fn [x] (info (str x)) x))
-          (a-if nil?
-                null
-                (a-comp (a-all (a-arr (constantly target))
-                               (a-arr (partial vector :notice)))
-                        (a-irc server nick)))))
+  (a-arr (fn [x] (send-notice target x))))
+
+(defmethod target :xmpp [[_ jid-from jid-to]]
+  (when jid-to
+    (let [con *xmpp-connection*
+          roster (.getRoster con)
+          jid-to (first
+                  (map :from
+                       (map bean
+                            (iterator-seq
+                             (.getPresences
+                              roster jid-to)))))]
+      (a-arr (fn [body]
+               (.sendPacket con
+                            (doto (new-message)
+                              (.setTo jid-to)
+                              (.setFrom jid-from)
+                              (.setBody (str body)))))))))
 
 (defn setup-crons [config]
   (doseq [{:keys [task rate targets arguments]} (:cron config)
