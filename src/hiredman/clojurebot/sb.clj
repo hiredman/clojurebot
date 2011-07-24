@@ -2,16 +2,19 @@
   (:use (hiredman.clojurebot core)
         (hiredman sandbox)))
 
-(defn cl [clojure-jar]
-  (if clojure-jar
-    (let [bootcp clojure-jar
-          cp (.split bootcp ":")
-          cp (for [c cp] (java.net.URL. (format "file://%s" c)))
-          cp (into-array java.net.URL cp)]
-      (java.net.URLClassLoader. cp nil))
-    (.getClassLoader clojure.lang.RT)))
-
-(alter-var-root #'cl memoize)
+(defonce cl
+  (memoize
+   (fn [clojure-jar]
+     (doto (if clojure-jar
+             (let [bootcp clojure-jar
+                   cp (.split bootcp ":")
+                   cp (for [c cp] (java.net.URL. (format "file://%s" c)))
+                   cp (into-array java.net.URL cp)]
+               (java.net.URLClassLoader. cp nil))
+             (.getClassLoader clojure.lang.RT))
+       ;; make sure RT is loaded and inited before we try and use it
+       ;; in the sandbox
+       (evil "(+ 1 2)")))))
 
 (defn naughty-forms? [strang]
   (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"

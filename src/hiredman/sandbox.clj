@@ -106,7 +106,9 @@
           `(let [m# (meta (resolve ~arg-name))
                  al# (:arglists m#)
                  docstring# (:doc m#)]
-             (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))))
+             (if m#
+               (.replaceAll (str al# "; " docstring# ) "\\s+" " ")
+               '(symbol ~(hiredman.clojurebot.core/befuddled)))))))
 
 (defn force-lazy-seq
   "if passed a lazy seq, forces seq with doall, if not return what is passed"
@@ -145,7 +147,6 @@
 (extend-type ClassLoader
   Evaluator
   (evil [cl form-str]
-    (prn form-str)
     (read-string
      (let [old-cl (.getContextClassLoader (Thread/currentThread))]
        (try
@@ -168,7 +169,6 @@
          (finally
           (.setContextClassLoader (Thread/currentThread) old-cl)))))))
 
-
 (defn eval-in-box [_string sb-ns class-loader]
   (enable-security-manager)
   (let [f `(do
@@ -183,17 +183,31 @@
                  ~(my-doc)
                  (ns ~sb-ns
                    (:use [clojure.repl]))
-                 (alter-var-root #'clojure.repl/doc (constantly (resolve '~'my-doc)))
-                 [(pr-str (try
-                            (eval (read-string ~_string))
-                            (catch Throwable t#
-                              t#)))
-                  (print-str (.toString (doto o# .close)))
-                  (print-str (.toString (doto e# .close)))])))
-        thunk (fn []
-                (evil
-                 class-loader
-                 f))
-        result (thunk)]
-    (prn result)
-    result))
+                 (alter-var-root (resolve '~'doc)
+                                 (constantly (resolve '~'my-doc)))
+                 (let [f# (read-string ~_string)
+                       good?# (if (and (coll? f#)
+                                       (not (empty? f#)))
+                               (when (not
+                                      (some '~*bad-forms*
+                                            (tree-seq coll?
+                                                      (fn [i#]
+                                                        (let [a# (macroexpand
+                                                                  i#)]
+                                                          (if (coll? a#)
+                                                            (seq a#)
+                                                            (list a#))))
+                                                      f#)))
+                                 f#)
+                               true)
+                       r# (pr-str (try
+                                    (when-not good?#
+                                      (throw (Exception. "SANBOX DENIED")))
+                                    (eval f#)
+                                    (catch Throwable t#
+                                      t#)))]
+                   [(.toString (doto o# .close))
+                    (.toString (doto e# .close))
+                    r#]))))
+        thunk (fn [] (evil class-loader f))]
+    (thunk)))

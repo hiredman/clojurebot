@@ -61,7 +61,10 @@
                                   (str stdout "\n"))
                          stderr (if (empty? stderr)
                                   ""
-                                  (str stderr "\n"))]
+                                  (str stderr "\n"))
+                         result (when (or (not= "nil" result)
+                                          (empty? stdout))
+                                  result)]
                      (str stdout stderr result))))
                 pass-through)))
 
