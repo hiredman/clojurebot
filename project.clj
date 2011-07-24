@@ -1,4 +1,4 @@
-(defproject clojurebot "0.3.0"
+(defproject clojurebot "0.3.1-SNAPSHOT"
   :description "An IRC bot written in Clojure"
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
