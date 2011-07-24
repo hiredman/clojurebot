@@ -22,14 +22,15 @@
 
 ;;;;;;;; Chousuke
 (defn thunk-timeout [thunk seconds]
-  (let [task (FutureTask. thunk)
+  (let [task (FutureTask.  thunk)
         thr (Thread. task)]
     (try
       (.start thr)
       (.get task seconds TimeUnit/SECONDS)
       (catch TimeoutException e
         (.cancel task true)
-        (.stop thr (Exception. "Thread stopped!")) "Execution Timed Out"))))
+        (.stop thr (Exception. "Thread stopped!"))
+        (pr-str "Execution Timed Out")))))
 
 (defn wrap-exceptions
   ([f]
@@ -99,22 +100,13 @@
     (eval b)
     (str a)))
 
-(defmacro my-doc [s]
-  `(let [m# (meta (resolve '~s))
-         al# (:arglists m#)
-         docstring# (:doc m#)]
-     (if m#
-       (.replaceAll (str al# "; " docstring# ) "\\s+" " ")
-       (-> hiredman.clojurebot.code-lookup/contrib
-           :vars
-           ((partial filter (fn [a#] (= (:name a#) (.toString '~s)))))
-           first
-           ((fn [foo#]
-              (if foo#
-                (.replaceAll (str (:namespace foo#) "/" (:name foo#) ";"
-                                  (print-str (:arglists foo#)) "; "
-                                  (:doc foo#)) "\\s+" " ")
-                (symbol (core/befuddled)))))))))
+(defn my-doc []
+  (let [arg-name (gensym)]
+    (list 'defmacro 'my-doc [arg-name]
+          `(let [m# (meta (resolve ~arg-name))
+                 al# (:arglists m#)
+                 docstring# (:doc m#)]
+             (.replaceAll (str al# "; " docstring# ) "\\s+" " ")))))
 
 (defn force-lazy-seq
   "if passed a lazy seq, forces seq with doall, if not return what is passed"
@@ -132,22 +124,76 @@
             e (print-str (.toString *err*))]
         [o e (when (or result (.equals o "")) r)]))))
 
-(defn eval-in-box [_string sb-ns]
+(defn call-method
+  "Calls a private or protected method.
+
+   params is a vector of classes which correspond to the arguments to
+   the method e
+
+   obj is nil for static methods, the instance object otherwise.
+
+   The method-name is given a symbol or a keyword (something Named)."
+  [klass method-name params obj & args]
+  (-> klass (.getDeclaredMethod (name method-name)
+                                (into-array Class params))
+      (.invoke obj (into-array Object args))))
+
+
+(defprotocol Evaluator
+  (evil [evaluator form]))
+
+(extend-type ClassLoader
+  Evaluator
+  (evil [cl form-str]
+    (prn form-str)
+    (read-string
+     (let [old-cl (.getContextClassLoader (Thread/currentThread))]
+       (try
+         (.setContextClassLoader (Thread/currentThread) cl)
+         (let [rt (.loadClass cl "clojure.lang.RT")
+               compiler (.loadClass cl "clojure.lang.Compiler")
+               var- (fn [s]
+                      (call-method
+                       rt :var [String String] nil (namespace s) (name s)))
+               class (fn [x] (.loadClass cl (name x)))
+               deref (fn [x] (call-method (.getClass x) :deref [] x))
+               invoke (fn [x &  args] (call-method (.getClass x) :invoke []))
+               read-string (fn [s] (call-method rt :readString [String] nil s))
+               eval (fn [f] (call-method compiler :eval [Object] nil f))]
+           (thunk-timeout
+            (fn []
+              (sandbox #(eval (read-string (format "(pr-str %s)" form-str)))
+                       (context (domain (empty-perms-list)))))
+            *default-timeout*))
+         (finally
+          (.setContextClassLoader (Thread/currentThread) old-cl)))))))
+
+
+(defn eval-in-box [_string sb-ns class-loader]
   (enable-security-manager)
-  (let [form #(-> _string StringReader. PushbackReader. read)
+  (let [f `(do
+             (with-open [o# (java.io.StringWriter.)
+                         e# (java.io.StringWriter.)]
+               (binding [*out* o#
+                         *err* e#
+                         *read-eval* false
+                         *print-level* 10
+                         *print-length* 5
+                         *ns* (find-ns 'clojure.core)]
+                 ~(my-doc)
+                 (ns ~sb-ns
+                   (:use [clojure.repl]))
+                 (alter-var-root #'clojure.repl/doc (constantly (resolve '~'my-doc)))
+                 [(pr-str (try
+                            (eval (read-string ~_string))
+                            (catch Throwable t#
+                              t#)))
+                  (print-str (.toString (doto o# .close)))
+                  (print-str (.toString (doto e# .close)))])))
         thunk (fn []
-                (binding [*out* (java.io.StringWriter.)
-                          *err* (java.io.StringWriter.)
-                          *read-eval* false
-                          *ns* (find-ns sb-ns)
-                          doc (var my-doc)
-                          *print-level* 30]
-                  (eval-in-box-helper (form)
-                                      {:print-length 10
-                                       :print-level 5})))
-        result (thunk-timeout
-                #(sandbox
-                  (fn [] (wrap-exceptions thunk))
-                  (context (domain (empty-perms-list))))
-                *default-timeout*)]
+                (evil
+                 class-loader
+                 f))
+        result (thunk)]
+    (prn result)
     result))
