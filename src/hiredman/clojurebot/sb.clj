@@ -7,7 +7,7 @@
     (some #(not= -1 %) (map #(.lastIndexOf strang %) nf))))
 
 (defn eval-request? [{:keys [message]}]
-  (and message (re-find #"^," message)))
+  (and message (re-find #"^," (.trim message))))
 
 (defn eval-message [{:keys [message sender config] :as bag}]
   (if (and (not (naughty-forms? message))
