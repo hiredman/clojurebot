@@ -113,7 +113,7 @@
 (defmulti target first)
 
 (defmethod target :irc [[_ nick server target]]
-  (a-arr (fn [x] (send-notice target x))))
+  (a-arr (fn [x] (when x (send-notice target x)))))
 
 (defmethod target :xmpp [[_ jid-from jid-to]]
   (when jid-to
