@@ -138,11 +138,11 @@
     (require (symbol (namespace task)))
     (info (format "scheduling cron %s %s %s %s" task rate targets arguments))
     (sched/fixedrate
-     {:task #(try
-               (info (format "ran cron %s" task))
-               (conduit-map out [(apply @(resolve task) arguments)])
-               (catch Exception e
-                 (info (format "cron exception %s" task) e)))
+     {:task (bound-fn* #(try
+                          (info (format "ran cron %s" task))
+                          (conduit-map out [(apply @(resolve task) arguments)])
+                          (catch Exception e
+                            (info (format "cron exception %s" task) e))))
       :start-delay (rand-int 300)
       :rate rate
       :unit (:seconds sched/unit)})))

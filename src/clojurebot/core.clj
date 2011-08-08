@@ -190,14 +190,14 @@
 
 (defn -main [& [config-file]]
   (set-properties!)
-  (let [config (read-string (slurp config-file))]
+  (let [config (read-string (slurp config-file))
+        crons (delay (setup-crons config))]
     ;; load the namespaces for different kinds of plugins
     (when (:plugin-directory config)
       (load-plugins config))
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (start-swank config)
-    (setup-crons config)
     ;; for each server run irc-run
     (doseq [[server channels] (:irc config)]
       (let [out *out*
@@ -209,6 +209,7 @@
           (future
             (binding [*out* out
                       *pircbot* p]
+              @setup-crons
               (try
                 (apply irc-run
                        (clojurebot config)
