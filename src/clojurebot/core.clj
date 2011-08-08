@@ -209,8 +209,8 @@
           (future
             (binding [*out* out
                       *pircbot* p]
-              @setup-crons
               (try
+                @crons
                 (apply irc-run
                        (clojurebot config)
                        channels)
