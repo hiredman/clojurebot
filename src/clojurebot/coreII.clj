@@ -116,7 +116,7 @@
   (a-arr (fn [x]
            (when x
              (doseq [line (.split x "\n")]
-               (send-notice target xline))))))
+               (send-notice target line))))))
 
 (defmethod target :xmpp [[_ jid-from jid-to]]
   (when jid-to
