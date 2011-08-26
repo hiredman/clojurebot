@@ -17,4 +17,5 @@
  :addressed-plugins [[clojurebot.indexing search? search]]
  :logging-plugins #{clojurebot.indexing/index}
  :on-invite :join
+ :clojure-jar "/Users/hiredman/src/clojure/clojure.jar"
  :swank 8888}
