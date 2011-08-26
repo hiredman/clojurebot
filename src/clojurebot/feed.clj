@@ -1,5 +1,5 @@
 (ns clojurebot.feed
-  (:use [clojure.contrib.logging :only [info]])
+  (:use [clojure.tools.logging :only [info]])
   (:require [clojure.xml :as xml]
             [hiredman.utilities :as util]
             [clojure.set :as set]

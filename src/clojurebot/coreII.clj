@@ -2,7 +2,7 @@
   (:use [hiredman.clojurebot.sb :only [eval-message]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
-        [clojure.contrib.logging :only [info]]
+        [clojure.tools.logging :only [info]]
         [conduit.irc :only [send-notice]]
         [conduit.xmpp :only [new-message *xmpp-connection*]])
   (:require [hiredman.schedule :as sched]))
@@ -75,7 +75,7 @@
                 (info "reconnecting")
                 (.connect bot server))
               (catch Exception e
-                (info "Failed to reconnect" e)
+                (info e "Failed to reconnect")
                 (info "retrying in 60 seconds")
                 (Thread/sleep (* 60 1000))
                 reconnect-fn)))]
@@ -145,7 +145,7 @@
                           (info (format "ran cron %s" task))
                           (conduit-map out [(apply @(resolve task) arguments)])
                           (catch Exception e
-                            (info (format "cron exception %s" task) e))))
+                            (info e (format "cron exception %s" task)))))
       :start-delay (rand-int 300)
       :rate rate
       :unit (:seconds sched/unit)})))

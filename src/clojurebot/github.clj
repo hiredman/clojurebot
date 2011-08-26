@@ -10,4 +10,3 @@
        (map (fn [{:keys [link title author date]}]
               (format "[%s] %s - %s (%s) %s" project title author date link)))
        (reduce #(str % %2 "\n") nil)))
-

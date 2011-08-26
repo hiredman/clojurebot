@@ -1,6 +1,6 @@
 (ns clojurebot.conduit
   (:use [conduit.core]
-        [clojure.contrib.logging :only [info]]))
+        [clojure.tools.logging :only [info]]))
 
 (defn a-indirect [proc-ref]
   (assoc pass-through

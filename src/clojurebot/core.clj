@@ -11,7 +11,7 @@
                                            get-contrib-ticket-n]]
         [hiredman.clojurebot.code-lookup :only [code-lookup? do-code-lookup]]
         [hiredman.clojurebot.sb :only [eval-request?]]
-        [clojure.contrib.logging :only [info]]
+        [clojure.tools.logging :only [info]]
         [clojurebot.seenx :only [log-user seenx-query? seen-user]]
         [clojurebot.delicious :only [contains-url? delicious]]
         [clojurebot.dice :only [roll-some-dice dice-roll?]]
@@ -215,5 +215,5 @@
                        (clojurebot config)
                        channels)
                 (catch Exception e
-                  (info "Connection failed" e))))))))
+                  (info e "Connection failed"))))))))
     @(promise)))
