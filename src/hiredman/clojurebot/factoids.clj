@@ -15,30 +15,40 @@
 (def number
   (fp/semantics
    (fp/rep+
-    (fp/term (set (map (comp first str) (range 10))))) #(Integer/parseInt (apply str %))))
+    (fp/term (set (map (comp first str) (range 10)))))
+   #(Integer/parseInt (apply str %))))
 
 (def character (fp/term #(instance? Character %))) ;any character
 
-(def text (fp/rep+ (fp/except character (fp/lit \?))))
+(def text (fp/rep+ (fp/except
+                    (fp/alt character
+                            (fp/conc character
+                                     (fp/lit \?)
+                                     character))
+                    (fp/lit \?))))
 
-                                        ;(def escaped-is (fp/followed-by (fp/lit (char 92)) (string "is"))) ;\is
+;;(def escaped-is (fp/followed-by (fp/lit (char 92)) (string "is"))) ;\is
 
 (def escaped-is (fp/conc (fp/lit (char 92)) (string "is")))
 
-(def term (fp/rep+ (fp/except character (fp/except (string " is ") escaped-is)))) ;a bunch of characters up to the first not escaped is
+(def term
+  (fp/rep+ (fp/except character (fp/except (string " is ") escaped-is))))
+;;a bunch of characters up to the first not escaped is
 
 (def definition
   (fp/semantics
    (fp/conc term (string " is ") text)
    (fn [[term _ defi]]
-     (vary-meta {:term (.trim (apply str term)) :definition (.trim (apply str defi))}
+     (vary-meta {:term (.trim (apply str term))
+                 :definition (.trim (apply str defi))}
                 assoc :type :def))))
 
 (def definition-add
   (fp/semantics
    (fp/conc term (string " is ") (string "also") (fp/lit \space) text)
    (fn [[term _ _ _ defi]]
-     (vary-meta {:term (apply str term) :definition (apply str defi)} assoc :type :def))))
+     (vary-meta {:term (apply str term)
+                 :definition (apply str defi)} assoc :type :def))))
 
 (def indexed-lookup
   (fp/semantics
@@ -68,7 +78,8 @@
 
 (def predicate
   (fp/semantics
-   (fp/conc (fp/lit \|) (fp/rep+ (fp/except character (fp/lit \|))) (fp/conc (fp/lit \|)))
+   (fp/conc (fp/lit \|)
+            (fp/rep+ (fp/except character (fp/lit \|))) (fp/conc (fp/lit \|)))
    (fn [[_ pred _]] (.trim (apply str pred)))))
 
 (def subject (fp/semantics (fp/rep+ (fp/except character (fp/lit \|)))
@@ -83,9 +94,10 @@
                   #^{:type :predicate-style-definition}
                   {:subject subject :object object :predicate predicate})))
 
-(def forget (fp/semantics (fp/conc (string "forget ") predicate-style-definition)
-                          (fn [[_ o]]
-                            (with-meta o {:type :forget}))))
+(def forget
+  (fp/semantics (fp/conc (string "forget ") predicate-style-definition)
+                (fn [[_ o]]
+                  (with-meta o {:type :forget}))))
 
 ;;END GARBAGE
 
