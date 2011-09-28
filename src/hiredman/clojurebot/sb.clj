@@ -14,15 +14,17 @@
           (recur clojure-jar))
         cl)
       (doto (if clojure-jar
-              (java.security.AccessController/doPrivileged
-               (reify
-                 java.security.PrivilegedAction
-                 (run [_]
-                   (let [bootcp clojure-jar
-                         cp (.split bootcp ":")
-                         cp (for [c cp] (java.net.URL. (format "file://%s" c)))
-                         cp (into-array java.net.URL cp)]
-                     (java.net.URLClassLoader. cp nil)))))
+              (binding [*secure?* false]
+                (java.security.AccessController/doPrivileged
+                 (reify
+                   java.security.PrivilegedAction
+                   (run [_]
+                     (let [bootcp clojure-jar
+                           cp (.split bootcp ":")
+                           cp (for [c cp] (java.net.URL.
+                                           (format "file://%s" c)))
+                           cp (into-array java.net.URL cp)]
+                       (java.net.URLClassLoader. cp nil))))))
               (.getClassLoader clojure.lang.RT))
         ;; make sure RT is loaded and inited before we try and use it
         ;; in the sandbox
@@ -31,7 +33,8 @@
                (reify
                  java.security.PrivilegedAction
                  (run [_]
-                   (evil cl "(+ 1 2)"))))))
+                   (binding [*secure?* false]
+                     (evil cl "(+ 1 2)")))))))
         ((fn [cl]
            (swap! cl-cache assoc clojure-jar
                   [(System/currentTimeMillis) cl])))))))

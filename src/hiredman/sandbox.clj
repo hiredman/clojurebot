@@ -17,7 +17,7 @@
 
 (def *default-timeout* 10) ; in seconds
 
-(def *secure?* false)
+(def *secure?* true)
 
 (defmacro defering-security-manager [sm]
   (let [sm-name (gensym 'sm)
