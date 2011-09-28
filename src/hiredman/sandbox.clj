@@ -1,4 +1,5 @@
 (ns hiredman.sandbox
+  (:use [clojure.tools.logging :only [info]])
   (:require [hiredman.clojurebot.core :as core])
   (:import (java.util.concurrent FutureTask TimeUnit TimeoutException)
            (java.io File FileWriter PushbackReader StringReader)))
@@ -37,7 +38,6 @@
                                              (comp symbol str)
                                              (take argc (repeat "arg"))))]]
                         `(~args
-                          (println ~method-name *secure?*)
                           (when *secure?*
                             (. ~sm-name ~(symbol method-name) ~@args))))))]
     `(let [~sm-name ~sm]
@@ -45,7 +45,7 @@
          ~@methods))))
 
 (defn enable-security-manager []
-  (println "enable-security-manager")
+  (info "enable-security-manager")
   (System/setSecurityManager
    (let [sm (SecurityManager.)]
      (defering-security-manager sm))))

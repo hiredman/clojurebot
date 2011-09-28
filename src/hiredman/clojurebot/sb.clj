@@ -1,6 +1,7 @@
 (ns hiredman.clojurebot.sb
   (:use (hiredman.clojurebot core)
-        (hiredman sandbox)))
+        (hiredman sandbox)
+        [clojure.tools.logging :only [info]]))
 
 (let [cl-cache (atom {})]
   (defn cl [clojure-jar]
@@ -9,7 +10,6 @@
                 (* 10 60 1000))
              ctime)
         (do
-          (println "new classloader")
           (swap! cl-cache dissoc clojure-jar)
           (recur clojure-jar))
         cl)
@@ -19,6 +19,7 @@
                  (reify
                    java.security.PrivilegedAction
                    (run [_]
+                     (info "new classloader")
                      (let [bootcp clojure-jar
                            cp (.split bootcp ":")
                            cp (for [c cp] (java.net.URL.
