@@ -17,12 +17,44 @@
 
 (def *default-timeout* 10) ; in seconds
 
+(def *secure?* false)
+
+(defmacro defering-security-manager [sm]
+  (let [sm-name (gensym 'sm)
+        methods (for [[method-name methods]
+                      (group-by #(.getName %)
+                                (.getDeclaredMethods SecurityManager))
+                      :when (.startsWith method-name "check")
+                      :let [methods (filter
+                                     #(java.lang.reflect.Modifier/isPublic
+                                       (.getModifiers %))
+                                     methods)]]
+                  `(~(symbol method-name)
+                    ~@(for [[argc [method]] (group-by
+                                             #(count (.getParameterTypes %))
+                                             methods)
+                            :let [args (vec (map-indexed
+                                             (comp symbol str)
+                                             (take argc (repeat "arg"))))]]
+                        `(~args
+                          (println ~method-name *secure?*)
+                          (when *secure?*
+                            (. ~sm-name ~(symbol method-name) ~@args))))))]
+    `(let [~sm-name ~sm]
+       (proxy [SecurityManager] []
+         ~@methods))))
+
 (defn enable-security-manager []
-  (System/setSecurityManager (SecurityManager.)))
+  (println "enable-security-manager")
+  (System/setSecurityManager
+   (let [sm (SecurityManager.)]
+     (defering-security-manager sm))))
 
 ;;;;;;;; Chousuke
 (defn thunk-timeout [thunk seconds]
-  (let [task (FutureTask.  thunk)
+  (let [task (FutureTask.
+              #(binding [*secure?* true]
+                 (thunk)))
         thr (Thread. task)]
     (try
       (.start thr)
@@ -151,7 +183,8 @@
      (let [old-cl (.getContextClassLoader (Thread/currentThread))]
        (try
          (.setContextClassLoader (Thread/currentThread) cl)
-         (let [rt (.loadClass cl "clojure.lang.RT")
+         (let [secure *secure?*
+               rt (.loadClass cl "clojure.lang.RT")
                compiler (.loadClass cl "clojure.lang.Compiler")
                var- (fn [s]
                       (call-method
@@ -159,8 +192,12 @@
                class (fn [x] (.loadClass cl (name x)))
                deref (fn [x] (call-method (.getClass x) :deref [] x))
                invoke (fn [x &  args] (call-method (.getClass x) :invoke []))
-               read-string (fn [s] (call-method rt :readString [String] nil s))
-               eval (fn [f] (call-method compiler :eval [Object] nil f))]
+               read-string (fn [s]
+                             (binding [*secure?* secure]
+                               (call-method rt :readString [String] nil s)))
+               eval (fn [f]
+                      (binding [*secure?* secure]
+                        (call-method compiler :eval [Object] nil f)))]
            (thunk-timeout
             (fn []
               (sandbox #(eval (read-string (format "(pr-str %s)" form-str)))
@@ -188,18 +225,18 @@
                  (let [f# (read-string ~_string)
                        good?# (if (and (coll? f#)
                                        (not (empty? f#)))
-                               (when (not
-                                      (some '~*bad-forms*
-                                            (tree-seq coll?
-                                                      (fn [i#]
-                                                        (let [a# (macroexpand
-                                                                  i#)]
-                                                          (if (coll? a#)
-                                                            (seq a#)
-                                                            (list a#))))
-                                                      f#)))
-                                 f#)
-                               true)
+                                (when (not
+                                       (some '~*bad-forms*
+                                             (tree-seq coll?
+                                                       (fn [i#]
+                                                         (let [a# (macroexpand
+                                                                   i#)]
+                                                           (if (coll? a#)
+                                                             (seq a#)
+                                                             (list a#))))
+                                                       f#)))
+                                  f#)
+                                true)
                        r# (pr-str (try
                                     (when-not good?#
                                       (throw (Exception. "SANBOX DENIED")))
@@ -209,5 +246,15 @@
                    [(.toString (doto o# .close))
                     (.toString (doto e# .close))
                     r#]))))
-        thunk (fn [] (evil class-loader f))]
+        thunk (fn []
+                (binding [*secure?* true]
+                  (evil class-loader f)))]
     (thunk)))
+
+(->> SecurityManager .getDeclaredMethods
+     (map bean)
+     (filter
+      #(java.lang.reflect.Modifier/isPublic (:modifiers %)))
+     (filter #(.startsWith (:name %) "check")))
+
+

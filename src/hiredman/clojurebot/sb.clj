@@ -2,19 +2,39 @@
   (:use (hiredman.clojurebot core)
         (hiredman sandbox)))
 
-(defonce cl
-  (memoize
-   (fn [clojure-jar]
-     (doto (if clojure-jar
-             (let [bootcp clojure-jar
-                   cp (.split bootcp ":")
-                   cp (for [c cp] (java.net.URL. (format "file://%s" c)))
-                   cp (into-array java.net.URL cp)]
-               (java.net.URLClassLoader. cp nil))
-             (.getClassLoader clojure.lang.RT))
-       ;; make sure RT is loaded and inited before we try and use it
-       ;; in the sandbox
-       (evil "(+ 1 2)")))))
+(let [cl-cache (atom {})]
+  (defn cl [clojure-jar]
+    (if-let [[ctime cl] (get @cl-cache clojure-jar)]
+      (if (> (- (System/currentTimeMillis)
+                (* 10 60 1000))
+             ctime)
+        (do
+          (println "new classloader")
+          (swap! cl-cache dissoc clojure-jar)
+          (recur clojure-jar))
+        cl)
+      (doto (if clojure-jar
+              (java.security.AccessController/doPrivileged
+               (reify
+                 java.security.PrivilegedAction
+                 (run [_]
+                   (let [bootcp clojure-jar
+                         cp (.split bootcp ":")
+                         cp (for [c cp] (java.net.URL. (format "file://%s" c)))
+                         cp (into-array java.net.URL cp)]
+                     (java.net.URLClassLoader. cp nil)))))
+              (.getClassLoader clojure.lang.RT))
+        ;; make sure RT is loaded and inited before we try and use it
+        ;; in the sandbox
+        ((fn [cl]
+           (java.security.AccessController/doPrivileged
+               (reify
+                 java.security.PrivilegedAction
+                 (run [_]
+                   (evil cl "(+ 1 2)"))))))
+        ((fn [cl]
+           (swap! cl-cache assoc clojure-jar
+                  [(System/currentTimeMillis) cl])))))))
 
 (defn naughty-forms? [strang]
   (let [nf #{"catch" "finally" "clojure.asm" "hiredman.clojurebot"
