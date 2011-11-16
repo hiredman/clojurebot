@@ -173,8 +173,7 @@
 
 (defn factoid-command? [message]
   (and (not (.endsWith message "?"))
-       (doto (factoid-command {:remainder (seq message)})
-         println)))
+       (factoid-command {:remainder (seq message)})))
 
 (defn factoid-command-run [{:keys [config message]}]
   (println "@factoid-command-run" config message)
@@ -185,21 +184,10 @@
      {:remainder (seq message)}))))
 
 
-                                        ;(core/remove-dispatch-hook ::factoids)
-                                        ;(hiredman.triples/import-file (hiredman.triples/derby (db-name bot)) (str (hiredman.clojurebot.core/dict-file bot ".is")))
-
-(defn inits "again I blame Chouser" [[f & r :as c]]
-  (when c (lazy-cat (map #(conj % f) (inits r)) (inits r) [(list f)])))
-
-(def #^{:doc "gives a bunch of possible permutations of a string"} fuzzer
-  (comp reverse
-        (partial pmap #(reduce (fn [a b] (format "%s %s" a b)) %))
-        (partial sort-by count)
-        set
-        (partial apply concat)
-        (partial pmap inits)
-        inits
-        (partial re-seq #"\w+")))
+;;(core/remove-dispatch-hook ::factoids)
+;;(hiredman.triples/import-file
+;; (hiredman.triples/derby (db-name bot)) (str
+;; (hiredman.clojurebot.core/dict-file bot ".is")))
 
 (defn replace-with [str map]
   (reduce #(.replaceAll % (first %2) (second %2)) str map))
@@ -218,7 +206,8 @@
    {"#who" sender "#someone" (core/random-person bot)}))
 
 
-(defmulti #^{:doc "" :private true} befuddled-or-pick-random (comp empty? first list))
+(defmulti #^{:doc "" :private true}
+  befuddled-or-pick-random (comp empty? first list))
 
 (defmethod befuddled-or-pick-random false [x bag]
   (-> x
@@ -247,28 +236,47 @@
   (@pos-tag
    (@tokenize x)))
 
-(def noun-filter (partial filter #(.startsWith (second %) "N")))
-
-(defn foo [x]
-  (let [pos-tag @pos-tag
-        tokenize @tokenize]
-    (try (->> x tokenize pos-tag vec print with-out-str core/log)
-         (catch Exception e
-           (core/log (str e))))))
+(def noun-filter
+  (comp
+   (partial map first)
+   (partial filter #(.startsWith (second %) "N"))))
 
 (defn qw [input config]
-  (if-let [result (seq (trip/query (trip/derby (db-name config))
-                                   input :y :z))]
-    result
-    (-> input
-        tag
-        noun-filter
-        ((partial map first))
-        (#(mutli-query config % "%%%s%%")))))
+  (let [first-order
+        (if-let [result (seq (trip/query (trip/derby (db-name config))
+                                         input :y :z))]
+          result
+          (-> input
+              tag
+              noun-filter
+              (#(mutli-query config % "%%%s%%"))))]
+    (try
+      (letfn [(infer [order result]
+                (when (and (= "is" (:predicate result))
+                           (> 3 order))
+                  (lazy-seq
+                   (cons result
+                         (->> (trip/query (trip/derby (db-name config))
+                                          (:object result)
+                                           "is"
+                                           :z)
+                              (mapcat (partial f (inc order)))
+                              (map (fn [x]
+                                     (assoc x
+                                       :subject
+                                       (:subject result)))))))))]
+        (apply concat
+               (filter identity
+                       (pmap (partial infer 1)
+                             (shuffle first-order)))))
+      (catch Exception e
+        (println e)))
+    #_first-order))
 
 (defn factoid-lookup [{:keys [message config] :as bag}]
   (-> (.replaceAll (.trim message) "\\?$" "")
       (qw config)
+      (doto prn)
       vec
       (befuddled-or-pick-random bag)))
 
@@ -284,47 +292,3 @@
                     predicate
                     object
                     (:bot bag))))))
-
-(core/defresponder2
-  {:priority 20
-   :name ::lookup
-   :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
-   :body (fn [bot msg]
-           (-> (core/extract-message bot msg)
-               (.replaceAll "\\?$" "")
-               ((fn [input]
-                  (if-let [result (seq (trip/query (trip/derby (db-name bot)) input :y :z))]
-                    result
-                    (-> input
-                        tag
-                        (doto core/log)
-                        noun-filter
-                        ((partial map first))
-                        (#(mutli-query bot % "%%%s%%"))))))
-               vec
-               (vary-meta assoc :msg msg :bot bot)
-               befuddled-or-pick-random
-               ((fn [reply] (core/new-send-out bot :msg (core/who msg) reply) reply))))})
-
-#_(core/defresponder2
-    {:priority 20
-     :name ::lookup
-     :dispatch (core/dfn (and (:addressed? (meta msg)) (not (:quit msg))))
-     :body (fn [bot msg]
-             (-> (core/extract-message bot msg)
-                 (doto core/log)
-                 (doto foo)
-                 (.replaceAll "\\?$" "")
-                 ((fn [input]
-                    (if-let [result (seq (trip/query (trip/derby (db-name bot)) input :y :z))]
-                      result
-                      (-> input fuzzer set
-                          ((partial remove #{"I"}))
-                          ((fn [possibles]
-                             (if-let [results (seq (mutli-query bot possibles "%% %s %%"))]
-                               results
-                               (mutli-query bot possibles "%%%s%%"))))))))
-                 vec
-                 (vary-meta assoc :msg msg :bot bot)
-                 befuddled-or-pick-random
-                 ((fn [reply] (core/new-send-out bot :msg (core/who msg) reply) reply))))})
