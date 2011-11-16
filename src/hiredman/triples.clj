@@ -102,8 +102,8 @@
 (defmethod query ::subject-predicate-_ [db s p o]
   (sql/with-connection db
     (sql/with-query-results res
-      [(str "SELECT * FROM triples WHERE"
-            "predicate = ? AND"
+      [(str "SELECT * FROM triples WHERE "
+            "predicate = ? AND "
             "upper_subject = ?")
        p (.toUpperCase s)]
       (doall res))))
