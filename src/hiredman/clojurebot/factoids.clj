@@ -209,10 +209,24 @@
 (defmulti #^{:doc "" :private true}
   befuddled-or-pick-random (comp empty? first list))
 
+(def infered-results (atom ()))
+
 (defmethod befuddled-or-pick-random false [x bag]
   (-> x
-      ((fn [x] (x (rand-int (count x)))))
-      ((fn [{:keys [subject object predicate]}]
+      ((fn [x]
+         (let [r (x (rand-int (count x)))]
+           (if (and (:infered? r)
+                    (zero? (rand-int 2)))
+             (recur x)
+             r))))
+      ((fn [{:keys [subject object predicate infered?] :as relationship}]
+         (when infered?
+           (swap! infered-results
+                  (fn [db record]
+                    (if (> (count db) 10)
+                      (recur (pop db) record)
+                      (conj db record)))
+                  [(System/currentTimeMillis) (:channel bag) relationship]))
          (prep-reply (:sender bag)
                      subject
                      predicate
@@ -258,13 +272,13 @@
                    (cons result
                          (->> (trip/query (trip/derby (db-name config))
                                           (:object result)
-                                           "is"
-                                           :z)
-                              (mapcat (partial f (inc order)))
+                                          "is"
+                                          :z)
+                              (mapcat (partial infer (inc order)))
                               (map (fn [x]
                                      (assoc x
-                                       :subject
-                                       (:subject result)))))))))]
+                                       :subject (:subject result)
+                                       :infered? true))))))))]
         (apply concat
                (filter identity
                        (pmap (partial infer 1)
