@@ -77,7 +77,10 @@
                          (a-arr factoid-command-run)
 
                          (constantly true)
-                         (a-arr factoid-lookup)))))
+                         (a-arr factoid-lookup)
+
+                         
+                         ))))
 
 (def pipeline
   (a-except
@@ -168,8 +171,10 @@
     (a-indirect #'pipeline))))
 
 (defn set-properties! []
-  (System/setProperty "java.security.policy"
-                      (str (.getResource (class clojurebot) "/example.policy")))
+  (when (empty? (System/getProperty "java.security.policy"))
+    (System/setProperty
+     "java.security.policy"
+     (str (.getResource (class clojurebot) "/example.policy"))))
   (System/setProperty "file.encoding" "utf8")
   (System/setProperty "swank.encoding" "utf8"))
 
