@@ -265,20 +265,26 @@
                     tag
                     noun-filter
                     (#(mutli-query config % "%%%s%%")))))
+            (search-term [thing]
+              (let [nouns (noun-filter (tag (:object thing)))]
+                (if (= 1 (count nouns))
+                  (first nouns)
+                  (:object thing))))
             (infer [order result]
-              (when (and (= "is" (:predicate result))
+              (if (and (= "is" (:predicate result))
                          (> 3 order))
                 (lazy-seq
                  (cons result
                        (->> (trip/query (trip/derby (db-name config))
-                                        (:object result)
+                                        (search-term result)
                                         "is"
                                         :z)
                             (mapcat (partial infer (inc order)))
                             (map (fn [x]
                                    (assoc x
                                      :subject (:subject result)
-                                     :infered? true))))))))]
+                                     :infered? true))))))
+                [result]))]
       (apply concat
              (filter identity
                      (pmap (partial infer 1)
