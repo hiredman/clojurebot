@@ -255,93 +255,112 @@
    (partial map first)
    (partial filter #(.startsWith (second %) "N"))))
 
+(defn search-term [thing]
+  (:object thing))
+
+(defn be [word]
+  (if (.endsWith word "s")
+    "are"
+    "is"))
+
+(defmacro tl [n & body]
+  `(let [now# (System/nanoTime)]
+    (try
+      ~@body
+      (finally
+       (clojure.tools.logging/info ~(str "Elapsed " n " time:")
+                                   (/ (double (- (System/nanoTime) now#))
+                                      1000000.0)
+                                   "msecs")))))
+
 (defn qw [input config]
-  (try
-    (letfn [(first-order-search [input]
-              (if-let [result (seq (trip/query (trip/derby (db-name config))
-                                               input :y :z))]
-                result
-                (-> input
-                    tag
-                    noun-filter
-                    (#(mutli-query config % "%%%s%%")))))
-            (search-term [thing]
-              (let [nouns (noun-filter (tag (:object thing)))]
-                (if (= 1 (count nouns))
-                  (first (first nouns))
-                  (:object thing))))
-            (be [word]
-              (if (.endsWith word "s")
-                "are"
-                "is"))
-            (infer [order result]
-              (if (> 3 order)
-                (lazy-seq
-                 (cons result
-                       (let [term (search-term result)]
-                         (clojure.tools.logging/info "TERM" term)
-                         (->> (trip/query (trip/derby (db-name config))
-                                          term
-                                          (be term)
-                                          :z)
-                              (mapcat (partial infer (inc order)))
-                              (map (fn [x]
-                                     (assoc x
-                                       :predicate (:predicate result)
-                                       :subject (:subject result)
-                                       :infered? true)))))))
-                [result]))]
-      (apply concat
-             (filter identity
-                     (pmap (partial infer 1)
-                           (shuffle (first-order-search input))))))
-    (catch Exception e
-      (println e))))
+  (let [now (System/nanoTime)]
+    (try
+      (letfn [(first-order-search [input]
+                (if-let [result (seq
+                                 (tl foq
+                                     (trip/query (trip/derby (db-name config))
+                                                 input :y :z)))]
+                  result
+                  (-> input
+                      tag
+                      noun-filter
+                      (#(mutli-query config % "%%%s%%")))))
+              (infer [order result]
+                (if (> 3 order)
+                  (lazy-seq
+                   (cons result
+                         (let [term (search-term result)]
+                           (clojure.tools.logging/info "TERM" term)
+                           (->> (trip/query (trip/derby (db-name config))
+                                            term
+                                            (be term)
+                                            :z)
+                                (mapcat (partial infer (inc order)))
+                                (map (fn [x]
+                                       (assoc x
+                                         :predicate (:predicate result)
+                                         :subject (:subject result)
+                                         :infered? true)))))))
+                  [result]))]
+        (doall (apply concat
+                      (filter identity
+                              (pmap (partial infer 1)
+                                    (shuffle (first-order-search input)))))))
+      (catch Exception e
+        (println e))
+      (finally
+       (clojure.tools.logging/info "Elapsed qw time:"
+                                   (/ (double (- (System/nanoTime) now))
+                                      1000000.0)
+                                   "msecs")))))
 
 (defn factoid-lookup [{:keys [message config] :as bag}]
-  (-> (.replaceAll (.trim message) "\\?$" "")
-      ((fn [thing]
-         (when (= "botsnack" thing)
-           (let [now (System/currentTimeMillis)]
-             (doseq [[ts chan fact] @infered-results
-                     :when (= chan (:channel bag))
-                     :when (> (+ ts (* 1000 60 2))
-                              now)]
-               (future
-                 (trip/store-triple
-                  (trip/derby (db-name config))
-                  {:s (:subject fact)
-                   :o (:object fact)
-                   :p (:predicate fact)})
-                 (swap!
-                  infered-results
-                  (partial remove
-                           #(= (select-keys
-                                % [:object :predicate :subject])
-                               (select-keys
-                                fact [:object :predicate :subject]))))))))
-         thing))
-      (qw config)
-      vec
-      (befuddled-or-pick-random bag)))
+  (trip/with-c (trip/derby (db-name config))
+    (-> (.replaceAll (.trim message) "\\?$" "")
+        ((fn [thing]
+           (when (= "botsnack" thing)
+             (let [now (System/currentTimeMillis)]
+               (doseq [[ts chan fact] @infered-results
+                       :when (= chan (:channel bag))
+                       :when (> (+ ts (* 1000 60 2))
+                                now)]
+                 (future
+                   (trip/store-triple
+                    (trip/derby (db-name config))
+                    {:s (:subject fact)
+                     :o (:object fact)
+                     :p (:predicate fact)})
+                   (swap!
+                    infered-results
+                    (partial remove
+                             #(= (select-keys
+                                  % [:object :predicate :subject])
+                                 (select-keys
+                                  fact [:object :predicate :subject]))))))))
+           thing))
+        (qw config)
+        vec
+        (befuddled-or-pick-random bag))))
 
 (defn factoid-lookup-no-fall-back [{:keys [message config] :as bag}]
-  (let [x (-> (.replaceAll (.trim message) "\\?$" "")
-              (qw config)
-              vec)]
-    (if (empty? x)
-      nil
-      (let [{:keys [subject predicate object infered?] :as relationship}
-            (first (shuffle x))]
-        (when infered?
-          (swap! infered-results
-                 (fn [db record]
-                   (if (> (count db) 10)
-                     (recur (pop db) record)
-                     (conj db record)))
-                 [(System/currentTimeMillis) (:channel bag) relationship]))
-        (prep-reply (:sender bag)
-                    subject
-                    predicate
-                    object
-                    (:bot bag))))))
+  (trip/with-c (trip/derby (db-name config))
+    (let [x (-> (.replaceAll (.trim message) "\\?$" "")
+                (qw config)
+                vec)]
+      (if (empty? x)
+        nil
+        (let [{:keys [subject predicate object infered?] :as relationship}
+              (first (shuffle x))]
+          (when infered?
+            (swap! infered-results
+                   (fn [db record]
+                     (if (> (count db) 10)
+                       (recur (pop db) record)
+                       (conj db record)))
+                   [(System/currentTimeMillis) (:channel bag) relationship]))
+          (prep-reply (:sender bag)
+                      subject
+                      predicate
+                      object
+                      (:bot bag)))))))

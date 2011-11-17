@@ -1,16 +1,22 @@
 (ns hiredman.triples
   (:require [clojure.java.jdbc :as sql]))
 
+(defmacro with-c [db & body]
+  `(if (:connection clojure.java.jdbc.internal/*db*)
+     (do
+       ~@body)
+     (sql/with-connection ~db
+       ~@body)))
+
 (defn derby [name]
-  (assoc {} #_(cql/make-connection-info "derby" name nil nil)
-         :classname "org.apache.derby.jdbc.EmbeddedDriver"
-         :create true
-         :subname name
-         :subprotocol "derby"))
+  {:classname "org.apache.derby.jdbc.EmbeddedDriver"
+   :create true
+   :subname name
+   :subprotocol "derby"})
 
 (defn create-store
   [name]
-  (sql/with-connection (derby name)
+  (with-c (derby name)
     (sql/create-table
      :triples
      [:id :int "PRIMARY KEY" "GENERATED ALWAYS AS IDENTITY"]
@@ -44,7 +50,7 @@
 (in-ns 'hiredman.triples)
 
 (defn store-triple [db {:keys [s p o]}]
-  (sql/with-connection db
+  (with-c db
     (sql/transaction
      (sql/insert-values
       :triples
@@ -71,26 +77,26 @@
                 ::subject-predicate-object)))
 
 (defmethod query ::subject-_-_ [db s p o]
-  (sql/with-connection db
+  (with-c db
     (sql/with-query-results res
       ["SELECT * FROM triples WHERE upper_subject = ?" (.toUpperCase s)]
       (doall res))))
 
 (defmethod query ::like_subject-_-_ [db s p o]
-  (sql/with-connection db
+  (with-c db
     (sql/with-query-results res
       ["SELECT * FROM triples WHERE upper_subject LIKE ?"
        (.toUpperCase (first s))]
       (doall res))))
 
 (defmethod query ::_-predicate-_ [db s p o]
-  (sql/with-connection db
+  (with-c db
     (sql/with-query-results res
       ["SELECT * FROM triples WHERE predicate = ?" p]
       (doall res))))
 
 (defmethod query ::subject-predicate-object [db s p o]
-  (sql/with-connection db
+  (with-c db
     (sql/with-query-results res
       [(str "SELECT * FROM triples WHERE "
             "predicate = ? AND "
@@ -101,7 +107,7 @@
 
 (defmethod query ::subject-predicate-_ [db s p o]
   (clojure.tools.logging/info "QUERY" s p o)
-  (sql/with-connection db
+  (with-c db
     (sql/with-query-results res
       [(str "SELECT * FROM triples WHERE "
             "predicate = ? AND "
@@ -110,14 +116,14 @@
       (doall res))))
 
 (defmethod query ::_-_-_ [db s p o]
-  (sql/with-connection db
+  (with-c db
     (sql/with-query-results res
       ["SELECT * FROM triples"]
       (doall res))))
 
 (defn delete [db s p o]
   (doseq [id (map :id (query db s p o))]
-    (sql/with-connection db
+    (with-c db
       (sql/delete-rows :triples ["id = ?" id]))))
 
 (defn string [{:keys [subject predicate object]}]
