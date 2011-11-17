@@ -268,22 +268,28 @@
             (search-term [thing]
               (let [nouns (noun-filter (tag (:object thing)))]
                 (if (= 1 (count nouns))
-                  (first nouns)
+                  (first (first nouns))
                   (:object thing))))
+            (be [word]
+              (if (.endsWith word "s")
+                "are"
+                "is"))
             (infer [order result]
-              (if (and (= "is" (:predicate result))
-                         (> 3 order))
+              (if (> 3 order)
                 (lazy-seq
                  (cons result
-                       (->> (trip/query (trip/derby (db-name config))
-                                        (search-term result)
-                                        "is"
-                                        :z)
-                            (mapcat (partial infer (inc order)))
-                            (map (fn [x]
-                                   (assoc x
-                                     :subject (:subject result)
-                                     :infered? true))))))
+                       (let [term (search-term result)]
+                         (clojure.tools.logging/info "TERM" term)
+                         (->> (trip/query (trip/derby (db-name config))
+                                          term
+                                          (be term)
+                                          :z)
+                              (mapcat (partial infer (inc order)))
+                              (map (fn [x]
+                                     (assoc x
+                                       :predicate (:predicate result)
+                                       :subject (:subject result)
+                                       :infered? true)))))))
                 [result]))]
       (apply concat
              (filter identity

@@ -100,6 +100,7 @@
       (doall res))))
 
 (defmethod query ::subject-predicate-_ [db s p o]
+  (clojure.tools.logging/info "QUERY" s p o)
   (sql/with-connection db
     (sql/with-query-results res
       [(str "SELECT * FROM triples WHERE "
