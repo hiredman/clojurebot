@@ -256,36 +256,35 @@
    (partial filter #(.startsWith (second %) "N"))))
 
 (defn qw [input config]
-  (let [first-order
-        (if-let [result (seq (trip/query (trip/derby (db-name config))
-                                         input :y :z))]
-          result
-          (-> input
-              tag
-              noun-filter
-              (#(mutli-query config % "%%%s%%"))))]
-    (try
-      (letfn [(infer [order result]
-                (when (and (= "is" (:predicate result))
-                           (> 3 order))
-                  (lazy-seq
-                   (cons result
-                         (->> (trip/query (trip/derby (db-name config))
-                                          (:object result)
-                                          "is"
-                                          :z)
-                              (mapcat (partial infer (inc order)))
-                              (map (fn [x]
-                                     (assoc x
-                                       :subject (:subject result)
-                                       :infered? true))))))))]
-        (apply concat
-               (filter identity
-                       (pmap (partial infer 1)
-                             (shuffle first-order)))))
-      (catch Exception e
-        (println e)))
-    #_first-order))
+  (try
+    (letfn [(first-order-search [input]
+              (if-let [result (seq (trip/query (trip/derby (db-name config))
+                                               input :y :z))]
+                result
+                (-> input
+                    tag
+                    noun-filter
+                    (#(mutli-query config % "%%%s%%")))))
+            (infer [order result]
+              (when (and (= "is" (:predicate result))
+                         (> 3 order))
+                (lazy-seq
+                 (cons result
+                       (->> (trip/query (trip/derby (db-name config))
+                                        (:object result)
+                                        "is"
+                                        :z)
+                            (mapcat (partial infer (inc order)))
+                            (map (fn [x]
+                                   (assoc x
+                                     :subject (:subject result)
+                                     :infered? true))))))))]
+      (apply concat
+             (filter identity
+                     (pmap (partial infer 1)
+                           (shuffle (first-order-search input))))))
+    (catch Exception e
+      (println e))))
 
 (defn factoid-lookup [{:keys [message config] :as bag}]
   (-> (.replaceAll (.trim message) "\\?$" "")
@@ -323,12 +322,12 @@
       (let [{:keys [subject predicate object infered?] :as relationship}
             (first (shuffle x))]
         (when infered?
-           (swap! infered-results
-                  (fn [db record]
-                    (if (> (count db) 10)
-                      (recur (pop db) record)
-                      (conj db record)))
-                  [(System/currentTimeMillis) (:channel bag) relationship]))
+          (swap! infered-results
+                 (fn [db record]
+                   (if (> (count db) 10)
+                     (recur (pop db) record)
+                     (conj db record)))
+                 [(System/currentTimeMillis) (:channel bag) relationship]))
         (prep-reply (:sender bag)
                     subject
                     predicate
