@@ -278,24 +278,47 @@
     (try
       (letfn [(first-order-search [input]
                 (if-let [result (seq
-                                 (tl foq
-                                     (trip/query (trip/derby (db-name config))
-                                                 input :y :z)))]
+                                 (concat
+                                  (trip/query (trip/derby (db-name config))
+                                              input :y :z)
+                                  (->> (trip/query (trip/derby (db-name config))
+                                                   :z "is" input)
+                                       (map rotate-fact)
+                                       (map #(assoc % :infered? true)))
+                                  (->> (trip/query (trip/derby (db-name config))
+                                                   :z "are" input)
+                                       (map rotate-fact)
+                                       (map #(assoc % :infered? true)))))]
                   result
                   (-> input
                       tag
                       noun-filter
                       (#(mutli-query config % "%%%s%%")))))
+              (rotate-fact [fact]
+                (assoc fact
+                  :subject (:object fact)
+                  :object (:subject fact)))
               (infer [order result]
                 (if (> 3 order)
                   (lazy-seq
                    (cons result
                          (let [term (search-term result)]
                            (clojure.tools.logging/info "TERM" term)
-                           (->> (trip/query (trip/derby (db-name config))
-                                            term
-                                            (be term)
-                                            :z)
+                           ;; also need to check the inverse?
+                           (->> (concat (trip/query (trip/derby (db-name config))
+                                                    term
+                                                    (be term)
+                                                    :z)
+                                        (->> (trip/query (trip/derby (db-name config))
+                                                         :z
+                                                         "is"
+                                                         term)
+                                             (map rotate-fact))
+                                        (->> (trip/query (trip/derby (db-name config))
+                                                         :z
+                                                         "are"
+                                                         term)
+                                             (map rotate-fact)))
                                 (mapcat (partial infer (inc order)))
                                 (map (fn [x]
                                        (assoc x

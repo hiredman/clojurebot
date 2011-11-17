@@ -62,17 +62,19 @@
           (fn [db s p o]
             (cond
               (and (list? s) (keyword? p) (keyword? o))
-                ::like_subject-_-_
+              ::like_subject-_-_
               (and (not (keyword? s)) (not (keyword? p)) (keyword? o))
-                ::subject-predicate-_
+              ::subject-predicate-_
               (and (keyword? s) (keyword? p) (not (keyword? o)))
-                ::_-_-object
+              ::_-_-object
               (and (keyword? s) (not (keyword? p)) (keyword? o))
-                ::_-predicate-_
+              ::_-predicate-_
               (and (not (keyword? s)) (keyword? p) (keyword? o))
-                ::subject-_-_
+              ::subject-_-_
               (and (keyword? s) (keyword? p) (keyword? o))
-                ::_-_-_
+              ::_-_-_
+              (and (keyword? s) (not (keyword? p)) (not (keyword? o)))
+              ::_-predicate-object
               :else
                 ::subject-predicate-object)))
 
@@ -113,6 +115,16 @@
             "predicate = ? AND "
             "upper_subject = ?")
        p (.toUpperCase s)]
+      (doall res))))
+
+(defmethod query ::_-predicate-object [db s p o]
+  (clojure.tools.logging/info "QUERY" s p o)
+  (with-c db
+    (sql/with-query-results res
+      [(str "SELECT * FROM triples WHERE "
+            "predicate = ? AND "
+            "object = ?")
+       p o]
       (doall res))))
 
 (defmethod query ::_-_-_ [db s p o]
