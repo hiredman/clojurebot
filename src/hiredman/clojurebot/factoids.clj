@@ -327,10 +327,16 @@
                                          :subject (:subject result)
                                          :infered? true)))))))
                   [result]))]
-        (doall (apply concat
-                      (filter identity
-                              (pmap (partial infer 1)
-                                    (shuffle (first-order-search input)))))))
+        (let [x (->> (shuffle (first-order-search input))
+                     (map (partial infer 1))
+                     (apply concat)
+                     (filter identity)
+                     (remove #(.startsWith (.trim (:subject %)) "<reply>"))
+                     (remove #(= (:subject %) (:object %)))
+                     doall)]
+          (doseq [m x]
+            (clojure.tools.logging/info "POSSIBLE" m))
+          x))
       (catch Exception e
         (println e))
       (finally
