@@ -220,6 +220,7 @@
              (recur x)
              r))))
       ((fn [{:keys [subject object predicate infered?] :as relationship}]
+         (clojure.tools.logging/info "CHOSEN" relationship)
          (when infered?
            (swap! infered-results
                   (fn [db record]
@@ -375,6 +376,7 @@
         nil
         (let [{:keys [subject predicate object infered?] :as relationship}
               (first (shuffle x))]
+          (clojure.tools.logging/info "CHOSEN" relationship)
           (when infered?
             (swap! infered-results
                    (fn [db record]
