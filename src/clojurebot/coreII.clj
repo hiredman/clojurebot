@@ -3,8 +3,7 @@
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [clojure.tools.logging :only [info]]
-        [conduit.irc :only [send-notice]]
-        [conduit.xmpp :only [new-message *xmpp-connection*]])
+        [conduit.irc :only [send-notice]])
   (:require [hiredman.schedule :as sched]))
 
 (defn addressed?
@@ -118,7 +117,7 @@
              (doseq [line (.split x "\n")]
                (send-notice target line))))))
 
-(defmethod target :xmpp [[_ jid-from jid-to]]
+#_(defmethod target :xmpp [[_ jid-from jid-to]]
   (when jid-to
     (let [con *xmpp-connection*
           roster (.getRoster con)
