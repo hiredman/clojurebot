@@ -37,4 +37,5 @@
 
 (defn lookup-epigram [{:keys [message]}]
   (let [n (dec (Integer/parseInt (apply str (rest message))))]
-    (nth @eps n)))
+    (str (nth @eps n)
+         " -- Alan J. Perlis")))
