@@ -58,7 +58,7 @@
   (-> url
       (.replaceAll "http://code.google.com/p/clojure/source/browse/trunk"
                    (str "https://github.com/clojure/" project "/blob/" rev))
-      (.replaceAll "\\?r=(.*)#(\\d+)" "#LID$2")))
+      (.replaceAll "\\?r=(.*)#(\\d+)" "#L$2")))
 
 
 (defn get-file-and-ln [string]
@@ -70,6 +70,7 @@
   (let [google (str google-code-url file "?r=" clojurebot-rev "#" line)
         google (google-code->github-url google "clojure" clojurebot-rev)]
     (tinyurl google)))
+
 (def make-url-cached (memoize make-url))
 
 (def java-code-url (memoize (fn [url]
