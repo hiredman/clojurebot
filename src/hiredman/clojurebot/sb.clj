@@ -31,11 +31,15 @@
         ;; in the sandbox
         ((fn [cl]
            (java.security.AccessController/doPrivileged
-               (reify
-                 java.security.PrivilegedAction
-                 (run [_]
-                   (binding [*secure?* false]
-                     (evil cl "(+ 1 2)")))))))
+            (reify
+              java.security.PrivilegedAction
+              (run [_]
+                (try
+                  (binding [*secure?* false]
+                    (evil cl "(+ 1 2)"))
+                  (catch java.lang.NoClassDefFoundError e
+                    (swap! cl-cache dissoc clojure-jar)
+                    (throw e))))))))
         ((fn [cl]
            (swap! cl-cache assoc clojure-jar
                   [(System/currentTimeMillis) cl])))))))
