@@ -225,7 +225,7 @@
            (swap! infered-results
                   (fn [db record]
                     (if (> (count db) 10)
-                      (recur (pop db) record)
+                      (recur (rest db) record)
                       (conj db record)))
                   [(System/currentTimeMillis) (:channel bag) relationship]))
          (prep-reply (:sender bag)
@@ -387,7 +387,7 @@
             (swap! infered-results
                    (fn [db record]
                      (if (> (count db) 10)
-                       (recur (pop db) record)
+                       (recur (rest db) record)
                        (conj db record)))
                    [(System/currentTimeMillis) (:channel bag) relationship]))
           (prep-reply (:sender bag)
