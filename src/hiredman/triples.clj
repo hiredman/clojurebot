@@ -44,7 +44,7 @@
                       (try
                         (first (resultset-seq* (.getGeneratedKeys stmt)))
                         (catch Exception _
-                          ;; assume generated keys is unsupported and return counts instead: 
+                          ;; assume generated keys is unsupported and return counts instead:
                           counts)))))))
 
 (in-ns 'hiredman.triples)
@@ -59,37 +59,46 @@
        (.toUpperCase (.trim (str s)))]))))
 
 (defmulti query
-          (fn [db s p o]
-            (cond
-              (and (list? s) (keyword? p) (keyword? o))
-              ::like_subject-_-_
-              (and (not (keyword? s)) (not (keyword? p)) (keyword? o))
-              ::subject-predicate-_
-              (and (keyword? s) (keyword? p) (not (keyword? o)))
-              ::_-_-object
-              (and (keyword? s) (not (keyword? p)) (keyword? o))
-              ::_-predicate-_
-              (and (not (keyword? s)) (keyword? p) (keyword? o))
-              ::subject-_-_
-              (and (keyword? s) (keyword? p) (keyword? o))
-              ::_-_-_
-              (and (keyword? s) (not (keyword? p)) (not (keyword? o)))
-              ::_-predicate-object
-              :else
-                ::subject-predicate-object)))
+  (fn [db s p o]
+    (cond
+     (and (list? s) (keyword? p) (keyword? o))
+     ::like_subject-_-_
+     (and (not (keyword? s)) (not (keyword? p)) (keyword? o))
+     ::subject-predicate-_
+     (and (keyword? s) (keyword? p) (not (keyword? o)))
+     ::_-_-object
+     (and (keyword? s) (not (keyword? p)) (keyword? o))
+     ::_-predicate-_
+     (and (not (keyword? s)) (keyword? p) (keyword? o))
+     ::subject-_-_
+     (and (keyword? s) (keyword? p) (keyword? o))
+     ::_-_-_
+     (and (keyword? s) (not (keyword? p)) (not (keyword? o)))
+     ::_-predicate-object
+     :else
+     ::subject-predicate-object)))
 
 (defmethod query ::subject-_-_ [db s p o]
-  (with-c db
-    (sql/with-query-results res
-      ["SELECT * FROM triples WHERE upper_subject = ?" (.toUpperCase s)]
-      (doall res))))
+  (prn db)
+  (try
+    (with-c db
+      (sql/with-query-results res
+        ["SELECT * FROM triples WHERE upper_subject = ?" (.toUpperCase s)]
+        (doall res)))
+    (catch Exception e
+      (println db s p o)
+      (throw e))))
 
 (defmethod query ::like_subject-_-_ [db s p o]
-  (with-c db
-    (sql/with-query-results res
-      ["SELECT * FROM triples WHERE upper_subject LIKE ?"
-       (.toUpperCase (first s))]
-      (doall res))))
+  (try
+    (with-c db
+      (sql/with-query-results res
+        ["SELECT * FROM triples WHERE upper_subject LIKE ?"
+         (.toUpperCase (first s))]
+        (doall res)))
+    (catch Exception e
+      (println db s p o)xo
+      (throw e))))
 
 (defmethod query ::_-predicate-_ [db s p o]
   (with-c db
@@ -98,24 +107,32 @@
       (doall res))))
 
 (defmethod query ::subject-predicate-object [db s p o]
-  (with-c db
-    (sql/with-query-results res
-      [(str "SELECT * FROM triples WHERE "
-            "predicate = ? AND "
-            "upper_subject = ? AND "
-            "object = ?")
-       p (.toUpperCase s) o]
-      (doall res))))
+  (try
+    (with-c db
+      (sql/with-query-results res
+        [(str "SELECT * FROM triples WHERE "
+              "predicate = ? AND "
+              "upper_subject = ? AND "
+              "object = ?")
+         p (.toUpperCase s) o]
+        (doall res)))
+    (catch Exception e
+      (println db s p o)
+      (throw e))))
 
 (defmethod query ::subject-predicate-_ [db s p o]
   (clojure.tools.logging/info "QUERY" s p o)
-  (with-c db
-    (sql/with-query-results res
-      [(str "SELECT * FROM triples WHERE "
-            "predicate = ? AND "
-            "upper_subject = ?")
-       p (.toUpperCase s)]
-      (doall res))))
+  (try
+    (with-c db
+      (sql/with-query-results res
+        [(str "SELECT * FROM triples WHERE "
+              "predicate = ? AND "
+              "upper_subject = ?")
+         p (.toUpperCase s)]
+        (doall res)))
+  (catch Exception e
+    (println db s p o)
+    (throw e))))
 
 (defmethod query ::_-predicate-object [db s p o]
   (clojure.tools.logging/info "QUERY" s p o)
@@ -145,13 +162,13 @@
 
 (defn import-file [db file]
   (binding [*in* (-> file java.io.File. java.io.FileReader.
-                 java.io.PushbackReader.)]
+                     java.io.PushbackReader.)]
     (-> (map (fn [[s o]] {:s s :o o :p "is"}) (read))
-      ((partial mapcat
-                (fn [x]
-                  (if (-> x :o vector?)
-                    (map #(assoc x :o %) (:o x))
-                    [x]))))
-      ((partial map #(doto % prn)))
-      ((partial map (partial store-triple db)))
-      doall)))
+        ((partial mapcat
+                  (fn [x]
+                    (if (-> x :o vector?)
+                      (map #(assoc x :o %) (:o x))
+                      [x]))))
+        ((partial map #(doto % prn)))
+        ((partial map (partial store-triple db)))
+        doall)))
