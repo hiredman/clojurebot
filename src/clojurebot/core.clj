@@ -87,8 +87,7 @@
    (a-comp
     (a-all
      (a-arr log-user) ;enable "~seen foo" stuff
-     (a-when contains-url?
-             (a-arr delicious))
+
      ;; run logging plugins
      (a-arr (fn [{:keys [config] :as msg}]
               (doseq [name (:logging-plugins config)]
