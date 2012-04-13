@@ -140,7 +140,7 @@
 
 (defmethod new-send-out clojure.lang.IPersistentMap [bot msg-type recvr message]
   (condp = msg-type
-      :msg
+    :msg
     (io! (.sendMessage #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
     :action
     (io! (.sendAction #^PircBot (:this bot) (if (map? recvr) (who recvr) recvr) (normalise-docstring (.toString message))))
@@ -224,7 +224,7 @@
 (dorun
  (map #(add-dispatch-hook 0 (first %) (second %))
       [[(dfn (doc-lookup? (:message msg))) ::doc-lookup]
-              [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
+       [(dfn (re-find #"^\([\+ / \- \*] [ 0-9]+\)" (:message msg))) ::math]]))
 
 ;;this stuff needs to come last?
                                         ;(add-dispatch-hook 20 (dfn (and (addressed? bot msg) (not (:quit msg)))) ::lookup)
