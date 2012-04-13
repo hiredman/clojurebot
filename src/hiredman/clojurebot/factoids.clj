@@ -244,7 +244,7 @@
     (meta pos)))
 
 (def get-sentences (delay (nlp/make-sentence-detector "EnglishSD.bin.gz")))
-(def tokenize (delay (nlp/make-tokenizer "EnglishTok.bin.gz")))
+(def tokenize (delay (nlp/make-tokenizer "en-token.bin.gz")))
 (def pos-tag (delay (nlp/make-pos-tagger "tag.bin.gz")))
 
 (defn tag [x]
