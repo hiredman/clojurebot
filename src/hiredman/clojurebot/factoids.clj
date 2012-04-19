@@ -2,6 +2,7 @@
   (:use [hiredman.clojurebot.storage :only (db-name)])
   (:require [hiredman.clojurebot.core :as core]
             [hiredman.triples :as trip]
+            [clojure.java.io :as io]
             [name.choi.joshua.fnparse :as fp]
             [opennlp.nlp :as nlp]))
 
@@ -243,9 +244,20 @@
                          (list (format form %)) :z :y)) pos)
     (meta pos)))
 
-(def get-sentences (delay (nlp/make-sentence-detector "EnglishSD.bin.gz")))
-(def tokenize (delay (nlp/make-tokenizer "en-token.bin.gz")))
-(def pos-tag (delay (nlp/make-pos-tagger "tag.bin.gz")))
+(def get-sentences
+  (delay
+   (with-open [s (.openStream (io/resource "en-sent.bin"))]
+     (nlp/make-sentence-detector s))))
+
+(def tokenize
+  (delay
+   (with-open [s (.openStream (io/resource "en-token.bin"))]
+     (nlp/make-tokenizer s))))
+
+(def pos-tag
+  (delay
+   (with-open [s (.openStream (io/resource "en-pos-maxent.bin"))]
+     (nlp/make-pos-tagger s))))
 
 (defn tag [x]
   (@pos-tag
