@@ -9,7 +9,7 @@
                  [org.apache.derby/derby "10.8.1.2"]
                  [conduit-irc "2.0.1-SNAPSHOT"]
                  [org.clojars.hiredman/fnparse "2.2.4"]
-                 [clojure-opennlp "0.1.7"]
+                 [clojure-opennlp "0.1.9"]
                  #_[org.clojars.thnetos/opennlp "0.0.3"]
                  [org.ccil.cowan.tagsoup/tagsoup "1.2"]
                  [log4j "1.2.16"]
