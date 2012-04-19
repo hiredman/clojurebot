@@ -97,7 +97,7 @@
          (.toUpperCase (first s))]
         (doall res)))
     (catch Exception e
-      (println db s p o)xo
+      (println db s p o)
       (throw e))))
 
 (defmethod query ::_-predicate-_ [db s p o]
