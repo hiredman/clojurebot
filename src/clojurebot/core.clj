@@ -85,6 +85,10 @@
 (def pipeline
   (a-except
    (a-comp
+    (a-arr (fn [x]
+             (if (= (:sender x) "Laers_UemLauet")
+               nil
+               x)))
     (a-all
      (a-arr log-user) ;enable "~seen foo" stuff
 
