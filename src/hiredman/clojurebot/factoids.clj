@@ -3,114 +3,179 @@
   (:require [hiredman.clojurebot.core :as core]
             [hiredman.triples :as trip]
             [clojure.java.io :as io]
-            [name.choi.joshua.fnparse :as fp]
-            [opennlp.nlp :as nlp]))
+            [opennlp.nlp :as nlp]
+            [vespa.crabro :as vc]
+            [vespa.protocols :as vp]))
 
-;;BEGIN GARBAGE
-(defmacro string [str] (cons 'fp/conc (map #(list 'fp/lit %) str)))
+(defonce server (vc/create-server))
 
-(def literal (string "literal")) ;literally the string "literal"
+(def fnparse-service-jar
+  "/Users/hiredman/src/fnparse.service/fnparse.service-1.0.0-SNAPSHOT-standalone.jar")
 
-(def spaces (fp/semantics (fp/rep* (fp/lit \space)) first)) ;collapses spaces
+(defonce cl
+  (java.net.URLClassLoader.
+   (into-array java.net.URL [(.toURL (.toURI (io/file fnparse-service-jar)))])))
 
-(def number
-  (fp/semantics
-   (fp/rep+
-    (fp/term (set (map (comp first str) (range 10)))))
-   #(Integer/parseInt (apply str %))))
+(defonce
+  boot-it-up
+  (hiredman.sandbox/evil
+   cl
+   (pr-str '(do
+              (require 'fnparse.service)
+              (future
+                (fnparse.service/-main))
+              nil))))
 
-(def character (fp/term #(instance? Character %))) ;any character
+(defmacro remote-do [& forms]
+  (let [reply-queue (name (gensym 'reply))]
+    `(let [result# (promise)]
+       (with-open [mb# (vc/message-bus)]
+         (future
+           (try
+             (with-open [mb# (vc/message-bus)]
+               (vp/receive-from mb# ~reply-queue result#))
+             (catch Throwable t#
+               (result# {:bad (pr-str t#)}))))
+         (vc/send-to mb# "fnparse"
+                     ~(pr-str
+                       {:reply-to reply-queue
+                        :payload (cons 'do forms)})))
+       (let [{good# :good
+              bad# :bad} (read-string @result#)]
+         (if bad#
+           (throw (Exception. bad#))
+           good#)))))
 
-(def text (fp/rep+ (fp/except
-                    (fp/alt character
-                            (fp/conc character
-                                     (fp/lit \?)
-                                     character))
-                    (fp/lit \?))))
+(defn rpc [fn & args]
+  (let [reply-queue (name (gensym 'reply))
+        result (promise)]
+    (with-open [mb (vc/message-bus)]
+      (future
+        (try
+          (with-open [mb (vc/message-bus)]
+            (vp/receive-from mb reply-queue result))
+          (catch Throwable t
+            (result {:bad (pr-str t)}))))
+      (vc/send-to mb "fnparse"
+                  (pr-str
+                   {:reply-to reply-queue
+                    :payload `(~fn ~@(map (partial list 'quote) args))})))
+    (let [{:keys [good bad]} (read-string @result)]
+      (if bad
+        (throw (Exception. bad))
+        good))))
 
-;;(def escaped-is (fp/followed-by (fp/lit (char 92)) (string "is"))) ;\is
+(remote-do
+ (ns clojurebot.fnparse
+   (:require [name.choi.joshua.fnparse :as fp]))
 
-(def escaped-is (fp/conc (fp/lit (char 92)) (string "is")))
+ ;;BEGIN GARBAGE
+ (defmacro string [str] (cons 'fp/conc (map #(list 'fp/lit %) str)))
 
-(def term
-  (fp/rep+ (fp/except character (fp/except (string " is ") escaped-is))))
-;;a bunch of characters up to the first not escaped is
+ (def literal (string "literal")) ;literally the string "literal"
 
-(def definition
-  (fp/semantics
-   (fp/conc term (string " is ") text)
-   (fn [[term _ defi]]
-     (vary-meta {:term (.trim (apply str term))
-                 :definition (.trim (apply str defi))}
-                assoc :type :def))))
+ (def spaces (fp/semantics (fp/rep* (fp/lit \space)) first)) ;collapses spaces
 
-(def definition-add
-  (fp/semantics
-   (fp/conc term (string " is ") (string "also") (fp/lit \space) text)
-   (fn [[term _ _ _ defi]]
-     (vary-meta {:term (apply str term)
-                 :definition (apply str defi)} assoc :type :def))))
+ (def number
+   (fp/semantics
+    (fp/rep+
+     (fp/term (set (map (comp first str) (range 10)))))
+    #(Integer/parseInt (apply str %))))
 
-(def indexed-lookup
-  (fp/semantics
-   (fp/conc literal
-            spaces
-            (fp/lit \[)
-            number
-            (fp/lit \])
-            spaces
-            (fp/semantics text (partial apply str)))
-   (fn [[_ _ _ number _ _ term]]
-     (vary-meta {:number number :term term} assoc :type :indexed-look-up))))
+ (def character (fp/term #(instance? Character %))) ;any character
 
-(def index-count
-  (fp/semantics
-   (fp/conc literal
-            spaces
-            (fp/lit \[)
-            (fp/lit \?)
-            (fp/lit \])
-            spaces
-            (fp/semantics text (partial apply str)))
-   (fn [[_ _ _ number _ _ term]]
-     (vary-meta {:term term} assoc :type :count))))
+ (def text (fp/rep+ (fp/except
+                     (fp/alt character
+                             (fp/conc character
+                                      (fp/lit \?)
+                                      character))
+                     (fp/lit \?))))
 
-(def index (fp/alt index-count indexed-lookup))
+ ;;(def escaped-is (fp/followed-by (fp/lit (char 92)) (string "is"))) ;\is
 
-(def predicate
-  (fp/semantics
-   (fp/conc (fp/lit \|)
-            (fp/rep+ (fp/except character (fp/lit \|))) (fp/conc (fp/lit \|)))
-   (fn [[_ pred _]] (.trim (apply str pred)))))
+ (def escaped-is (fp/conc (fp/lit (char 92)) (string "is")))
 
-(def subject (fp/semantics (fp/rep+ (fp/except character (fp/lit \|)))
-                           (fn [d] (.trim (apply str d)))))
+ (def term
+   (fp/rep+ (fp/except character (fp/except (string " is ") escaped-is))))
+ ;;a bunch of characters up to the first not escaped is
 
-(def object (fp/semantics (fp/rep+ character)
-                          (fn [o] (.trim (apply str o)))))
+ (def definition
+   (fp/semantics
+    (fp/conc term (string " is ") text)
+    (fn [[term _ defi]]
+      (vary-meta {:term (.trim (apply str term))
+                  :definition (.trim (apply str defi))}
+                 assoc :type :def))))
 
-(def predicate-style-definition
-  (fp/semantics (fp/conc subject predicate object)
-                (fn [[subject predicate object]]
-                  #^{:type :predicate-style-definition}
-                  {:subject subject :object object :predicate predicate})))
+ (def definition-add
+   (fp/semantics
+    (fp/conc term (string " is ") (string "also") (fp/lit \space) text)
+    (fn [[term _ _ _ defi]]
+      (vary-meta {:term (apply str term)
+                  :definition (apply str defi)} assoc :type :def))))
 
-(def forget
-  (fp/semantics (fp/conc (string "forget ") predicate-style-definition)
-                (fn [[_ o]]
-                  (with-meta o {:type :forget}))))
+ (def indexed-lookup
+   (fp/semantics
+    (fp/conc literal
+             spaces
+             (fp/lit \[)
+             number
+             (fp/lit \])
+             spaces
+             (fp/semantics text (partial apply str)))
+    (fn [[_ _ _ number _ _ term]]
+      (vary-meta {:number number :term term} assoc :type :indexed-look-up))))
 
-;;END GARBAGE
+ (def index-count
+   (fp/semantics
+    (fp/conc literal
+             spaces
+             (fp/lit \[)
+             (fp/lit \?)
+             (fp/lit \])
+             spaces
+             (fp/semantics text (partial apply str)))
+    (fn [[_ _ _ number _ _ term]]
+      (vary-meta {:term term} assoc :type :count))))
 
-;;parse a string into some kind of factoid related something or other
-;;takes arguments in the style of fnparse {:remainder (seq some-string)}
-(def factoid-command
-  (fp/alt index-count
-          indexed-lookup
-          forget
-          definition-add
-          definition
-          predicate-style-definition))
+ (def index (fp/alt index-count indexed-lookup))
+
+ (def predicate
+   (fp/semantics
+    (fp/conc (fp/lit \|)
+             (fp/rep+ (fp/except character (fp/lit \|))) (fp/conc (fp/lit \|)))
+    (fn [[_ pred _]] (.trim (apply str pred)))))
+
+ (def subject (fp/semantics (fp/rep+ (fp/except character (fp/lit \|)))
+                            (fn [d] (.trim (apply str d)))))
+
+ (def object (fp/semantics (fp/rep+ character)
+                           (fn [o] (.trim (apply str o)))))
+
+ (def predicate-style-definition
+   (fp/semantics (fp/conc subject predicate object)
+                 (fn [[subject predicate object]]
+                   #^{:type :predicate-style-definition}
+                   {:subject subject :object object :predicate predicate})))
+
+ (def forget
+   (fp/semantics (fp/conc (string "forget ") predicate-style-definition)
+                 (fn [[_ o]]
+                   (with-meta o {:type :forget}))))
+
+ ;;END GARBAGE
+
+ ;;parse a string into some kind of factoid related something or other
+ ;;takes arguments in the style of fnparse {:remainder (seq some-string)}
+ (def factoid-command
+   (fp/alt index-count
+           indexed-lookup
+           forget
+           definition-add
+           definition
+           predicate-style-definition))
+ )
+
 
 ;;this should be ditched
 (defn simple-lookup [term]
@@ -171,6 +236,9 @@
 ;;  (trip/store-triple (trip/derby (db-name (:bot (meta bag)))) {:s (:term bag) :o (:definition bag) :p "is"})
 ;;  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
+
+(defn factoid-command [arg]
+  (rpc 'clojurebot.fnparse/factoid-command arg))
 
 (defn factoid-command? [message]
   (and (not (.endsWith message "?"))
