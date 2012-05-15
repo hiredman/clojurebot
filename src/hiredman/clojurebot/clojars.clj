@@ -3,7 +3,8 @@
         [clojure.set :only (difference)])
   (:require [hiredman.clojurebot.core :as core]
             [hiredman.utilities :as util]
-            [hiredman.schedule :as sched]))
+            [hiredman.schedule :as sched]
+            [clojure.zip]))
 
 (def recent (ref #{}))
 
