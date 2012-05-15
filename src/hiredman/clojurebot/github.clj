@@ -2,7 +2,7 @@
  (:import (java.text SimpleDateFormat ParsePosition FieldPosition))
  (:require [hiredman.clojurebot.core :as core]
            [hiredman.schedule :as sched]
-           [org.danlarkin.json :as json]
+           [cheshire.core :as json]
            [hiredman.utilities :as util]))
 
 (def api-url "http://github.com/api/v2/json/commits/list/richhickey/clojure/master")
@@ -26,7 +26,7 @@
 (defn get-commit
   "get the commit message for commit n"
   [n]
-  (-> commit-url (str "/" n) util/get-url json/decode-from-str :commit :message))
+  (-> commit-url (str "/" n) util/get-url (json/decode true) :commit :message))
 
 (core/defresponder ::git-commit 0
   (core/dfn (and (re-find #"^git ([^ ])" (core/extract-message bot msg))
@@ -37,7 +37,7 @@
 (defn get-commits
   "get list of commits from github"
   []
-  (->  api-url util/get-url json/decode-from-str :commits
+  (->  api-url util/get-url (json/decode true) :commits
        ((partial map #(update-in % [:committed_date] parse-date)))
        ((partial map #(update-in % [:authored_date] parse-date)))
        ((partial sort-by :commited_date))

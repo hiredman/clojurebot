@@ -2,7 +2,7 @@
 (ns hiredman.clojurebot.code-lookup
   (:use (hiredman.clojurebot core))
   (:use (hiredman utilities))
-  (:require [org.danlarkin.json :as json])
+  (:require [cheshire.core :as json])
   (:import (java.io File InputStreamReader BufferedReader)))
 
 (def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/")
@@ -12,7 +12,11 @@
 (def contrib-url "http://github.com/clojure/clojure-contrib/raw/gh-pages/api-index.json")
 
 (def contrib
-  (delay (try (json/decode-from-str (get-url contrib-url)) (catch Exception e nil))))
+  (delay (try (json/decode
+               (get-url contrib-url)
+               true)
+              (catch Exception e
+                nil))))
 
 (defn get-rev-number []
   ((comp #(Integer/parseInt %)

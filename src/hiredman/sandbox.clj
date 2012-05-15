@@ -204,7 +204,7 @@
                        (context (domain (empty-perms-list)))))
             *default-timeout*))
          (finally
-          (.setContextClassLoader (Thread/currentThread) old-cl)))))))
+           (.setContextClassLoader (Thread/currentThread) old-cl)))))))
 
 (defn eval-in-box [_string sb-ns class-loader]
   (enable-security-manager)

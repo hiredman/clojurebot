@@ -2,7 +2,7 @@
 (ns hiredman.clojurebot.translate
     (:use (hiredman.clojurebot core))
     (:use (hiredman utilities))
-    (:require [org.danlarkin.json :as json]))
+    (:require [cheshire.core :as json]))
 
 (def url "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0")
 
@@ -17,7 +17,7 @@
         (println langpair)
         ((comp #(java.net.URLDecoder/decode % "UTF-8")
                :translatedText :responseData
-               json/decode-from-str
+               #(json/decode % true)
                #(do (prn %) %)) (get-url (str url "&q=" phrase "&langpair=" langpair)))))
 
 (defmethod responder ::translate [bot msg]

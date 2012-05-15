@@ -1,6 +1,8 @@
 (ns hiredman.clojurebot.ticket
   (:require [hiredman.clojurebot.core :as core]
-            [hiredman.utilities :as util])
+            [hiredman.utilities :as util]
+            [clojure.xml]
+            [clojure.zip])
   (:import (java.io StringReader StringBufferInputStream)
            (java.net URLEncoder)))
 

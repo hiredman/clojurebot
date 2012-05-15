@@ -1,12 +1,12 @@
 (ns hiredman.clojurebot.stock-quote
       (:require [hiredman.clojurebot.core :as core]
                 [hiredman.utilities :as util]
-                [org.danlarkin.json :as json]))
+                [cheshire.core :as json]))
 
 (def url "http://www.google.com/finance/info?q=")
 
 (defn stock-quote [symbol]
-  (json/decode-from-str (apply str (butlast (drop 4 (util/get-url (.concat url symbol)))))))
+  (json/decode (apply str (butlast (drop 4 (util/get-url (.concat url symbol))))) true))
 
 (defn format-quote [{:keys [l t c cp]}]
   (format "%s; %s" t c))

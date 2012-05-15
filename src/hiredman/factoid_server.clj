@@ -1,8 +1,8 @@
 (ns hiredman.factoid-server
   (:use [hiredman.http-server :only (http-server put)]
-        [org.danlarkin.json :only (decode-from-str encode-to-str)]
         [hiredman.triples :only (derby query)]
         [hiredman.clojurebot.storage :only (db-name)])
+  (:require [cheshire.core :as json])
   (:import (java.io BufferedReader StringReader)))
 
 (defn handle [request bot]
@@ -11,7 +11,7 @@
     ((partial drop-while #(not= "" %)))
     rest
     ((partial apply str))
-    decode-from-str
+    (json/decode true)
     ((fn [x]
        (query (derby (db-name bot))
               (:s x :x)
@@ -21,7 +21,7 @@
     ((partial map #(update-in % [:created_at] (fn [x] (.toString x)))))
     ((fn [x]
        (try
-         (encode-to-str x)
+         (json/encode x true)
          (catch Exception e
            (print e)))))
     ((fn [x]

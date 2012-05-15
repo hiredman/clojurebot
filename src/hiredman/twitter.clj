@@ -1,6 +1,6 @@
 (ns hiredman.twitter
   (:refer-clojure :exclude [send])
-  (:require [org.danlarkin.json :as json]
+  (:require [cheshire.core :as json]
             [clojure.core :as cc]
             [hiredman.clojurebot.core :as core]
             [hiredman.sandbox :as sb])
@@ -40,7 +40,7 @@
               (.setRequestProperty "Authorization" (str "Basic " creds))
               (.setRequestProperty "User-Agent" "clojurebot 10/10"))]
     (with-open [rdr (-> con .getInputStream InputStreamReader. BufferedReader.)]
-                (json/decode-from-str (apply str (line-seq rdr))))))
+                (json/decode (apply str (line-seq rdr)) true))))
 
 (defn open-connection [url creds]
   (doto (.openConnection url)
@@ -55,7 +55,7 @@
                                (URL. (str (:mentions twitter-urls) "?since_id=" (first id)))) creds)]
     (with-open [rdr (-> con .getInputStream InputStreamReader. BufferedReader.)]
       ;(take-while identity (repeatedly #(.readLine rdr)))
-      (json/decode-from-str (apply str (line-seq rdr))))))
+      (json/decode (apply str (line-seq rdr)) true))))
 
 
 (defn login [username password]
