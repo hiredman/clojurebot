@@ -1,3 +1,6 @@
+Some libraries required by clojurebot only run on clojrue 1.2, clojurebot-legacy provides a way to expose those libraries over a message queue
+
+
 DEPENDS ON: fnparse, clojure-json, apache-derby, pircbot, (more?)
 Clojurebot, as seen in #clojure
 
