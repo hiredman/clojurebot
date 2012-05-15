@@ -24,6 +24,8 @@
                                   notice target setup-crons]]
         [clojurebot.plugin :only [load-from]]
         [hiredman.clojurebot.simplyscala :only [scala-eval]])
+  (:require [vespa.crabro :as vc]
+            [vespa.protocols :as vp])
   (:gen-class))
 
 ;; pipelines
@@ -195,6 +197,8 @@
   (when (:swank config)
     (future
       (start-repl (:swank config)))))
+
+(defonce server (vc/create-server))
 
 (defn -main [& [config-file]]
   (set-properties!)

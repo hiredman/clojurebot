@@ -7,44 +7,47 @@
             [vespa.crabro :as vc]
             [vespa.protocols :as vp]))
 
-(defonce server (vc/create-server))
+;; (def fnparse-service-jar
+;;   "/Users/hiredman/src/fnparse.service/fnparse.service-1.0.0-SNAPSHOT-standalone.jar")
 
-(def fnparse-service-jar
-  "/Users/hiredman/src/fnparse.service/fnparse.service-1.0.0-SNAPSHOT-standalone.jar")
+;; (defonce cl
+;;   (java.net.URLClassLoader.
+;;    (into-array java.net.URL [(.toURL (.toURI (io/file fnparse-service-jar)))])))
 
-(defonce cl
-  (java.net.URLClassLoader.
-   (into-array java.net.URL [(.toURL (.toURI (io/file fnparse-service-jar)))])))
-
-(defonce
-  boot-it-up
-  (hiredman.sandbox/evil
-   cl
-   (pr-str '(do
-              (require 'fnparse.service)
-              (future
-                (fnparse.service/-main))
-              nil))))
+;; (defonce
+;;   boot-it-up
+;;   (do
+;;     (hiredman.sandbox/evil
+;;      cl
+;;      (pr-str '(+ 1 2)))
+;;     (hiredman.sandbox/evil
+;;      cl
+;;      (pr-str '(do
+;;                 (require 'fnparse.service)
+;;                 (future
+;;                   (@(resolve 'fnparse.service/-main)))
+;;                 nil)))))
 
 (defmacro remote-do [& forms]
   (let [reply-queue (name (gensym 'reply))]
-    `(let [result# (promise)]
-       (with-open [mb# (vc/message-bus)]
-         (future
-           (try
-             (with-open [mb# (vc/message-bus)]
-               (vp/receive-from mb# ~reply-queue result#))
-             (catch Throwable t#
-               (result# {:bad (pr-str t#)}))))
-         (vc/send-to mb# "fnparse"
-                     ~(pr-str
-                       {:reply-to reply-queue
-                        :payload (cons 'do forms)})))
-       (let [{good# :good
-              bad# :bad} (read-string @result#)]
-         (if bad#
-           (throw (Exception. bad#))
-           good#)))))
+    `(future
+       (let [result# (promise)]
+         (with-open [mb# (vc/message-bus)]
+           (future
+             (try
+               (with-open [mb# (vc/message-bus)]
+                 (vp/receive-from mb# ~reply-queue result#))
+               (catch Throwable t#
+                 (result# {:bad (pr-str t#)}))))
+           (vc/send-to mb# "fnparse"
+                       ~(pr-str
+                         {:reply-to reply-queue
+                          :payload (cons 'do forms)})))
+         (let [{good# :good
+                bad# :bad} (read-string @result#)]
+           (if bad#
+             (throw (Exception. bad#))
+             good#))))))
 
 (defn rpc [fn & args]
   (let [reply-queue (name (gensym 'reply))
@@ -189,27 +192,27 @@
 (defmethod factoid-command-processor :count [config bag]
   (let [defi  (simple-lookup (:term bag))]
     (cond
-     (nil? defi)
-     0
-     (vector? defi)
-     (count defi)
-     :else
-     1)))
+      (nil? defi)
+      0
+      (vector? defi)
+      (count defi)
+      :else
+      1)))
 
 ;;this too
 (defmethod factoid-command-processor :indexed-look-up [config bag]
   (let [defi (simple-lookup (:term bag))]
     (cond
-     (nil? defi)
-     "nothing defined"
-     (and (vector? defi) (> (count defi) (:number bag)))
-     (defi (:number bag))
-     (vector? defi)
-     (str (:number bag) " is out of range")
-     (zero? (:number bag))
-     defi
-     :else
-     (core/befuddled))))
+      (nil? defi)
+      "nothing defined"
+      (and (vector? defi) (> (count defi) (:number bag)))
+      (defi (:number bag))
+      (vector? defi)
+      (str (:number bag) " is out of range")
+      (zero? (:number bag))
+      defi
+      :else
+      (core/befuddled))))
 
 (defmethod factoid-command-processor :def [config bag]
   (trip/store-triple
@@ -314,18 +317,18 @@
 
 (def get-sentences
   (delay
-   (with-open [s (.openStream (io/resource "en-sent.bin"))]
-     (nlp/make-sentence-detector s))))
+    (with-open [s (.openStream (io/resource "en-sent.bin"))]
+      (nlp/make-sentence-detector s))))
 
 (def tokenize
   (delay
-   (with-open [s (.openStream (io/resource "en-token.bin"))]
-     (nlp/make-tokenizer s))))
+    (with-open [s (.openStream (io/resource "en-token.bin"))]
+      (nlp/make-tokenizer s))))
 
 (def pos-tag
   (delay
-   (with-open [s (.openStream (io/resource "en-pos-maxent.bin"))]
-     (nlp/make-pos-tagger s))))
+    (with-open [s (.openStream (io/resource "en-pos-maxent.bin"))]
+      (nlp/make-pos-tagger s))))
 
 (defn tag [x]
   (@pos-tag
@@ -346,13 +349,13 @@
 
 (defmacro tl [n & body]
   `(let [now# (System/nanoTime)]
-    (try
-      ~@body
-      (finally
-       (clojure.tools.logging/info ~(str "Elapsed " n " time:")
-                                   (/ (double (- (System/nanoTime) now#))
-                                      1000000.0)
-                                   "msecs")))))
+     (try
+       ~@body
+       (finally
+         (clojure.tools.logging/info ~(str "Elapsed " n " time:")
+                                     (/ (double (- (System/nanoTime) now#))
+                                        1000000.0)
+                                     "msecs")))))
 
 (defn qw [input config]
   (let [now (System/nanoTime)]
@@ -382,30 +385,30 @@
               (infer [order result]
                 (if (> 3 order)
                   (lazy-seq
-                   (cons result
-                         (let [term (search-term result)]
-                           (clojure.tools.logging/info "TERM" term)
-                           ;; also need to check the inverse?
-                           (->> (concat (trip/query (trip/derby (db-name config))
-                                                    term
-                                                    (be term)
-                                                    :z)
-                                        (->> (trip/query (trip/derby (db-name config))
-                                                         :z
-                                                         "is"
-                                                         term)
-                                             (map rotate-fact))
-                                        (->> (trip/query (trip/derby (db-name config))
-                                                         :z
-                                                         "are"
-                                                         term)
-                                             (map rotate-fact)))
-                                (mapcat (partial infer (inc order)))
-                                (map (fn [x]
-                                       (assoc x
-                                         :predicate (:predicate result)
-                                         :subject (:subject result)
-                                         :infered? true)))))))
+                    (cons result
+                          (let [term (search-term result)]
+                            (clojure.tools.logging/info "TERM" term)
+                            ;; also need to check the inverse?
+                            (->> (concat (trip/query (trip/derby (db-name config))
+                                                     term
+                                                     (be term)
+                                                     :z)
+                                         (->> (trip/query (trip/derby (db-name config))
+                                                          :z
+                                                          "is"
+                                                          term)
+                                              (map rotate-fact))
+                                         (->> (trip/query (trip/derby (db-name config))
+                                                          :z
+                                                          "are"
+                                                          term)
+                                              (map rotate-fact)))
+                                 (mapcat (partial infer (inc order)))
+                                 (map (fn [x]
+                                        (assoc x
+                                          :predicate (:predicate result)
+                                          :subject (:subject result)
+                                          :infered? true)))))))
                   [result]))]
         (let [x (->> (shuffle (first-order-search input))
                      (map (partial infer 1))
@@ -420,10 +423,10 @@
       (catch Exception e
         (println e))
       (finally
-       (clojure.tools.logging/info "Elapsed qw time:"
-                                   (/ (double (- (System/nanoTime) now))
-                                      1000000.0)
-                                   "msecs")))))
+        (clojure.tools.logging/info "Elapsed qw time:"
+                                    (/ (double (- (System/nanoTime) now))
+                                       1000000.0)
+                                    "msecs")))))
 
 (defn factoid-lookup [{:keys [message config] :as bag}]
   (trip/with-c (trip/derby (db-name config))
