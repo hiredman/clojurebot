@@ -13,6 +13,8 @@
                  [log4j "1.2.16"]
                  [cheshire "4.0.0"]
                  [clj-http "0.4.1"]
-                 [swank-clojure "1.3.2"]]
+                 [swank-clojure "1.3.2"]
+                 [org.jboss.modules/jboss-modules "1.1.2.GA"]
+                 [clj-wallhack "1.0"]]
   :main clojurebot.core
   :clean-non-project-classes false)

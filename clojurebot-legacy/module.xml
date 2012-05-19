@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module xmlns="urn:jboss:module:1.1" name="clojurebot.legacy">
+  <main-class name="clojurebot.legacy" />
+  <resources>
+    <resource-root
+        path="clojurebot-legacy-1.0.0-SNAPSHOT-standalone.jar"/>
+  </resources>
+  <dependencies>
+    <system>
+      <paths>
+        <path name="org/xml/sax" />
+        <path name="org/xml/sax/helpers" />
+        <path name="javax/xml/parsers" />
+        <path name="javax/transaction/xa" />
+        <!-- <path name="java/**" /> -->
+      </paths>
+    </system>
+  </dependencies>
+</module>

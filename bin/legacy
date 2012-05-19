@@ -1,0 +1,8 @@
+#!/bin/sh
+
+mkdir -p modules/clojurebot/legacy/main
+cd clojurebot-legacy
+lein uberjar
+cp clojurebot-legacy-1.0.0-SNAPSHOT-standalone.jar ../modules/clojurebot/legacy/main
+cp module.xml ../modules/clojurebot/legacy/main/
+cd ..
