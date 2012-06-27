@@ -74,8 +74,7 @@
 ;;;;;;;;;;;
 
 (defn empty-perms-list []
-  (doto (java.security.Permissions.)
-    (.add (RuntimePermission. "accessDeclaredMembers"))))
+  (java.security.Permissions.))
 
 (defn domain [perms]
   (java.security.ProtectionDomain.
