@@ -23,4 +23,13 @@
 ;; :logging-plugins #{clojurebot.indexing/index}
  :on-invite :join
  :clojure-jar "/Users/hiredman/src/clojure/clojure.jar"
- :swank 8888}
+ :swank 8888
+ 
+ :connections #{{:type :irc
+                 :server "irc.freenode.net"
+                 :port 6667
+                 :nick "clojurebotIII"
+                 :channels ["#clojurebot"]
+                 :tag :clojurebot }}
+
+ }

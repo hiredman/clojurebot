@@ -1,23 +1,24 @@
 (ns clojurebot.legacy
-  (:require [vespa.crabro :as vc]
-            [vespa.protocols :as vp])
+  (:require [clojure.java.jmx :as jmx])
+  (:import (java.util.concurrent LinkedBlockingQueue))
   (:gen-class))
 
 (defn -main [& args]
-  (with-open [mb (vc/message-bus)]
-    (while true
-      (try
-        (vp/receive-from
-         mb
-         "fnparse"
-         (fn [msg]
-           (let [{:keys [payload reply-to]} (read-string msg)]
-             (vc/send-to mb
-                         reply-to
-                         (pr-str
-                          (try
-                            {:good (eval payload)}
-                            (catch Throwable t
-                              {:error (print-str t)})))))))
-        (catch Throwable t
-          (prn t))))))
+  (let [queue (LinkedBlockingQueue.)]
+    (jmx/register-mbean
+     (jmx/create-bean (atom {:inbox queue}))
+     "clojurebot.legacy:name=Eval")
+    (future
+      (while true
+        (let [{:keys [body reply-to tag]} (read-string (.take queue))]
+          (when reply-to
+            (let [reply-queue (jmx/read reply-to :inbox)]
+              (.put reply-queue
+                    (pr-str (try
+                              {:good (eval body) :tag tag}
+                              (catch Throwable t
+                                {:bad (print-str t)
+                                 :tag tag}))))))
+          (try
+            (eval body)
+            (catch Throwable _)))))))
