@@ -18,43 +18,86 @@
 
 (def *default-timeout* 10) ; in seconds
 
-(def *secure?* true)
+(definterface Door
+  (lock [pw])
+  (unlock [pw])
+  (isLocked []))
 
-(defmacro defering-security-manager [sm]
+(defmacro defering-security-manager [sm door-key & [m]]
   (let [sm-name (gensym 'sm)
         methods (for [[method-name methods]
                       (group-by #(.getName %)
                                 (.getDeclaredMethods SecurityManager))
                       :when (.startsWith method-name "check")
+                      
                       :let [methods (filter
                                      #(java.lang.reflect.Modifier/isPublic
                                        (.getModifiers %))
                                      methods)]]
-                  `(~(symbol method-name)
-                    ~@(for [[argc [method]] (group-by
-                                             #(count (.getParameterTypes %))
-                                             methods)
-                            :let [args (vec (map-indexed
-                                             (comp symbol str)
-                                             (take argc (repeat "arg"))))]]
-                        `(~args
-                          (when *secure?*
-                            (. ~sm-name ~(symbol method-name) ~@args))))))]
-    `(let [~sm-name ~sm]
-       (proxy [SecurityManager] []
-         ~@methods))))
+                  (if (contains? m method-name)
+                    (get m method-name)
+                    `(~(symbol method-name)
+                      ~@(for [[argc [method]] (group-by
+                                               #(count (.getParameterTypes %))
+                                               methods)
+                              :let [args (vec (map-indexed
+                                               (comp symbol str)
+                                               (take argc (repeat "arg"))))]]
+                          `(~args
+                            (when (.isLocked ~'this)
+                              (println ~method-name ~@args)
+                              (throw (java.lang.SecurityException.
+                                      "denied"))))))))]
+    `(let [~sm-name ~sm
+           ~'b (proxy [java.lang.InheritableThreadLocal] []
+                 (initialValue []
+                   false))]
+       (proxy [SecurityManager Door] []
+         ~@methods
+         (isLocked []
+           (.get ~'b))
+         (lock [pw#]
+           (when (= pw# ~door-key)
+             (.set ~'b true)))
+         (unlock [pw#]
+           (when (= pw# ~door-key)
+             (.set ~'b false)))))))
 
-(defn enable-security-manager []
+(defn enable-security-manager [k]
   (info "enable-security-manager")
   (System/setSecurityManager
-   (let [sm (SecurityManager.)]
-     (defering-security-manager sm))))
+   (let [sm (SecurityManager.)
+         m (defering-security-manager sm k
+             {"checkPackageAccess"
+              (checkPackageAccess [package])
+              "checkMemberAccess"
+              (checkMemberAccess
+               [class member]
+               (when (.isLocked ^Door this)
+                 (when (= class Runtime)
+                   (throw (java.lang.SecurityException.
+                           "Reference To Runtime is not allowed")))))
+              "checkCreateClassLoader"
+              (checkCreateClassLoader [])
+              "checkPermission"
+              (checkPermission
+               [p]
+               (when (.isLocked ^Door this)
+                 (if (instance? java.lang.reflect.ReflectPermission p)
+                   nil
+                   (proxy-super checkPermission p))))
+              "checkAccess"
+              (checkAccess
+               [t-or-tg]
+               (when (.isLocked ^Door this)
+                 (throw (java.lang.SecurityException. "no threads please"))))})]
+     m)))
+
+
 
 ;;;;;;;; Chousuke
 (defn thunk-timeout [thunk seconds]
-  (let [task (FutureTask.
-              #(binding [*secure?* true]
-                 (thunk)))
+  (let [task (FutureTask. thunk)
         thr (Thread. task)]
     (try
       (.start thr)
@@ -182,8 +225,7 @@
      (let [old-cl (.getContextClassLoader (Thread/currentThread))]
        (try
          (.setContextClassLoader (Thread/currentThread) cl)
-         (let [secure *secure?*
-               rt (.loadClass cl "clojure.lang.RT")
+         (let [rt (.loadClass cl "clojure.lang.RT")
                compiler (.loadClass cl "clojure.lang.Compiler")
                var- (fn [s]
                       (call-method
@@ -192,11 +234,9 @@
                deref (fn [x] (call-method (.getClass x) :deref [] x))
                invoke (fn [x &  args] (call-method (.getClass x) :invoke []))
                read-string (fn [s]
-                             (binding [*secure?* secure]
-                               (call-method rt :readString [String] nil s)))
+                             (call-method rt :readString [String] nil s))
                eval (fn [f]
-                      (binding [*secure?* secure]
-                        (call-method compiler :eval [Object] nil f)))]
+                      (call-method compiler :eval [Object] nil f))]
            (thunk-timeout
             (fn []
               (sandbox #(eval (read-string (format "(pr-str %s)" form-str)))
@@ -205,8 +245,8 @@
          (finally
           (.setContextClassLoader (Thread/currentThread) old-cl)))))))
 
-(defn eval-in-box [_string sb-ns class-loader]
-  (enable-security-manager)
+(defn eval-in-box [_string sb-ns class-loader n]
+  (enable-security-manager n)
   (let [f `(do
              (with-open [o# (java.io.StringWriter.)
                          e# (java.io.StringWriter.)]
@@ -221,39 +261,35 @@
                    (:use [clojure.repl]))
                  (alter-var-root (resolve '~'doc)
                                  (constantly (resolve '~'my-doc)))
-                 (let [f# (read-string ~_string)
-                       good?# (if (and (coll? f#)
-                                       (not (empty? f#)))
-                                (when (not
-                                       (some '~*bad-forms*
-                                             (tree-seq coll?
-                                                       (fn [i#]
-                                                         (let [a# (macroexpand
-                                                                   i#)]
-                                                           (if (coll? a#)
-                                                             (seq a#)
-                                                             (list a#))))
-                                                       f#)))
-                                  f#)
-                                true)
-                       r# (pr-str (try
-                                    (when-not good?#
-                                      (throw (Exception. "SANBOX DENIED")))
-                                    (eval f#)
-                                    (catch Throwable t#
-                                      t#)))]
-                   [(.toString (doto o# .close))
-                    (.toString (doto e# .close))
-                    r#]))))
-        thunk (fn []
-                (binding [*secure?* true]
-                  (evil class-loader f)))]
+                 (.lock (System/getSecurityManager) ~n)
+                 (try
+                   (let [f# (read-string ~_string)
+                         good?# (if (and (coll? f#)
+                                         (not (empty? f#)))
+                                  (when (not
+                                         (some '~*bad-forms*
+                                               (tree-seq coll?
+                                                         (fn [i#]
+                                                           (let [a# (macroexpand
+                                                                     i#)]
+                                                             (if (coll? a#)
+                                                               (seq a#)
+                                                               (list a#))))
+                                                         f#)))
+                                    f#)
+                                  true)
+                         r# (pr-str (try
+                                      (when-not good?#
+                                        (throw (Exception. "SANBOX DENIED")))
+                                      (eval f#)
+                                      (catch Throwable t#
+                                        t#)))]
+                     [(.toString (doto o# .close))
+                      (.toString (doto e# .close))
+                      r#])
+                   (finally
+                     (.unlock (System/getSecurityManager) ~n))))))
+        thunk (fn [] (evil class-loader f))]
     (thunk)))
-
-(->> SecurityManager .getDeclaredMethods
-     (map bean)
-     (filter
-      #(java.lang.reflect.Modifier/isPublic (:modifiers %)))
-     (filter #(.startsWith (:name %) "check")))
 
 
