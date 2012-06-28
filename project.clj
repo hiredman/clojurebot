@@ -1,4 +1,4 @@
-(defproject clojurebot "0.3.2"
+(defproject clojurebot "0.3.3-SNAPSHOT"
   :repositories {"sonatype-snapshots"
                  "https://oss.sonatype.org/content/repositories/snapshots/"}
   :description "An IRC bot written in Clojure"
