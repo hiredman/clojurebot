@@ -50,7 +50,7 @@
 (defn eval-request? [{:keys [message]}]
   (and message (re-find #"^," (.trim message))))
 
-(let [n (rand-int 1000)]
+(let [n (str (java.util.UUID/randomUUID))]
   (defn eval-message [{:keys [message sender config] :as bag}]
     (if (and (not (naughty-forms? message))
              (not= sender "itistoday")
