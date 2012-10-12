@@ -280,7 +280,7 @@
                                   true)
                          r# (pr-str (try
                                       (when-not good?#
-                                        (throw (Exception. "SANBOX DENIED")))
+                                        (throw (Exception. "SANDBOX DENIED")))
                                       (eval f#)
                                       (catch Throwable t#
                                         t#)))]
