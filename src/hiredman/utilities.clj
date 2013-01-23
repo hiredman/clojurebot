@@ -30,10 +30,9 @@
       (.. Runtime getRuntime (exec cmd)))
 
 (defn tinyurl [url]
-  (try (get-url (str "http://tinyurl.com/api-create.php?url=" (URLEncoder/encode url)))
-    (catch Exception e
-      (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
-        get-url))))
+  (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
+      get-url))
+
 (def tinyurl (memoize tinyurl))
 
 (defn- base64encode [string]
