@@ -23,7 +23,8 @@
                                   rejoin nickserv-id doc-lookup? math? da-math
                                   notice target setup-crons]]
         [clojurebot.plugin :only [load-from]]
-        [hiredman.clojurebot.simplyscala :only [scala-eval]])
+        [hiredman.clojurebot.simplyscala :only [scala-eval]]
+        [com.thelastcitadel.apropos :refer [apropos]])
   (:gen-class))
 
 ;; pipelines
@@ -51,7 +52,12 @@
                                                 (query a-map)))
                                             (:addressed-plugins config))]
                      (@(ns-resolve ns action) a-map))))
-           false (a-cond ticket-query?
+           false (a-cond (fn [{:keys [message]}]
+                           (when message
+                             (.startsWith message "apropos ")))
+                         (a-arr (fn [{:keys [message]}]
+                                  (apropos message)))
+                         ticket-query?
                          (a-arr get-ticket-n)
 
                          contrib-ticket-query?

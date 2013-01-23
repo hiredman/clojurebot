@@ -16,6 +16,7 @@
                  [org.danlarkin/clojure-json "1.1"]
                  [clj-http "0.1.1"]
                  [swank-clojure "1.3.2"]
+                 [com.thelastcitadel/apropos "0.0.1"]
                  #_[conduit-xmpp "1.0.0-SNAPSHOT"]
                  ]
   :main clojurebot.core
