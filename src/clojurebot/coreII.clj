@@ -50,6 +50,14 @@
         out))
     x))
 
+
+(defn replace-newline [st]
+  (apply str
+         (for [c st]
+           (if (= \newline c)
+             "\\n"
+             c))))
+
 (def clojurebot-eval
   (a-comp (a-arr eval-message)
           (a-if vector?
@@ -57,13 +65,13 @@
                  (fn [[stdout stderr result]]
                    (let [stdout (if (empty? stdout)
                                   ""
-                                  (str stdout "\n"))
+                                  (replace-newline stdout))
                          stderr (if (empty? stderr)
                                   ""
-                                  (str stderr "\n"))
+                                  (replace-newline stderr))
                          result (when (or (not= "nil" result)
                                           (empty? stdout))
-                                  result)]
+                                  (replace-newline result))]
                      (str stdout stderr result))))
                 pass-through)))
 
