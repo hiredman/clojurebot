@@ -147,7 +147,7 @@
             (comp (partial = :invite) :type)
             (a-comp (a-arr (fn [{:keys [bot channel config]}]
                              (when (:on-invite config)
-                               (.joinChannel bot channel))))
+                               (.joinChannel bot (last (.split channel " "))))))
                     null)
 
             (constantly true)
