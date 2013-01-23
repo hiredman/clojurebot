@@ -52,11 +52,11 @@
                                                 (query a-map)))
                                             (:addressed-plugins config))]
                      (@(ns-resolve ns action) a-map))))
-           false (a-cond (fn [{:keys [message]}]
+           false (a-cond (fn [{:keys [message] :as m}]
                            (when message
                              (.startsWith message "apropos ")))
                          (a-arr (fn [{:keys [message]}]
-                                  (apropos message)))
+                                  (apropos (.replaceFirst message "apropos " ""))))
                          ticket-query?
                          (a-arr get-ticket-n)
 
