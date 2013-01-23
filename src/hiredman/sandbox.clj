@@ -76,7 +76,10 @@
                (when (.isLocked ^Door this)
                  (when (= class Runtime)
                    (throw (java.lang.SecurityException.
-                           "Reference To Runtime is not allowed")))))
+                           "Reference To Runtime is not allowed")))
+                 (when (= class java.security.PrivilegedAction)
+                   (throw (java.lang.SecurityException.
+                           "Reference to PrivilegedActions is not allowed")))))
               "checkCreateClassLoader"
               (checkCreateClassLoader [])
               "checkPermission"
