@@ -6,7 +6,6 @@
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [ring "1.1.8"]
                  [org.clojure/tools.logging "0.2.4"]
-                 [sonian/carica "1.0.2"]
                  [org.apache.derby/derby "10.8.1.2"]
                  [org.clojure/java.jdbc "0.0.5"]
                  [org.clojars.hiredman/fnparse "2.2.4"]
