@@ -8,4 +8,5 @@
                  [org.clojure/tools.logging "0.2.4"]
                  [sonian/carica "1.0.2"]]
   :plugins [[lein-ring "0.8.2"]]
-  :ring {:handler clojurebot.eval/handler})
+  :ring {:handler clojurebot.eval/handler
+         :init clojurebot.eval/init})

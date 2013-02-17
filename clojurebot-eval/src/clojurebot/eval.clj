@@ -17,3 +17,9 @@
 
 (def handler (-> #'handler*
                  wrap-params))
+
+(defn init []
+  (when (empty? (System/getProperty "java.security.policy"))
+    (System/setProperty
+     "java.security.policy"
+     (str (.getResource (class #'init) "/example.policy")))))
