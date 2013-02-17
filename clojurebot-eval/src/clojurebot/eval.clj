@@ -3,10 +3,9 @@
             [clojure.tools.logging :as log]
             [ring.middleware.params :refer [wrap-params]]))
 
-(defn handler* [{{:strs [expression befuddled]} :params}]
 (defn handler* [{{:strs [expression befuddled]} :params :as m}]
   (try
-    (let [[stdout stderr result] (sb/eval-message expression befuddled)]
+    (let [[stdout stderr result] (sb/eval-message expression (read-string befuddled))]
       {:status 200
        :body (pr-str {:stdout stdout
                       :stderr stderr
