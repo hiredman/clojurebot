@@ -10,7 +10,7 @@
                                            get-ticket-n contrib-ticket-query?
                                            get-contrib-ticket-n]]
         [hiredman.clojurebot.code-lookup :only [code-lookup? do-code-lookup]]
-        [hiredman.clojurebot.sb :only [eval-request?]]
+        [clojurebot.eval :only [eval-request?]]
         [clojure.tools.logging :only [info]]
         [clojurebot.seenx :only [log-user seenx-query? seen-user]]
         [clojurebot.delicious :only [contains-url? delicious]]

@@ -1,5 +1,5 @@
 (ns clojurebot.coreII
-  (:use [hiredman.clojurebot.sb :only [eval-message]]
+  (:use [clojurebot.eval :only [eval-message]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
         [clojure.tools.logging :only [info]]
