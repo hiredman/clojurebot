@@ -4,6 +4,7 @@
             [ring.middleware.params :refer [wrap-params]]))
 
 (defn handler* [{{:strs [expression befuddled]} :params}]
+(defn handler* [{{:strs [expression befuddled]} :params :as m}]
   (try
     (let [[stdout stderr result] (sb/eval-message expression befuddled)]
       {:status 200
@@ -12,6 +13,7 @@
                       :result result})})
     (catch Throwable t
       (log/error t "error evaluating" expression)
+      (log/error (pr-str m))
       (throw t))))
 
 (def handler (-> #'handler*
