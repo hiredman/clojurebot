@@ -1,9 +1,11 @@
 (ns clojurebot.factoids
-  (:require [hiredman.clojurebot.core :as core]
-            [hiredman.triples :as trip]
+  (:require [clojurebot.triples :as trip]
             [clojure.java.io :as io]
             [name.choi.joshua.fnparse :as fp]
-            [opennlp.nlp :as nlp]))
+            [opennlp.nlp :as nlp]
+            [clj-http.client :as http]))
+
+(def ^:dynamic *id*)
 
 ;;BEGIN GARBAGE
 (defmacro string [str] (cons 'fp/conc (map #(list 'fp/lit %) str)))
@@ -118,7 +120,8 @@
 (defmulti factoid-command-processor (comp type second list) :default :boom)
 
 (defmethod factoid-command-processor :boom [config bag]
-  ::befuddled)
+  (let [{:keys [body]} (http/get "http://localhost:3205/befuddled")]
+    (read-string body)))
 
 (defmethod factoid-command-processor :count [config bag]
   (let [defi  (simple-lookup (:term bag))]
@@ -143,23 +146,26 @@
      (zero? (:number bag))
      defi
      :else
-     ::befuddled)))
+     (let [{:keys [body]} (http/get "http://localhost:3205/befuddled")]
+       (read-string body)))))
 
 (defmethod factoid-command-processor :def [config bag]
   (trip/store-triple
-   (trip/derby (db-name config))
+   (trip/derby (trip/db-name config))
    {:s (:term bag) :o (:definition bag) :p "is"})
-  ::ok)
+  (let [{:keys [body]} (http/get "http://localhost:3205/ok")]
+    (read-string body)))
 
 (defmethod factoid-command-processor :predicate-style-definition [config bag]
   (trip/store-triple
-   (trip/derby (db-name config))
+   (trip/derby (trip/db-name config))
    {:s (:subject bag) :o (:object bag) :p (:predicate bag)})
-  ::ok)
+  (let [{:keys [body]} (http/get "http://localhost:3205/ok")]
+    (read-string body)))
 
 (defmethod factoid-command-processor :forget [config bag]
   (trip/delete
-   (trip/derby (db-name config)) (:subject bag) (:predicate bag) (:object bag))
+   (trip/derby (trip/db-name config)) (:subject bag) (:predicate bag) (:object bag))
   (format "I forgot that %s %s %s"
           (:subject bag)
           (:predicate bag)
@@ -200,15 +206,16 @@
 (defn prep-reply
   "preps a reply, does substituion of stuff like <reply> and #who"
   [sender term pred defi bot]
-  (replace-with
-   (if (or (re-find #"^<reply>" defi)
-           (re-find #"^<REPLY>" defi))
-     (.trim
-      (remove-from-beginning
-       (remove-from-beginning (str defi) "<reply>")
-       "<REPLY>"))
-     (format "%s %s %s" term pred defi))
-   {"#who" sender "#someone" (core/random-person bot)}))
+  (let [{:keys [body]} (http/get (str "http://localhost:3205/randomperson/" *id*))]
+    (replace-with
+     (if (or (re-find #"^<reply>" defi)
+             (re-find #"^<REPLY>" defi))
+       (.trim
+        (remove-from-beginning
+         (remove-from-beginning (str defi) "<reply>")
+         "<REPLY>"))
+       (format "%s %s %s" term pred defi))
+     {"#who" sender "#someone" (read-string body)})))
 
 
 (defmulti #^{:doc "" :private true}
@@ -239,12 +246,14 @@
                      object
                      (:bot bag))))))
 
-(defmethod befuddled-or-pick-random true [x bag] (core/befuddled))
+(defmethod befuddled-or-pick-random true [x bag]
+  (let [{:keys [body]} (http/get (str "http://localhost:3205/randomperson/" *id*))]
+    (read-string body)))
 
 (defn mutli-query [config pos form]
   (with-meta ((partial mapcat
                        #(trip/query
-                         (trip/derby (db-name config))
+                         (trip/derby (trip/db-name config))
                          (list (format form %)) :z :y)) pos)
     (meta pos)))
 
@@ -296,13 +305,13 @@
       (letfn [(first-order-search [input]
                 (if-let [result (seq
                                  (concat
-                                  (trip/query (trip/derby (db-name config))
+                                  (trip/query (trip/derby (trip/db-name config))
                                               input :y :z)
-                                  (->> (trip/query (trip/derby (db-name config))
+                                  (->> (trip/query (trip/derby (trip/db-name config))
                                                    :z "is" input)
                                        (map rotate-fact)
                                        (map #(assoc % :infered? true)))
-                                  (->> (trip/query (trip/derby (db-name config))
+                                  (->> (trip/query (trip/derby (trip/db-name config))
                                                    :z "are" input)
                                        (map rotate-fact)
                                        (map #(assoc % :infered? true)))))]
@@ -322,16 +331,16 @@
                          (let [term (search-term result)]
                            (clojure.tools.logging/info "TERM" term)
                            ;; also need to check the inverse?
-                           (->> (concat (trip/query (trip/derby (db-name config))
+                           (->> (concat (trip/query (trip/derby (trip/db-name config))
                                                     term
                                                     (be term)
                                                     :z)
-                                        (->> (trip/query (trip/derby (db-name config))
+                                        (->> (trip/query (trip/derby (trip/db-name config))
                                                          :z
                                                          "is"
                                                          term)
                                              (map rotate-fact))
-                                        (->> (trip/query (trip/derby (db-name config))
+                                        (->> (trip/query (trip/derby (trip/db-name config))
                                                          :z
                                                          "are"
                                                          term)
@@ -362,7 +371,7 @@
                                     "msecs")))))
 
 (defn factoid-lookup [{:keys [message config] :as bag}]
-  (trip/with-c (trip/derby (db-name config))
+  (trip/with-c (trip/derby (trip/db-name config))
     (-> (.replaceAll (.trim message) "\\?$" "")
         ((fn [thing]
            (when (= "botsnack" thing)
@@ -373,7 +382,7 @@
                                 now)]
                  (future
                    (trip/store-triple
-                    (trip/derby (db-name config))
+                    (trip/derby (trip/db-name config))
                     {:s (:subject fact)
                      :o (:object fact)
                      :p (:predicate fact)})
@@ -390,7 +399,7 @@
         (befuddled-or-pick-random bag))))
 
 (defn factoid-lookup-no-fall-back [{:keys [message config] :as bag}]
-  (trip/with-c (trip/derby (db-name config))
+  (trip/with-c (trip/derby (trip/db-name config))
     (let [x (-> (.replaceAll (.trim message) "\\?$" "")
                 (qw config)
                 vec)]

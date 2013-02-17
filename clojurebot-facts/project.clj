@@ -9,6 +9,8 @@
                  [sonian/carica "1.0.2"]
                  [org.apache.derby/derby "10.8.1.2"]
                  [org.clojure/java.jdbc "0.0.5"]
-                 [org.clojars.hiredman/fnparse "2.2.4"]]
+                 [org.clojars.hiredman/fnparse "2.2.4"]
+                 [clj-http "0.1.1"]
+                 [clojure-opennlp "0.1.9"]]
   :plugins [[lein-ring "0.8.2"]]
   :ring {:handler clojurebot.facts/handler})

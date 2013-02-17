@@ -2,12 +2,16 @@
   (:use [conduit.irc :only [irc-run a-irc *pircbot* pircbot]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
-        [hiredman.clojurebot.factoids :only [factoid-lookup factoid-command?
+        [hiredman.clojurebot.factoids :only [factoid-lookup
+                                             factoid-command?
                                              factoid-command-run
                                              factoid-lookup-no-fall-back]]
-        [hiredman.clojurebot.ticket :only [ticket-search? search-tickets
-                                           ticket-search? ticket-query?
-                                           get-ticket-n contrib-ticket-query?
+        [hiredman.clojurebot.ticket :only [ticket-search?
+                                           search-tickets
+                                           ticket-search?
+                                           ticket-query?
+                                           get-ticket-n
+                                           contrib-ticket-query?
                                            get-contrib-ticket-n]]
         [hiredman.clojurebot.code-lookup :only [code-lookup? do-code-lookup]]
         [clojurebot.eval :only [eval-request?]]
@@ -24,7 +28,10 @@
                                   notice target setup-crons]]
         [clojurebot.plugin :only [load-from]]
         [hiredman.clojurebot.simplyscala :only [scala-eval]]
-        [com.thelastcitadel.apropos :refer [apropos]])
+        [com.thelastcitadel.apropos :refer [apropos]]
+        [compojure.core :refer [defroutes]]
+        [compojure.route :refer :all]
+        [ring.adapter.jetty :refer [run-jetty]])
   (:gen-class))
 
 ;; pipelines
@@ -85,7 +92,7 @@
                          (constantly true)
                          (a-arr factoid-lookup)
 
-                         
+
                          ))))
 
 (def pipeline
@@ -198,6 +205,21 @@
     (future
       (start-repl (:swank config)))))
 
+(def l (atom {}))
+
+(defroutes cb
+  (GET "/befuddled" []
+       {:status 200
+        :body (hiredman.clojurebot.core/befuddled)})
+  (GET "/ok" []
+       {:status 200
+        :body (pr-str (hiredman.clojurebot.core/ok))})
+  (GET "/randomperson/:id" []
+       {:status 200
+        :body (pr-str (hiredman.clojurebot.core/random-person
+                       (get @l id)))})
+  )
+
 (defn -main [& [config-file]]
   (set-properties!)
   (let [config (read-string (slurp config-file))
@@ -208,6 +230,9 @@
     (binding [*ns* (create-ns 'sandbox)]
       (refer 'clojure.core))
     (start-swank config)
+    (run-jetty #'cb
+               {:port 3205
+                :join? false})
     ;; for each server run irc-run
     (doseq [[server channels] (:irc config)]
       (let [out *out*

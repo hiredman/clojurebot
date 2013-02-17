@@ -1,5 +1,6 @@
 (ns clojurebot.triples
-  (:require [clojure.java.jdbc :as sql]))
+  (:require [clojure.java.jdbc :as sql]
+            [clojure.tools.logging]))
 
 (defmacro with-c [db & body]
   `(if (:connection clojure.java.jdbc.internal/*db*)
@@ -47,7 +48,7 @@
                           ;; assume generated keys is unsupported and return counts instead:
                           counts)))))))
 
-(in-ns 'hiredman.triples)
+(in-ns 'clojurebot.triples)
 
 (defn store-triple [db {:keys [s p o]}]
   (with-c db
@@ -176,5 +177,5 @@
 (defn db-name [{:keys [database]}]
   (let [name database]
     (when-not (.exists (java.io.File. name))
-      (trip/create-store name))
+      (create-store name))
     name))
