@@ -4,3 +4,4 @@ lib/
 *.jar
 derby.log
 checkouts/
+target/

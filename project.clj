@@ -17,4 +17,5 @@
                  [ring "1.1.8"]
                  [compojure "1.1.5"]]
   :main clojurebot.core
-  :clean-non-project-classes false)
+  :clean-non-project-classes false
+  :min-lein-version "2.0.0")
