@@ -1,7 +1,8 @@
 (ns hiredman.clojurebot.sb
   (:use (hiredman.clojurebot core)
         (hiredman sandbox)
-        [clojure.tools.logging :only [info]]))
+        [clojure.tools.logging :only [info]])
+  (:require [clj-http.client :as http]))
 
 (let [cl-cache (atom {})]
   (defn cl [clojure-jar]
@@ -64,3 +65,16 @@
           result
           (.replace (str result) "(NO_SOURCE_FILE:0)" "")))
       (str sender ": " (befuddled)))))
+
+(defn eval-message [{:keys [message sender config] :as bag}]
+  (let [{:keys [body]} (http/post (config :evaluator)
+                                  {:form-params {:expression (.replaceAll message "^," "")
+                                                 :befuddled ::befuddled}
+                                   ;; 10 seconds
+                                   :socket-timeout (* 1000 10)
+                                   :conn-timeout (* 1000 10)})
+        {:keys [stdout stderr result]} (read-string body)]
+    (if (or (= result (pr-str ::befuddled))
+            (= result (prn-str ::befuddled)))
+      (str sender ": " (befuddled))
+      [stdout stderr result])))
