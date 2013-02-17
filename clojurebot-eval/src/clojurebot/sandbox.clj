@@ -16,7 +16,7 @@
     'clojure.core/addMethod
     'hiredman.clojurebot/bot})
 
-(def *default-timeout* 10) ; in seconds
+(def default-timeout 10) ; in seconds
 
 (definterface Door
   (lock [pw])
@@ -243,7 +243,7 @@
             (fn []
               (sandbox #(eval (read-string (format "(pr-str %s)" form-str)))
                        (context (domain (empty-perms-list)))))
-            *default-timeout*))
+            default-timeout))
          (finally
           (.setContextClassLoader (Thread/currentThread) old-cl)))))))
 
