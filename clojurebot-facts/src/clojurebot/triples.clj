@@ -174,8 +174,10 @@
         ((partial map (partial store-triple db)))
         doall)))
 
-(defn db-name [{:keys [database]}]
-  (let [name database]
+(defn db-name []
+  (let [name (or (System/getProperty "clojurebot.db")
+                 (str (System/getProperty "user.dir")
+                      "/bot.db"))]
     (when-not (.exists (java.io.File. name))
       (create-store name))
     name))
