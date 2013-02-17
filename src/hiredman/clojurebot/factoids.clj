@@ -23,7 +23,7 @@
       (finally
         (swap! clojurebot.core/l dissoc id)))))
 
-(defn factoid-lookup-no-fall-back [{:keys [message config] :as bag}]
+(defn factoid-lookup-no-fall-back [{:keys [message config bot] :as bag}]
   (let [id (str (UUID/randomUUID))]
     (swap! clojurebot.core/l assoc id bot)
     (try
@@ -35,7 +35,7 @@
       (finally
         (swap! clojurebot.core/l dissoc id)))))
 
-(defn factoid-command-run [{:keys [config message]}]
+(defn factoid-command-run [{:keys [config message bot]}]
   (let [id (str (UUID/randomUUID))]
     (swap! clojurebot.core/l assoc id bot)
     (try
