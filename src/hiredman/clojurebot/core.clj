@@ -7,11 +7,9 @@
 ;;java -server -ms16m -mx64m -Xss128m
 
 (ns hiredman.clojurebot.core
-  (:use [hiredman.clojurebot.storage :only (db-name)])
   (:require [hiredman.pqueue :as pq]
             [hiredman.schedule :as sched]
             [hiredman.utilities :as util]
-            [hiredman.triples :as trip]
             [hiredman.words :as w])
   (:import (org.jibble.pircbot PircBot)
            (java.util Date Timer TimerTask)
@@ -156,12 +154,12 @@
   (doseq [c (.getChannels (:this bot))]
     (fn c)))
 
-(defn store [bot key value]
-  (trip/delete (trip/derby (db-name bot)) key "is" :y)
-  (trip/store-triple (trip/derby (db-name bot)) {:s key :o value :p "is"}))
+;; (defn store [bot key value]
+;;   (trip/delete (trip/derby (db-name bot)) key "is" :y)
+;;   (trip/store-triple (trip/derby (db-name bot)) {:s key :o value :p "is"}))
 
-(defn what-is [term bot]
-  (trip/query (trip/derby (db-name bot)) term :x :y))
+;; (defn what-is [term bot]
+;;   (trip/query (trip/derby (db-name bot)) term :x :y))
 
 
 (defmacro dfn
@@ -270,8 +268,8 @@
   [bot pojo]
   (.trim (.replaceAll (:message pojo) (str "(?:" (:nick bot) ":|~)(.*)") "$1")))
 
-(defmethod responder ::know [bot pojo]
-  (new-send-out bot :msg pojo (str "I know "  (count (trip/query (trip/derby (db-name bot)) :y :y :z))" things")))
+;; (defmethod responder ::know [bot pojo]
+;;   (new-send-out bot :msg pojo (str "I know "  (count (trip/query (trip/derby (db-name bot)) :y :y :z))" things")))
 
 (defn handleMessage [this channel sender login hostname message]
   (try

@@ -86,7 +86,7 @@
                          epigram-query?
                          (a-arr lookup-epigram)
 
-                         (comp factoid-command? :message)
+                         factoid-command?
                          (a-arr factoid-command-run)
 
                          (constantly true)
@@ -190,7 +190,6 @@
   (System/setProperty "file.encoding" "utf8")
   (System/setProperty "swank.encoding" "utf8"))
 
-
 (defn load-plugins [config]
   (load-from (:plugin-directory config)
              (concat (map first (:addressed-plugins config))
@@ -214,10 +213,10 @@
   (GET "/ok" []
        {:status 200
         :body (pr-str (hiredman.clojurebot.core/ok))})
-  (GET "/randomperson/:id" []
+  (GET "/randomperson/:id" [req]
        {:status 200
         :body (pr-str (hiredman.clojurebot.core/random-person
-                       (get @l id)))})
+                       (get @l (get (:params req) "id"))))})
   )
 
 (defn -main [& [config-file]]
