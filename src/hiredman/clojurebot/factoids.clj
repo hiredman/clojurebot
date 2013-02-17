@@ -23,6 +23,26 @@
       (finally
         (swap! clojurebot.core/l dissoc id)))))
 
-(defn factoid-lookup-no-fall-back [{:keys [message config] :as bag}])
+(defn factoid-lookup-no-fall-back [{:keys [message config] :as bag}]
+  (let [id (str (UUID/randomUUID))]
+    (swap! clojurebot.core/l assoc id bot)
+    (try
+      (let [{:keys [body]} (http/get (:facts-service config)
+                                     {:query-params {:op "factoid-lookup-no-fall-back"
+                                                     :message message
+                                                     :id (str id)}})]
+        (read-string body))
+      (finally
+        (swap! clojurebot.core/l dissoc id)))))
 
-(defn factoid-command-run [{:keys [config message]}])
+(defn factoid-command-run [{:keys [config message]}]
+  (let [id (str (UUID/randomUUID))]
+    (swap! clojurebot.core/l assoc id bot)
+    (try
+      (let [{:keys [body]} (http/get (:facts-service config)
+                                     {:query-params {:op "factoid-command-run"
+                                                     :message message
+                                                     :id (str id)}})]
+        (read-string body))
+      (finally
+        (swap! clojurebot.core/l dissoc id)))))
