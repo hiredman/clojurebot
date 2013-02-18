@@ -20,4 +20,5 @@
  :clojure-jar "/Users/hiredman/src/clojure/clojure.jar"
  :swank 8888
  :evaluator "http://localhost:3235/eval"
+ :facts-service "http://localhost:3236/facts"
  }
