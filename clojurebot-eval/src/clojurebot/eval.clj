@@ -13,7 +13,10 @@
     (catch Throwable t
       (log/error t "error evaluating" expression)
       (log/error (pr-str m))
-      (throw t))))
+      {:status 200
+       :body (pr-str {:stdout ""
+                      :stderr (pr-str t)
+                      :result ""})})))
 
 (def handler (-> #'handler*
                  wrap-params))
