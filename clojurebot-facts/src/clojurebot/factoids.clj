@@ -120,9 +120,13 @@
 
 (defmulti factoid-command-processor (comp type second list) :default :boom)
 
-(defmethod factoid-command-processor :boom [_ bag]
+(defn befuddled []
   (let [{:keys [body]} (http/get "http://localhost:3205/befuddled")]
+    (prn body)
     (read-string body)))
+
+(defmethod factoid-command-processor :boom [_ bag]
+  (befuddled))
 
 (defmethod factoid-command-processor :count [_ bag]
   (let [defi  (simple-lookup (:term bag))]
@@ -147,8 +151,7 @@
      (zero? (:number bag))
      defi
      :else
-     (let [{:keys [body]} (http/get "http://localhost:3205/befuddled")]
-       (read-string body)))))
+     (befuddled))))
 
 (defmethod factoid-command-processor :def [_ bag]
   (trip/store-triple
@@ -196,6 +199,8 @@
 ;; (hiredman.clojurebot.core/dict-file bot ".is")))
 
 (defn replace-with [str map]
+  (prn str)
+  (prn map)
   (reduce #(.replaceAll % (first %2) (second %2)) str map))
 
 (defn remove-from-beginning
@@ -249,8 +254,7 @@
 
 (defmethod befuddled-or-pick-random true [x bag]
   (log/info *id* x bag)
-  (let [{:keys [body]} (http/get (str "http://localhost:3205/randomperson/" *id*))]
-    (read-string body)))
+  (befuddled))
 
 (defn mutli-query [_ pos form]
   (with-meta ((partial mapcat

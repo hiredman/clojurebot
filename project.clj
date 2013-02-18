@@ -3,7 +3,6 @@
                  "https://oss.sonatype.org/content/repositories/snapshots/"}
   :description "An IRC bot written in Clojure"
   :dependencies [[org.clojure/clojure "1.2.1"]
-                 [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojure/tools.logging "0.1.2"]
                  [conduit-irc "2.0.1-SNAPSHOT"]
                  #_[org.clojars.thnetos/opennlp "0.0.3"]

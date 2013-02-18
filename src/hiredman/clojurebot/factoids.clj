@@ -1,48 +1,57 @@
 (ns hiredman.clojurebot.factoids
-  (:require [clj-http.client :as http])
+  (:require [clj-http.client :as http]
+            [clojure.tools.logging :as log])
   (:import (java.util UUID)))
 
 (create-ns 'clojurebot.core)
 (intern 'clojurebot.core 'l)
 
-(defn factoid-command? [{:keys [message config]}]
+(defn factoid-command? [{:keys [message config sender]}]
   (let [{:keys [body]} (http/get (:facts-service config)
                                  {:query-params {:op "factoid-command?"
-                                                 :message message}})]
+                                                 :message message
+                                                 :sender sender}})]
     (read-string body)))
 
-(defn factoid-lookup [{:keys [message config bot] :as bag}]
+(defn factoid-lookup [{:keys [message config bot sender] :as bag}]
   (let [id (str (UUID/randomUUID))]
     (swap! clojurebot.core/l assoc id bot)
     (try
       (let [{:keys [body]} (http/get (:facts-service config)
                                      {:query-params {:op "factoid-lookup"
                                                      :message message
-                                                     :id (str id)}})]
+                                                     :id (str id)
+                                                     :sender sender}})]
         (read-string body))
       (finally
         (swap! clojurebot.core/l dissoc id)))))
 
-(defn factoid-lookup-no-fall-back [{:keys [message config bot] :as bag}]
-  (let [id (str (UUID/randomUUID))]
-    (swap! clojurebot.core/l assoc id bot)
-    (try
-      (let [{:keys [body]} (http/get (:facts-service config)
-                                     {:query-params {:op "factoid-lookup-no-fall-back"
-                                                     :message message
-                                                     :id (str id)}})]
-        (read-string body))
-      (finally
-        (swap! clojurebot.core/l dissoc id)))))
+(defn factoid-lookup-no-fall-back [{:keys [message config bot sender] :as bag}]
+  (try
+    (let [id (str (UUID/randomUUID))]
+      (swap! clojurebot.core/l assoc id bot)
+      (try
+        (let [{:keys [body]} (http/get (:facts-service config)
+                                       {:query-params {:op "factoid-lookup-no-fall-back"
+                                                       :message message
+                                                       :id (str id)
+                                                       :sender sender}})]
+          (read-string body))
+        (finally
+          (swap! clojurebot.core/l dissoc id))))
+    (catch Throwable t
+      (log/info t)
+      nil)))
 
-(defn factoid-command-run [{:keys [config message bot]}]
+(defn factoid-command-run [{:keys [config message bot sender]}]
   (let [id (str (UUID/randomUUID))]
     (swap! clojurebot.core/l assoc id bot)
     (try
       (let [{:keys [body]} (http/get (:facts-service config)
                                      {:query-params {:op "factoid-command-run"
                                                      :message message
-                                                     :id (str id)}})]
+                                                     :id (str id)
+                                                     :sender sender}})]
         (read-string body))
       (finally
         (swap! clojurebot.core/l dissoc id)))))

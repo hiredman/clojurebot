@@ -1,4 +1,4 @@
-(ns clojurebot.core
+>(ns clojurebot.core
   (:use [conduit.irc :only [irc-run a-irc *pircbot* pircbot]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
@@ -209,14 +209,19 @@
 (defroutes cb
   (GET "/befuddled" []
        {:status 200
-        :body (hiredman.clojurebot.core/befuddled)})
+        :headers {"Content-Type" "application/edn; charset=utf-8"}
+        :body (let [x (hiredman.clojurebot.core/befuddled)]
+                (prn x)
+                (println x)
+                (pr-str x))})
   (GET "/ok" []
        {:status 200
+        :headers {"Content-Type" "application/edn; charset=utf-8"}
         :body (pr-str (hiredman.clojurebot.core/ok))})
-  (GET "/randomperson/:id" [req]
+  (GET "/randomperson/:id" [id]
        {:status 200
-        :body (pr-str (hiredman.clojurebot.core/random-person
-                       (get @l (get (:params req) "id"))))})
+        :headers {"Content-Type" "application/edn; charset=utf-8"}
+        :body (pr-str (hiredman.clojurebot.core/random-person (get @l id)))})
   )
 
 (defn -main [& [config-file]]
