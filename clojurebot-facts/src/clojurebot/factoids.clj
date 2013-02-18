@@ -176,7 +176,7 @@
 ;;  (core/new-send-out (:bot (meta bag)) :msg (:message (meta bag)) (core/ok)))
 
 
-(defn factoid-command? [message]
+(defn factoid-command? [{:keys [message]}]
   (and (not (.endsWith message "?"))
        (factoid-command {:remainder (seq message)})))
 
