@@ -49,6 +49,7 @@ apt-get update
 apt-get install openjdk-7-jre wget
 wget http://repo2.maven.org/maven2/org/mortbay/jetty/jetty-runner/8.1.9.v20130131/jetty-runner-8.1.9.v20130131.jar
 ln -sf jetty-runner-8.1.9.v20130131.jar jetty-runner.jar
+
 }
 
 $1
