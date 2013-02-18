@@ -3,7 +3,8 @@
             [clojure.java.io :as io]
             [name.choi.joshua.fnparse :as fp]
             [opennlp.nlp :as nlp]
-            [clj-http.client :as http]))
+            [clj-http.client :as http]
+            [clojure.tools.logging :as log]))
 
 (def ^:dynamic *id*)
 
@@ -247,6 +248,7 @@
                      (:bot bag))))))
 
 (defmethod befuddled-or-pick-random true [x bag]
+  (log/info *id* x bag)
   (let [{:keys [body]} (http/get (str "http://localhost:3205/randomperson/" *id*))]
     (read-string body)))
 
