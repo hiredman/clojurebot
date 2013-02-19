@@ -1,7 +1,8 @@
 (ns clojurebot.eval
   (:require [clojurebot.sandbox :as sb]
             [clojure.tools.logging :as log]
-            [ring.middleware.params :refer [wrap-params]]))
+            [ring.middleware.params :refer [wrap-params]]
+            [clojure.stacktrace :as s]))
 
 (defn handler* [{{:strs [expression befuddled]} :params :as m}]
   (try
@@ -15,7 +16,11 @@
       (log/error (pr-str m))
       {:status 200
        :body (pr-str {:stdout ""
-                      :stderr (pr-str t)
+                      :stderr (pr-str
+                               (try
+                                 (s/root-cause t)
+                                 (catch Throwable _
+                                   t)))
                       :result ""})})))
 
 (def handler (-> #'handler*
