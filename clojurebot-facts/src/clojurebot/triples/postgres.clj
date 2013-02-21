@@ -3,11 +3,8 @@
             [clojure.tools.logging]))
 
 (defmacro with-c [db & body]
-  `(if (:connection clojure.java.jdbc.internal/*db*)
-     (do
-       ~@body)
-     (sql/with-connection ~db
-       ~@body)))
+  `(sql/with-connection ~db
+     ~@body))
 
 (def pg (delay (read-string (slurp (System/getProperty "postgres")))))
 
