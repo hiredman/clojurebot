@@ -56,8 +56,7 @@
   (try
     (with-c (:url @pg)
       (sql/with-query-results res
-        ["SELECT * FROM ? WHERE upper_subject = ?"
-         (:table @pg)
+        [(format "SELECT * FROM %s WHERE upper_subject = ?" (:table @pg))
          (.toUpperCase s)]
         (doall res)))
     (catch Exception e
@@ -67,8 +66,7 @@
   (try
     (with-c (:url @pg)
       (sql/with-query-results res
-        ["SELECT * FROM ? WHERE upper_subject LIKE ?"
-         (:table @pg)
+        [(format "SELECT * FROM %s WHERE upper_subject LIKE ?" (:table @pg))
          (.toUpperCase ^String (first s))]
         (doall res)))
     (catch Exception e
@@ -77,18 +75,19 @@
 (defmethod query ::_-predicate-_ [s p o]
   (with-c (:url @pg)
     (sql/with-query-results res
-      ["SELECT * FROM ? WHERE predicate = ?" (:table @pg) p]
+      [(format "SELECT * FROM %s WHERE predicate = ?" (:table @pg)) p]
       (doall res))))
 
 (defmethod query ::subject-predicate-object [^String s p o]
   (try
     (with-c (:url @pg)
       (sql/with-query-results res
-        [(str "SELECT * FROM ? WHERE "
+        [(str "SELECT * FROM "
+              (:table @pg)
+              " WHERE "
               "predicate = ? AND "
               "upper_subject = ? AND "
               "object = ?")
-         (:table @pg)
          p (.toUpperCase s) o]
         (doall res)))
     (catch Exception e
@@ -99,10 +98,11 @@
   (try
     (with-c (:url @pg)
       (sql/with-query-results res
-        [(str "SELECT * FROM ? WHERE "
+        [(str "SELECT * FROM "
+              (:table @pg)
+              " WHERE "
               "predicate = ? AND "
               "upper_subject = ?")
-         (:table @pg)
          p (.toUpperCase s)]
         (doall res)))
     (catch Exception e
@@ -112,17 +112,18 @@
   (clojure.tools.logging/info "QUERY" s p o)
   (with-c (:url @pg)
     (sql/with-query-results res
-      [(str "SELECT * FROM ? WHERE "
+      [(str "SELECT * FROM "
+            (:table @pg)
+            " WHERE "
             "predicate = ? AND "
             "object = ?")
-       (:table @pg)
        p o]
       (doall res))))
 
 (defmethod query ::_-_-_ [s p o]
   (with-c (:url @pg)
     (sql/with-query-results res
-      ["SELECT * FROM ?" (:table @pg)]
+      [(str "SELECT * FROM " (:table @pg))]
       (doall res))))
 
 (defn delete [s p o]
