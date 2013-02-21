@@ -155,21 +155,18 @@
 
 (defmethod factoid-command-processor :def [_ bag]
   (trip/store-triple
-   (trip/derby (trip/db-name))
    {:s (:term bag) :o (:definition bag) :p "is"})
   (let [{:keys [body]} (http/get "http://localhost:3205/ok")]
     (read-string body)))
 
 (defmethod factoid-command-processor :predicate-style-definition [_ bag]
   (trip/store-triple
-   (trip/derby (trip/db-name))
    {:s (:subject bag) :o (:object bag) :p (:predicate bag)})
   (let [{:keys [body]} (http/get "http://localhost:3205/ok")]
     (read-string body)))
 
 (defmethod factoid-command-processor :forget [_ bag]
-  (trip/delete
-   (trip/derby (trip/db-name)) (:subject bag) (:predicate bag) (:object bag))
+  (trip/delete (:subject bag) (:predicate bag) (:object bag))
   (format "I forgot that %s %s %s"
           (:subject bag)
           (:predicate bag)
@@ -259,7 +256,6 @@
 (defn mutli-query [_ pos form]
   (with-meta ((partial mapcat
                        #(trip/query
-                         (trip/derby (trip/db-name))
                          (list (format form %)) :z :y)) pos)
     (meta pos)))
 
@@ -311,14 +307,11 @@
       (letfn [(first-order-search [input]
                 (if-let [result (seq
                                  (concat
-                                  (trip/query (trip/derby (trip/db-name))
-                                              input :y :z)
-                                  (->> (trip/query (trip/derby (trip/db-name))
-                                                   :z "is" input)
+                                  (trip/query input :y :z)
+                                  (->> (trip/query :z "is" input)
                                        (map rotate-fact)
                                        (map #(assoc % :infered? true)))
-                                  (->> (trip/query (trip/derby (trip/db-name))
-                                                   :z "are" input)
+                                  (->> (trip/query :z "are" input)
                                        (map rotate-fact)
                                        (map #(assoc % :infered? true)))))]
                   result
@@ -337,19 +330,10 @@
                          (let [term (search-term result)]
                            (clojure.tools.logging/info "TERM" term)
                            ;; also need to check the inverse?
-                           (->> (concat (trip/query (trip/derby (trip/db-name))
-                                                    term
-                                                    (be term)
-                                                    :z)
-                                        (->> (trip/query (trip/derby (trip/db-name))
-                                                         :z
-                                                         "is"
-                                                         term)
+                           (->> (concat (trip/query term (be term) :z)
+                                        (->> (trip/query :z "is" term)
                                              (map rotate-fact))
-                                        (->> (trip/query (trip/derby (trip/db-name))
-                                                         :z
-                                                         "are"
-                                                         term)
+                                        (->> (trip/query :z "are" term)
                                              (map rotate-fact)))
                                 (mapcat (partial infer (inc order)))
                                 (map (fn [x]
@@ -387,7 +371,6 @@
                               now)]
                (future
                  (trip/store-triple
-                  (trip/derby (trip/db-name))
                   {:s (:subject fact)
                    :o (:object fact)
                    :p (:predicate fact)})

@@ -15,9 +15,11 @@
    :subname name
    :subprotocol "derby"})
 
+(declare db-name)
+
 (defn create-store
   [name]
-  (with-c (derby name)
+  (with-c (derby (db-name))
     (sql/create-table
      :triples
      [:id :int "PRIMARY KEY" "GENERATED ALWAYS AS IDENTITY"]
@@ -50,8 +52,8 @@
 
 (in-ns 'clojurebot.triples.derby)
 
-(defn store-triple [db {:keys [s p o]}]
-  (with-c db
+(defn store-triple [{:keys [s p o]}]
+  (with-c (derby (db-name))
     (sql/transaction
      (sql/insert-values
       :triples
@@ -60,7 +62,7 @@
        (.toUpperCase (.trim (str s)))]))))
 
 (defmulti query
-  (fn [db s p o]
+  (fn [s p o]
     (cond
      (and (list? s) (keyword? p) (keyword? o))
      ::like_subject-_-_
@@ -79,37 +81,36 @@
      :else
      ::subject-predicate-object)))
 
-(defmethod query ::subject-_-_ [db s p o]
-  (prn db)
+(defmethod query ::subject-_-_ [s p o]
   (try
-    (with-c db
+    (with-c (derby (db-name))
       (sql/with-query-results res
         ["SELECT * FROM triples WHERE upper_subject = ?" (.toUpperCase s)]
         (doall res)))
     (catch Exception e
-      (println db s p o)
+      (println (db-name) s p o)
       (throw e))))
 
-(defmethod query ::like_subject-_-_ [db s p o]
+(defmethod query ::like_subject-_-_ [s p o]
   (try
-    (with-c db
+    (with-c (derby (db-name))
       (sql/with-query-results res
         ["SELECT * FROM triples WHERE upper_subject LIKE ?"
          (.toUpperCase (first s))]
         (doall res)))
     (catch Exception e
-      (println db s p o)
+      (println (db-name) s p o)
       (throw e))))
 
-(defmethod query ::_-predicate-_ [db s p o]
-  (with-c db
+(defmethod query ::_-predicate-_ [s p o]
+  (with-c (derby (db-name))
     (sql/with-query-results res
       ["SELECT * FROM triples WHERE predicate = ?" p]
       (doall res))))
 
-(defmethod query ::subject-predicate-object [db s p o]
+(defmethod query ::subject-predicate-object [s p o]
   (try
-    (with-c db
+    (with-c (derby (db-name))
       (sql/with-query-results res
         [(str "SELECT * FROM triples WHERE "
               "predicate = ? AND "
@@ -118,13 +119,13 @@
          p (.toUpperCase s) o]
         (doall res)))
     (catch Exception e
-      (println db s p o)
+      (println (db-name) s p o)
       (throw e))))
 
-(defmethod query ::subject-predicate-_ [db s p o]
+(defmethod query ::subject-predicate-_ [s p o]
   (clojure.tools.logging/info "QUERY" s p o)
   (try
-    (with-c db
+    (with-c (derby (db-name))
       (sql/with-query-results res
         [(str "SELECT * FROM triples WHERE "
               "predicate = ? AND "
@@ -132,12 +133,12 @@
          p (.toUpperCase s)]
         (doall res)))
   (catch Exception e
-    (println db s p o)
+    (println (db-name) s p o)
     (throw e))))
 
-(defmethod query ::_-predicate-object [db s p o]
+(defmethod query ::_-predicate-object [s p o]
   (clojure.tools.logging/info "QUERY" s p o)
-  (with-c db
+  (with-c (derby (db-name))
     (sql/with-query-results res
       [(str "SELECT * FROM triples WHERE "
             "predicate = ? AND "
@@ -145,15 +146,15 @@
        p o]
       (doall res))))
 
-(defmethod query ::_-_-_ [db s p o]
-  (with-c db
+(defmethod query ::_-_-_ [s p o]
+  (with-c (derby (db-name))
     (sql/with-query-results res
       ["SELECT * FROM triples"]
       (doall res))))
 
-(defn delete [db s p o]
-  (doseq [id (map :id (query db s p o))]
-    (with-c db
+(defn delete [s p o]
+  (doseq [id (map :id (query s p o))]
+    (with-c (derby (db-name))
       (sql/delete-rows :triples ["id = ?" id]))))
 
 (defn string [{:keys [subject predicate object]}]

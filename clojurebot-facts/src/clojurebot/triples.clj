@@ -3,9 +3,7 @@
 (declare create-store
          store-triple
          query
-         delete
-         db-name
-         derby)
+         delete)
 
 (defn ^{::ignore true} load-impl [ns]
   (require ns)
