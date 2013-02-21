@@ -30,6 +30,9 @@
 (require '[clojure.java.jdbc :as jdbc])
 
 (jdbc/with-connection postgres-db
+  (try
+    (jdbc/do-commands "CREATE EXTENSION \"uuid-ossp\"")
+    (catch Exception _))
   (jdbc/create-table
    postgres-table
    [:id :uuid "PRIMARY KEY" "DEFAULT uuid_generate_v4()"]

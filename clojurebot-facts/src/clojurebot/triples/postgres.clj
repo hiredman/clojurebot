@@ -14,6 +14,9 @@
 (defn create-store
   [name]
   (with-c (:url @pg)
+    (try
+      (sql/do-commands "CREATE EXTENSION \"uuid-ossp\"")
+      (catch Exception _))
     (sql/create-table
      (:table @pg)
      [:id :uuid "PRIMARY KEY" "DEFAULT uuid_generate_v4()"]
