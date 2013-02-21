@@ -29,29 +29,6 @@
      [:upper_subject "varchar(32670)"]
      [:created_at :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"])))
 
-;; TODO: remove this hack once this is fixed upstream
-(in-ns 'clojure.java.jdbc.internal)
-
-(defn do-prepared-return-keys*
-  "Executes an (optionally parameterized) SQL prepared statement on the
-  open database connection. Each param-group is a seq of values for all of
-  the parameters.
-  Return the generated keys for the (single) update/insert."
-  [^String sql & param-groups]
-  (with-open [^PreparedStatement stmt (prepare-statement* (connection*) sql :return-keys true)]
-    (doseq [param-group param-groups]
-      (set-parameters stmt param-group)
-      (.addBatch stmt))
-    (transaction* (fn []
-                    (let [counts (.executeBatch stmt)]
-                      (try
-                        (first (resultset-seq* (.getGeneratedKeys stmt)))
-                        (catch Exception _
-                          ;; assume generated keys is unsupported and return counts instead:
-                          counts)))))))
-
-(in-ns 'clojurebot.triples.derby)
-
 (defn store-triple [{:keys [s p o]}]
   (with-c (derby (db-name))
     (sql/transaction
