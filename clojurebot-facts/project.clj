@@ -7,7 +7,7 @@
                  [ring "1.1.8"]
                  [org.clojure/tools.logging "0.2.4"]
                  [org.apache.derby/derby "10.8.1.2"]
-                 [org.clojure/java.jdbc "0.0.5"]
+                 [org.clojure/java.jdbc "0.2.3"]
                  [org.clojars.hiredman/fnparse "2.2.4"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [postgresql/postgresql "9.1-901.jdbc4"]
