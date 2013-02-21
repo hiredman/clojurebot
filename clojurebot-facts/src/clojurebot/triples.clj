@@ -11,4 +11,5 @@
           :when (not (::ignore (meta v)))]
     (intern 'clojurebot.triples n (deref (ns-resolve ns n)))))
 
-(load-impl 'clojurebot.triples.derby)
+(load-impl (symbol (or (System/getProperty "factoid.storage")
+                       "clojurebot.triples.derby")))
