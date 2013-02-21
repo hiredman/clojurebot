@@ -377,52 +377,50 @@
                                     "msecs")))))
 
 (defn factoid-lookup [{:keys [message] :as bag}]
-  (trip/with-c (trip/derby (trip/db-name))
-    (-> (.replaceAll (.trim message) "\\?$" "")
-        ((fn [thing]
-           (when (= "botsnack" thing)
-             (let [now (System/currentTimeMillis)]
-               (doseq [[ts chan fact] @infered-results
-                       :when (= chan (:channel bag))
-                       :when (> (+ ts (* 1000 60 2))
-                                now)]
-                 (future
-                   (trip/store-triple
-                    (trip/derby (trip/db-name))
-                    {:s (:subject fact)
-                     :o (:object fact)
-                     :p (:predicate fact)})
-                   (swap!
-                    infered-results
-                    (partial remove
-                             #(= (select-keys
-                                  % [:object :predicate :subject])
-                                 (select-keys
-                                  fact [:object :predicate :subject]))))))))
-           thing))
-        (qw nil)
-        vec
-        (befuddled-or-pick-random bag))))
+  (-> (.replaceAll (.trim message) "\\?$" "")
+      ((fn [thing]
+         (when (= "botsnack" thing)
+           (let [now (System/currentTimeMillis)]
+             (doseq [[ts chan fact] @infered-results
+                     :when (= chan (:channel bag))
+                     :when (> (+ ts (* 1000 60 2))
+                              now)]
+               (future
+                 (trip/store-triple
+                  (trip/derby (trip/db-name))
+                  {:s (:subject fact)
+                   :o (:object fact)
+                   :p (:predicate fact)})
+                 (swap!
+                  infered-results
+                  (partial remove
+                           #(= (select-keys
+                                % [:object :predicate :subject])
+                               (select-keys
+                                fact [:object :predicate :subject]))))))))
+         thing))
+      (qw nil)
+      vec
+      (befuddled-or-pick-random bag)))
 
 (defn factoid-lookup-no-fall-back [{:keys [message] :as bag}]
-  (trip/with-c (trip/derby (trip/db-name))
-    (let [x (-> (.replaceAll (.trim message) "\\?$" "")
-                (qw nil)
-                vec)]
-      (if (empty? x)
-        nil
-        (let [{:keys [subject predicate object infered?] :as relationship}
-              (first (shuffle x))]
-          (clojure.tools.logging/info "CHOSEN" relationship)
-          (when infered?
-            (swap! infered-results
-                   (fn [db record]
-                     (if (> (count db) 10)
-                       (recur (rest db) record)
-                       (conj db record)))
-                   [(System/currentTimeMillis) (:channel bag) relationship]))
-          (prep-reply (:sender bag)
-                      subject
-                      predicate
-                      object
-                      (:bot bag)))))))
+  (let [x (-> (.replaceAll (.trim message) "\\?$" "")
+              (qw nil)
+              vec)]
+    (if (empty? x)
+      nil
+      (let [{:keys [subject predicate object infered?] :as relationship}
+            (first (shuffle x))]
+        (clojure.tools.logging/info "CHOSEN" relationship)
+        (when infered?
+          (swap! infered-results
+                 (fn [db record]
+                   (if (> (count db) 10)
+                     (recur (rest db) record)
+                     (conj db record)))
+                 [(System/currentTimeMillis) (:channel bag) relationship]))
+        (prep-reply (:sender bag)
+                    subject
+                    predicate
+                    object
+                    (:bot bag))))))
