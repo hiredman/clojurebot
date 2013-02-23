@@ -1,4 +1,4 @@
->(ns clojurebot.core
+(ns clojurebot.core
   (:use [conduit.irc :only [irc-run a-irc *pircbot* pircbot]]
         [conduit.core]
         [clojurebot.conduit :only [a-indirect a-if a-cond null a-when]]
