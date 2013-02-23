@@ -32,6 +32,7 @@
         [compojure.core :refer [defroutes]]
         [compojure.route :refer :all]
         [ring.adapter.jetty :refer [run-jetty]])
+  (:require [clojure.tools.logging :as log])
   (:gen-class))
 
 ;; pipelines
@@ -107,7 +108,7 @@
                 (try
                   ((resolve name) msg)
                   (catch Exception e
-                    (.printStackTrace e))))))
+                    (log/error e "error running logging plugin"))))))
      pass-through)
 
     (a-arr last) ;we only want the passed through value
@@ -167,7 +168,7 @@
             (a-comp (a-arr #(dissoc % :config :bot))
                     null)
             ))
-   (a-arr (comp #(doto % .printStackTrace) first))))
+   (a-arr (comp #(log/error %) first))))
 
 ;;/pipelines
 
@@ -211,8 +212,7 @@
        {:status 200
         :headers {"Content-Type" "application/edn; charset=utf-8"}
         :body (let [x (hiredman.clojurebot.core/befuddled)]
-                (prn x)
-                (println x)
+                (log/debug "/befuddled ·" x)
                 (pr-str x))})
   (GET "/ok" []
        {:status 200
