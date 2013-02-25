@@ -6,7 +6,10 @@
 
 (defn handler* [{{:strs [expression befuddled]} :params :as m}]
   (try
-    (let [[stdout stderr result] (sb/eval-message expression (read-string befuddled))]
+    (let [r (sb/eval-message expression (read-string befuddled))
+          [stdout stderr result]  (if (vector? r)
+                                    r
+                                    [nil r nil])]
       {:status 200
        :body (pr-str {:stdout stdout
                       :stderr stderr
