@@ -1,8 +1,7 @@
-;; requires danlarkin's clojure-json
 (ns hiredman.clojurebot.translate
     (:use (hiredman.clojurebot core))
     (:use (hiredman utilities))
-    (:require [org.danlarkin.json :as json]))
+    (:require [clojurebot.json :as json]))
 
 (def url "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0")
 

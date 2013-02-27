@@ -17,7 +17,6 @@
         [clojurebot.eval :only [eval-request?]]
         [clojure.tools.logging :only [info]]
         [clojurebot.seenx :only [log-user seenx-query? seen-user]]
-        [clojurebot.delicious :only [contains-url? delicious]]
         [clojurebot.dice :only [roll-some-dice dice-roll?]]
         [hiredman.clojurebot.google :only [google-search? google-search]]
         [swank.swank :only [start-repl]]
@@ -28,10 +27,9 @@
                                   notice target setup-crons]]
         [clojurebot.plugin :only [load-from]]
         [hiredman.clojurebot.simplyscala :only [scala-eval]]
-        [com.thelastcitadel.apropos :refer [apropos]]
-        [compojure.core :refer [defroutes]]
-        [compojure.route :refer :all]
-        [ring.adapter.jetty :refer [run-jetty]])
+        [compojure.core :only [defroutes GET]]
+        [ring.adapter.jetty :only [run-jetty]]
+        [com.thelastcitadel.apropos :only [apropos]])
   (:require [clojure.tools.logging :as log])
   (:gen-class))
 

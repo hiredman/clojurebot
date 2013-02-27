@@ -2,7 +2,7 @@
 (ns hiredman.clojurebot.code-lookup
   (:use (hiredman.clojurebot core))
   (:use (hiredman utilities))
-  (:require [org.danlarkin.json :as json])
+  (:require [clojurebot.json :as json])
   (:import (java.io File InputStreamReader BufferedReader)))
 
 (def google-code-url "http://code.google.com/p/clojure/source/browse/trunk/src/clj/")

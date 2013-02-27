@@ -7,7 +7,7 @@
                  [org.clojure/tools.logging "0.2.6"]
                  [conduit-irc "2.0.1-SNAPSHOT"]
                  [org.ccil.cowan.tagsoup/tagsoup "1.2"]
-                 [org.danlarkin/clojure-json "1.1"]
+                 [cheshire "5.0.2"]
                  [clj-http "0.1.1"
                   :exclude [commons-logging]]
                  [swank-clojure "1.3.2"]

@@ -1,7 +1,7 @@
 (ns hiredman.clojurebot.stock-quote
       (:require [hiredman.clojurebot.core :as core]
                 [hiredman.utilities :as util]
-                [org.danlarkin.json :as json]))
+                [clojurebot.json :as json]))
 
 (def url "http://www.google.com/finance/info?q=")
 

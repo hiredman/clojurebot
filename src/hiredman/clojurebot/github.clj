@@ -2,7 +2,7 @@
  (:import (java.text SimpleDateFormat ParsePosition FieldPosition))
  (:require [hiredman.clojurebot.core :as core]
            [hiredman.schedule :as sched]
-           [org.danlarkin.json :as json]
+           [clojurebot.json :as json]
            [hiredman.utilities :as util]))
 
 (def api-url "http://github.com/api/v2/json/commits/list/richhickey/clojure/master")

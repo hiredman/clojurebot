@@ -2,7 +2,7 @@
 (ns hiredman.clojurebot.google
   (:use (hiredman.clojurebot core))
   (:use (hiredman utilities))
-  (:require [org.danlarkin.json :as json]))
+  (:require [clojurebot.json :as json]))
 
 (def lmgtfy "http://lmgtfy.com/?q=")
 
