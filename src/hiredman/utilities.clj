@@ -1,9 +1,9 @@
 (ns hiredman.utilities
-    (:use (hiredman horizon))
-    (:import (java.net URL URLEncoder)
-             (java.io BufferedReader InputStreamReader OutputStreamWriter)
-             (java.text SimpleDateFormat ParsePosition)
-             (sun.misc BASE64Encoder)))
+  (:use (hiredman horizon))
+  (:import (java.net URL URLEncoder)
+           (java.io BufferedReader InputStreamReader OutputStreamWriter)
+           (java.text SimpleDateFormat ParsePosition)
+           (sun.misc BASE64Encoder)))
 
 (defn get-url [x]
   (with-open [a (-> (doto (-> x URL. .openConnection)
@@ -22,12 +22,12 @@
     `(proxy [~class] [] ~@x)))
 
 (defn scoped-get-url [x]
-      (let [t (-> x URL. .getContent InputStreamReader. BufferedReader.)]
-        (hiredman.horizon/when-hrz :exits #(.close t))
-        t))
+  (let [t (-> x URL. .getContent InputStreamReader. BufferedReader.)]
+    (hiredman.horizon/when-hrz :exits #(.close t))
+    t))
 
 (defn shell [cmd]
-      (.. Runtime getRuntime (exec cmd)))
+  (.. Runtime getRuntime (exec cmd)))
 
 (defn tinyurl [url]
   (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
@@ -40,3 +40,12 @@
 
 (defn date [string format]
   (.parse (SimpleDateFormat. format) string (ParsePosition. 0)))
+
+(defmacro with-breaker [seconds & body]
+  `(let [f# (future
+              ~@body)]
+     (try
+       (.get f# ~seconds java.util.concurrent.TimeUnit/SECONDS)
+       (catch Throwable t#
+         (future-cancel f#)
+         (throw t#)))))
