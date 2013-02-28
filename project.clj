@@ -16,7 +16,8 @@
                  [compojure "1.1.5"]
                  ;; logging
                  [ch.qos.logback/logback-classic "1.0.9"]
-                 [ch.qos.logback/logback-core "1.0.9"]]
+                 [ch.qos.logback/logback-core "1.0.9"]
+                 [org.slf4j/jcl-over-slf4j "1.7.2"]]
   :main clojurebot.core
   :clean-non-project-classes false
   :min-lein-version "2.0.0")
