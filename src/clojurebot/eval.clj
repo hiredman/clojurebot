@@ -16,7 +16,7 @@
   (if (and (not (naughty-forms? message))
            (not= sender "itistoday")
            (not= sender "Lajla")
-           (not= sender "LauJensen"))
+           (not= sender "Lajjla"))
     (try
         (u/with-breaker 20
           (let [{:keys [body] :as result} (http/get (config :evaluator)
