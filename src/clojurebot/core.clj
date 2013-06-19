@@ -33,6 +33,10 @@
   (:require [clojure.tools.logging :as log])
   (:gen-class))
 
+(defn comic? [m]
+  (when-let [v (resolve 'clojurebot.phil/comic?)]
+    (v m)))
+
 ;; pipelines
 ;; addressed pipelines are run when a message has been determined to
 ;; have been addressed specificly at the bot
@@ -58,7 +62,10 @@
                                                 (query a-map)))
                                             (:addressed-plugins config))]
                      (@(ns-resolve ns action) a-map))))
-           false (a-cond (fn [{:keys [message] :as m}]
+           false (a-cond comic?
+                         (a-arr (fn [m]
+                                  (when-let [v (resolve 'clojurebot.phil/lookup-comic)]
+                                    (v m))))
                            (when message
                              (.startsWith message "apropos ")))
                          (a-arr (fn [{:keys [message]}]
