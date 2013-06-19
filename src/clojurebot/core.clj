@@ -30,8 +30,7 @@
         [compojure.core :only [defroutes GET]]
         [ring.adapter.jetty :only [run-jetty]]
         [com.thelastcitadel.apropos :only [apropos]])
-  (:require [clojure.tools.logging :as log])
-  (:gen-class))
+  (:require [clojure.tools.logging :as log]))
 
 (defn comic? [m]
   (when-let [v (resolve 'clojurebot.phil/comic?)]
@@ -48,7 +47,7 @@
                   (fn [{:keys [config] :as a-map}]
                     ((comp boolean first filter)
                      (fn [[ns query action]]
-                       (let [query (ns-resolve ns query)]
+                       (when-let [query (ns-resolve ns query)]
                          (query a-map)))
                      (:addressed-plugins config))))
                  pass-through)
@@ -179,7 +178,7 @@
             (a-comp (a-arr #(dissoc % :config :bot))
                     null)
             ))
-   (a-arr (comp #(log/error %) first))))
+   (a-arr (comp #(log/error % "error") first))))
 
 ;;/pipelines
 
