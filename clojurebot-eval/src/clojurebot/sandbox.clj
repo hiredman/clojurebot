@@ -327,7 +327,7 @@
               (run [_]
                 (try
                   (evil cl "(+ 1 2)")
-                  (catch java.lang.NoClassDefFoundError e
+                  (catch Exception e
                     (swap! cl-cache dissoc clojure-jar)
                     (throw e))))))))
         ((fn [cl]

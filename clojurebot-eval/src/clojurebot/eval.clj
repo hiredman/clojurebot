@@ -5,26 +5,30 @@
             [clojure.stacktrace :as s]))
 
 (defn handler* [{{:strs [expression befuddled]} :params :as m}]
-  (try
-    (let [r (sb/eval-message expression (read-string befuddled))
-          [stdout stderr result]  (if (vector? r)
-                                    r
-                                    [nil r nil])]
-      {:status 200
-       :body (pr-str {:stdout stdout
-                      :stderr stderr
-                      :result result})})
-    (catch Throwable t
-      (log/error t "error evaluating" expression)
-      (log/error (pr-str m))
-      {:status 200
-       :body (pr-str {:stdout ""
-                      :stderr (pr-str
-                               (try
-                                 (s/root-cause t)
-                                 (catch Throwable _
-                                   t)))
-                      :result ""})})))
+  (if-not (and (.contains expression "shadow")
+               (.contains expression "worship"))
+    (try
+      (let [r (sb/eval-message expression (read-string befuddled))
+            [stdout stderr result]  (if (vector? r)
+                                      r
+                                      [nil r nil])]
+        {:status 200
+         :body (pr-str {:stdout stdout
+                        :stderr stderr
+                        :result result})})
+      (catch Throwable t
+        (log/error t "error evaluating" expression)
+        (log/error (pr-str m))
+        {:status 200
+         :body (pr-str {:stdout ""
+                        :stderr (print-str
+                                 (try
+                                   (s/root-cause t)
+                                   (catch Throwable _
+                                     t)))
+                        :result ""})}))
+    {:status 500
+     :body ""}))
 
 (def handler (-> #'handler*
                  wrap-params))
