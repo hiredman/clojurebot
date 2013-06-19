@@ -8,7 +8,7 @@
                  [conduit-irc "2.0.1-SNAPSHOT"]
                  [org.ccil.cowan.tagsoup/tagsoup "1.2"]
                  [cheshire "5.0.2"]
-                 [clj-http "0.1.1"
+                 [clj-http "0.7.2"
                   :exclude [commons-logging]]
                  [swank-clojure "1.3.2"]
                  [com.thelastcitadel/apropos "0.0.1"]
