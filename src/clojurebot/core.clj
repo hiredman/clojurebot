@@ -66,10 +66,16 @@
                          (a-arr (fn [m]
                                   (when-let [v (resolve 'clojurebot.phil/lookup-comic)]
                                     (v m))))
+                         
+                         (fn [{:keys [message] :as m}]
                            (when message
                              (.startsWith message "apropos ")))
                          (a-arr (fn [{:keys [message]}]
-                                  (apropos (.replaceFirst message "apropos " ""))))
+                                  (try
+                                    (apropos (.replaceFirst message "apropos " ""))
+                                    (catch Throwable _
+                                      "dunno"))))
+                         
                          ticket-query?
                          (a-arr get-ticket-n)
 
