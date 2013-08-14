@@ -1,6 +1,5 @@
 (ns hiredman.utilities
   (:use (hiredman horizon))
-  (:require [com.thelastcitadel.m29])
   (:import (java.net URL URLEncoder)
            (java.io BufferedReader InputStreamReader OutputStreamWriter)
            (java.text SimpleDateFormat ParsePosition)
@@ -31,8 +30,7 @@
   (.. Runtime getRuntime (exec cmd)))
 
 (defn tinyurl [url]
-  (com.thelastcitadel.m29/shorten url)
-  #_(-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
+  (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
       get-url))
 
 (def tinyurl (memoize tinyurl))
