@@ -123,7 +123,6 @@
 
 (defn befuddled []
   (let [{:keys [body]} (http/get "http://localhost:3205/befuddled")]
-    (prn body)
     (read-string body)))
 
 (defmethod factoid-command-processor :boom [_ bag]
@@ -197,8 +196,6 @@
 ;; (hiredman.clojurebot.core/dict-file bot ".is")))
 
 (defn replace-with [str map]
-  (prn str)
-  (prn map)
   (reduce #(.replaceAll % (first %2) (second %2)) str map))
 
 (defn remove-from-beginning
