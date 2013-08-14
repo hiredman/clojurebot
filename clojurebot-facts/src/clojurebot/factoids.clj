@@ -4,7 +4,8 @@
             [name.choi.joshua.fnparse :as fp]
             [opennlp.nlp :as nlp]
             [clj-http.client :as http]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [clojurebot.infer]))
 
 (def ^:dynamic *id*)
 
