@@ -302,63 +302,13 @@
                                      "msecs")))))
 
 (defn qw [input _]
-  (let [now (System/nanoTime)]
-    (try
-      (letfn [(first-order-search [input]
-                (if-let [result (seq
-                                 (concat
-                                  (trip/query input :y :z)
-                                  (->> (trip/query :z "is" input)
-                                       (map rotate-fact)
-                                       (map #(assoc % :infered? true)))
-                                  (->> (trip/query :z "are" input)
-                                       (map rotate-fact)
-                                       (map #(assoc % :infered? true)))))]
-                  result
-                  (-> input
-                      tag
-                      noun-filter
-                      (#(mutli-query _ % "%%%s%%")))))
-              (rotate-fact [fact]
-                (assoc fact
-                  :subject (:object fact)
-                  :object (:subject fact)))
-              (infer [order result]
-                (if (> 3 order)
-                  (lazy-seq
-                   (cons result
-                         (let [term (search-term result)]
-                           (clojure.tools.logging/info "TERM" term)
-                           ;; also need to check the inverse?
-                           (->> (concat (trip/query term (be term) :z)
-                                        (->> (trip/query :z "is" term)
-                                             (map rotate-fact))
-                                        (->> (trip/query :z "are" term)
-                                             (map rotate-fact)))
-                                (mapcat (partial infer (inc order)))
-                                (map (fn [x]
-                                       (assoc x
-                                         :predicate (:predicate result)
-                                         :subject (:subject result)
-                                         :infered? true)))))))
-                  [result]))]
-        (let [x (->> (shuffle (first-order-search input))
-                     (map (partial infer 1))
-                     (apply concat)
-                     (filter identity)
-                     (remove #(.startsWith (.trim (:subject %)) "<reply>"))
-                     (remove #(= (:subject %) (:object %)))
-                     doall)]
-          (doseq [m x]
-            (clojure.tools.logging/info "POSSIBLE" m))
-          x))
-      (catch Exception e
-        (println e))
-      (finally
-        (clojure.tools.logging/info "Elapsed qw time:"
-                                    (/ (double (- (System/nanoTime) now))
-                                       1000000.0)
-                                    "msecs")))))
+  (tl
+   :qw
+   (->> (clojurebot.infer/respondo input)
+        (group-by (juxt :subject :predicate :object))
+        (map (fn [[k v]]
+               (let [{known false infered true} (group-by :infered? v)]
+                 (first (concat known infered))))))))
 
 (defn factoid-lookup [{:keys [message] :as bag}]
   (-> (.replaceAll (.trim message) "\\?$" "")
