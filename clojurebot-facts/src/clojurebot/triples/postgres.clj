@@ -49,6 +49,8 @@
      ::_-_-_
      (and (keyword? s) (not (keyword? p)) (not (keyword? o)))
      ::_-predicate-object
+     (and (not (keyword? s)) (keyword? p) (not (keyword? o)))
+     ::subject-_-object
      :else
      ::subject-predicate-object)))
 
@@ -93,6 +95,20 @@
     (catch Exception e
       (throw e))))
 
+(defmethod query ::subject-_-object [^String s p o]
+  (try
+    (with-c (:url @pg)
+      (sql/with-query-results res
+        [(str "SELECT * FROM "
+              (:table @pg)
+              " WHERE "
+              "upper_subject = ? AND "
+              "object = ?")
+         (.toUpperCase s) o]
+        (doall res)))
+    (catch Exception e
+      (throw e))))
+
 (defmethod query ::subject-predicate-_ [^String s p o]
   (clojure.tools.logging/info "QUERY" s p o)
   (try
@@ -118,6 +134,17 @@
             "predicate = ? AND "
             "object = ?")
        p o]
+      (doall res))))
+
+(defmethod query ::_-_-object [s p o]
+  (clojure.tools.logging/info "QUERY" s p o)
+  (with-c (:url @pg)
+    (sql/with-query-results res
+      [(str "SELECT * FROM "
+            (:table @pg)
+            " WHERE "
+            "object = ?")
+      o]
       (doall res))))
 
 (defmethod query ::_-_-_ [s p o]
