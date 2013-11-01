@@ -5,8 +5,10 @@
             [clojure.stacktrace :as s]))
 
 (defn handler* [{{:strs [expression befuddled]} :params :as m}]
-  (if-not (and (.contains expression "shadow")
-               (.contains expression "worship"))
+  (if-not (or (and (.contains expression "shadow")
+                   (.contains expression "worship"))
+              (and (.contains expression "Shadow")
+                   (.contains expression "Divine")))
     (try
       (let [r (sb/eval-message expression (read-string befuddled))
             [stdout stderr result]  (if (vector? r)
