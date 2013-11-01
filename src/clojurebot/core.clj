@@ -45,6 +45,7 @@
           ;; addressed-plugins ends up search through the list twice
           (a-all (a-arr
                   (fn [{:keys [config] :as a-map}]
+                    (log/info "here")
                     ((comp boolean first filter)
                      (fn [[ns query action]]
                        (when-let [query (ns-resolve ns query)]
@@ -54,12 +55,17 @@
           (a-select
            true (a-arr
                  (fn [{:keys [config] :as a-map}]
+                   (log/info "here2")
                    (let [[ns query action] ((comp first filter)
                                             (fn [[ns query action]]
                                               (let [query (ns-resolve
                                                            ns query)]
-                                                (query a-map)))
+                                                (log/info ns)
+                                                (log/info "query" query)
+                                                (when query
+                                                  (query a-map))))
                                             (:addressed-plugins config))]
+                     (log/info "action" action)
                      (@(ns-resolve ns action) a-map))))
            false (a-cond comic?
                          (a-arr (fn [m]
