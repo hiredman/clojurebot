@@ -1,7 +1,8 @@
 (ns clojurebot.facts
   (:require [clojure.tools.logging :as log]
             [clojurebot.factoids :as f]
-            [ring.middleware.params :as mw]))
+            [ring.middleware.params :as mw]
+            [clojure.tools.nrepl.server :as nrepl]))
 
 (defmulti handler* (fn [m] (get (:params m) "op")))
 
@@ -43,3 +44,6 @@
                       (let [r (f req)]
                         (update-in r [:headers] assoc "Content-Type" "application/edn; charset=utf-8")))))
                  mw/wrap-params))
+
+(defn init []
+  (nrepl/start-server :port 5678))
