@@ -41,18 +41,31 @@
                   (Thread/sleep (* 1000 60 5))
                   (reset! senders {})))))
 
+(defn wrap-record-sender [f]
+  (fn [req]
+    (swap! senders update-in [(get (:params req) "sender")] (fnil inc 0))
+    (f req)))
+
+(defn wrap-throttle-sender[f]
+  (fn [req]
+    (when (> (or (get @senders (get (:params req) "sender")) 0)
+             10)
+      (assert nil))
+    (f req)))
+
+(defn wrap-log-request [f]
+  (fn [req]
+    (log/info req)
+    (f req)))
+
+(defn wrap-edn-response [f]
+  (fn [req]
+    (let [r (f req)]
+      (update-in r [:headers] assoc "Content-Type" "application/edn; charset=utf-8"))))
+
 (def handler (-> #'handler*
-                 ((fn [f]
-                    (fn [req]
-                      @fut
-                      (swap! senders update-in [(get (:params req) "sender")] (fnil inc 0))
-                      (f req))))
-                 ((fn [f]
-                    (fn [req]
-                      (when (> (or (get @senders (get (:params req) "sender")) 0)
-                               10)
-                        (assert nil))
-                      (f req))))
+                 wrap-record-sender
+                 wrap-throttle-sender
                  ((fn [f]
                     (fn [req]
                       (if (contains? #{"logic_prog"
@@ -62,15 +75,10 @@
                                      (get (:params req) "sender"))
                         (assert nil)
                         (f req)))))
-                 ((fn [f]
-                    (fn [req]
-                      (log/info req)
-                      (f req))))
-                 ((fn [f]
-                    (fn [req]
-                      (let [r (f req)]
-                        (update-in r [:headers] assoc "Content-Type" "application/edn; charset=utf-8")))))
+                 wrap-log-request
+                 wrap-edn-response
                  mw/wrap-params))
 
 (defn init []
+  @fut
   (nrepl/start-server :port 5678))
