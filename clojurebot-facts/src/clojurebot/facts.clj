@@ -33,8 +33,35 @@
                     {:message (get (:params req) "message")
                      :sender (get (:params req) "sender")}))}))
 
+(def senders (atom {}))
+
+(defonce fut (delay
+              (future
+                (while true
+                  (Thread/sleep (* 1000 60 5))
+                  (reset! senders {})))))
 
 (def handler (-> #'handler*
+                 ((fn [f]
+                    (fn [req]
+                      @fut
+                      (swap! senders update-in [(get (:params req) "sender")] (fnil inc 0))
+                      (f req))))
+                 ((fn [f]
+                    (fn [req]
+                      (when (> (or (get @senders (get (:params req) "sender")) 0)
+                               10)
+                        (assert nil))
+                      (f req))))
+                 ((fn [f]
+                    (fn [req]
+                      (if (contains? #{"logic_prog"
+                                       "ddellacosta"
+                                       "bitemyapp"
+                                       "arrdem"}
+                                     (get (:params req) "sender"))
+                        (assert nil)
+                        (f req)))))
                  ((fn [f]
                     (fn [req]
                       (log/info req)
