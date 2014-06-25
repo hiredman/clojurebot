@@ -69,7 +69,6 @@
                  ((fn [f]
                     (fn [req]
                       (if (contains? #{"logic_prog"
-                                       "ddellacosta"
                                        "bitemyapp"
                                        "arrdem"}
                                      (get (:params req) "sender"))
