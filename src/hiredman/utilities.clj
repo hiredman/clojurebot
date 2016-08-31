@@ -29,8 +29,12 @@
 (defn shell [cmd]
   (.. Runtime getRuntime (exec cmd)))
 
+;; (defn tinyurl [url]
+;;   (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
+;;       get-url))
+
 (defn tinyurl [url]
-  (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
+  (->  (format "http://tinyurl.com/api-create.php?url=%s" (URLEncoder/encode url))
       get-url))
 
 (def tinyurl (memoize tinyurl))
